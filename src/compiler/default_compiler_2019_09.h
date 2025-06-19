@@ -448,7 +448,7 @@ auto compiler_2019_09_content_contentencoding(
     const Context &context, const SchemaContext &schema_context,
     const DynamicContext &dynamic_context, const Instructions &)
     -> Instructions {
-  if (context.mode == Mode::FastValidation) {
+  if (context.mode == Mode::FastValidation || schema_context.is_property_name) {
     return {};
   }
 
@@ -468,7 +468,7 @@ auto compiler_2019_09_content_contentmediatype(
     const Context &context, const SchemaContext &schema_context,
     const DynamicContext &dynamic_context, const Instructions &)
     -> Instructions {
-  if (context.mode == Mode::FastValidation) {
+  if (context.mode == Mode::FastValidation || schema_context.is_property_name) {
     return {};
   }
 
@@ -488,7 +488,7 @@ auto compiler_2019_09_content_contentschema(
     const Context &context, const SchemaContext &schema_context,
     const DynamicContext &dynamic_context, const Instructions &)
     -> Instructions {
-  if (context.mode == Mode::FastValidation) {
+  if (context.mode == Mode::FastValidation || schema_context.is_property_name) {
     return {};
   }
 
@@ -513,7 +513,7 @@ auto compiler_2019_09_format_format(const Context &context,
                                     const SchemaContext &schema_context,
                                     const DynamicContext &dynamic_context,
                                     const Instructions &) -> Instructions {
-  if (context.mode == Mode::FastValidation) {
+  if (context.mode == Mode::FastValidation || schema_context.is_property_name) {
     return {};
   }
 
