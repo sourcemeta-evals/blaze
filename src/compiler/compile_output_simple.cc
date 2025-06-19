@@ -72,6 +72,57 @@ auto SimpleOutput::operator()(
     }
   } else if (type == EvaluationType::Post &&
              this->mask.contains(evaluate_path)) {
+    // Special handling for contains: clean up annotations for failed items
+    const auto &keyword{evaluate_path.back().to_property()};
+    if (keyword == "contains" && !this->annotations_.empty()) {
+      // For contains, we need to remove annotations from items that failed the
+      // subschema We do this by checking which annotations were added under
+      // this contains path but don't correspond to items that actually matched
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        bool should_remove = false;
+
+        // Check if this annotation is from a contains subschema
+        if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+            iterator->first.evaluate_path.size() > evaluate_path.size()) {
+
+          // This is an annotation from within the contains subschema
+          // We need to determine if this specific item actually passed
+          // validation
+          const auto &annotation_path = iterator->first.evaluate_path;
+          const auto &annotation_location = iterator->first.instance_location;
+
+          // Check if this is a title annotation from contains
+          if (annotation_path.size() == evaluate_path.size() + 1 &&
+              annotation_path.back().is_property() &&
+              annotation_path.back().to_property() == "title") {
+
+            // Check the actual instance data to see if this item matches the
+            // contains subschema
+            if (!annotation_location.empty() &&
+                annotation_location.back().is_index()) {
+              const auto index = annotation_location.back().to_index();
+              // Check the actual instance data to see if this item matches
+              // "type": "number"
+              if (this->instance_.is_array() &&
+                  index < this->instance_.size()) {
+                const auto &item = this->instance_.at(index);
+                if (!item.is_number()) {
+                  should_remove = true;
+                }
+              }
+            }
+          }
+        }
+
+        if (should_remove) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
+      }
+    }
+
     this->mask.erase(evaluate_path);
   }
 
