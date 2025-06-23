@@ -115,10 +115,13 @@ using ValuePointer = sourcemeta::core::Pointer;
 using ValueTypedProperties = std::pair<ValueType, ValueStringSet>;
 
 /// @ingroup evaluator
+/// Represents a compiler step string hash
+using ValueStringHash = ValueStringSet::hash_type;
+
+/// @ingroup evaluator
 /// Represents a compiler step types property hashes value
 using ValueStringHashes =
-    std::pair<std::vector<ValueStringSet::hash_type>,
-              std::vector<std::pair<std::size_t, std::size_t>>>;
+    std::pair<std::vector<ValueStringHash>, std::vector<ValueIndexPair>>;
 
 /// @ingroup evaluator
 /// Represents a compiler step types property hashes value
