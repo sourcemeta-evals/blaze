@@ -114,6 +114,9 @@ using ValuePointer = sourcemeta::core::Pointer;
 /// Represents a compiler step types properties value
 using ValueTypedProperties = std::pair<ValueType, ValueStringSet>;
 
+//|using ValueStringHashes = std::pair<std::vector<ValueStringSet::hash_type>,
+                                    std::vector<ValueIndexPair>>;
+
 /// @ingroup evaluator
 /// Represents a compiler step types property hashes value
 using ValueStringHashes =
