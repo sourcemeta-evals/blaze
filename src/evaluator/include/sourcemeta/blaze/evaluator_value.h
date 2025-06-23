@@ -118,7 +118,8 @@ using ValueTypedProperties = std::pair<ValueType, ValueStringSet>;
 /// Represents a compiler step types property hashes value
 using ValueStringHashes =
     std::pair<std::vector<ValueStringSet::hash_type>,
-              std::vector<std::pair<std::size_t, std::size_t>>>;
+              std::vector<std::pair<ValueIndexPair::first_type,
+                                    ValueIndexPair::second_type>>>;
 
 /// @ingroup evaluator
 /// Represents a compiler step types property hashes value
