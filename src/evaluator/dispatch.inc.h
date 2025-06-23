@@ -175,7 +175,6 @@ INSTRUCTION_HANDLER(AssertionDefinesExactlyStrictHash3) {
   SOURCEMETA_MAYBE_UNUSED(evaluator);
   EVALUATE_BEGIN_NO_PRECONDITION(AssertionDefinesExactlyStrictHash3);
   const auto &target{get(instance, instruction.relative_instance_location)};
-  // TODO: Take advantage of the table of contents structure to speed up checks
   const auto &value{*std::get_if<ValueStringHashes>(&instruction.value)};
   assert(value.first.size() == 3);
   assert(target.is_object());
