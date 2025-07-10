@@ -2054,6 +2054,10 @@ auto compiler_draft4_validation_minitems(const Context &context,
          schema_context.schema.at(dynamic_context.keyword).is_integer_real());
   assert(schema_context.schema.at(dynamic_context.keyword).is_positive());
 
+  if (schema_context.schema.at(dynamic_context.keyword).as_integer() == 0) {
+    return {};
+  }
+
   if (schema_context.schema.defines("type") &&
       schema_context.schema.at("type").is_string() &&
       schema_context.schema.at("type").to_string() != "array") {

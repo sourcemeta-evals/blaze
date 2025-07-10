@@ -515,3 +515,30 @@ TEST(Evaluator_draft7, items_1) {
       instance, 0,
       "The array items were expected to be of type number, or integer");
 }
+
+TEST(Evaluator_draft7, minItems_zero_with_items) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "array",
+    "minItems": 0,
+    "items": {
+      "type": "number"
+    }
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{sourcemeta::core::parse_json("[1]")};
+  EVALUATE_WITH_TRACE_FAST_SUCCESS(schema, instance, 2);
+
+  EVALUATE_TRACE_PRE(0, LoopItemsTypeStrictAny, "/items", "#/items", "");
+  EVALUATE_TRACE_PRE(1, AssertionTypeStrict, "/type", "#/type", "");
+
+  EVALUATE_TRACE_POST_SUCCESS(0, LoopItemsTypeStrictAny, "/items", "#/items",
+                              "");
+  EVALUATE_TRACE_POST_SUCCESS(1, AssertionTypeStrict, "/type", "#/type", "");
+
+  EVALUATE_TRACE_POST_DESCRIBE(
+      instance, 0,
+      "The array items were expected to be of type number, or integer");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 1,
+                               "The value was expected to be of type array");
+}
