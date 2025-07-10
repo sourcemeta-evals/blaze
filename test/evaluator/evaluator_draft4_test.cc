@@ -5198,6 +5198,53 @@ TEST(Evaluator_draft4, minItems_6) {
                                "The value was expected to be of type array");
 }
 
+TEST(Evaluator_draft4, minItems_0_empty_array) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "array",
+    "minItems": 0
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{sourcemeta::core::parse_json("[]")};
+  EVALUATE_WITH_TRACE_FAST_SUCCESS(schema, instance, 1);
+
+  EVALUATE_TRACE_PRE(0, AssertionTypeStrict, "/type", "#/type", "");
+  EVALUATE_TRACE_POST_SUCCESS(0, AssertionTypeStrict, "/type", "#/type", "");
+
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The value was expected to be of type array");
+}
+
+TEST(Evaluator_draft4, minItems_0_single_item) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "array",
+    "minItems": 0,
+    "items": {
+      "type": "number"
+    }
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{sourcemeta::core::parse_json("[1]")};
+  EVALUATE_WITH_TRACE_FAST_SUCCESS(schema, instance, 2);
+}
+TEST(Evaluator_draft4, minProperties_0_empty_object) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "minProperties": 0
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{sourcemeta::core::parse_json("{}")};
+  EVALUATE_WITH_TRACE_FAST_SUCCESS(schema, instance, 1);
+
+  EVALUATE_TRACE_PRE(0, AssertionTypeStrict, "/type", "#/type", "");
+  EVALUATE_TRACE_POST_SUCCESS(0, AssertionTypeStrict, "/type", "#/type", "");
+
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The value was expected to be of type object");
+}
+
 TEST(Evaluator_draft4, maxItems_1) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "http://json-schema.org/draft-04/schema#",

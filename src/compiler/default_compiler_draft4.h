@@ -2052,7 +2052,8 @@ auto compiler_draft4_validation_minitems(const Context &context,
                                          const Instructions &) -> Instructions {
   assert(schema_context.schema.at(dynamic_context.keyword).is_integer() ||
          schema_context.schema.at(dynamic_context.keyword).is_integer_real());
-  assert(schema_context.schema.at(dynamic_context.keyword).is_positive());
+  assert(schema_context.schema.at(dynamic_context.keyword).is_positive() ||
+         schema_context.schema.at(dynamic_context.keyword).as_integer() == 0);
 
   if (schema_context.schema.defines("type") &&
       schema_context.schema.at("type").is_string() &&
@@ -2068,13 +2069,16 @@ auto compiler_draft4_validation_minitems(const Context &context,
     return {};
   }
 
-  return {make(
-      sourcemeta::blaze::InstructionIndex::AssertionArraySizeGreater, context,
-      schema_context, dynamic_context,
-      ValueUnsignedInteger{
-          static_cast<unsigned long>(
-              schema_context.schema.at(dynamic_context.keyword).as_integer()) -
-          1})};
+  const auto value = static_cast<unsigned long>(
+      schema_context.schema.at(dynamic_context.keyword).as_integer());
+
+  if (value == 0) {
+    return {};
+  }
+
+  return {make(sourcemeta::blaze::InstructionIndex::AssertionArraySizeGreater,
+               context, schema_context, dynamic_context,
+               ValueUnsignedInteger{value - 1})};
 }
 
 auto compiler_draft4_validation_maxproperties(
@@ -2114,7 +2118,8 @@ auto compiler_draft4_validation_minproperties(
     -> Instructions {
   assert(schema_context.schema.at(dynamic_context.keyword).is_integer() ||
          schema_context.schema.at(dynamic_context.keyword).is_integer_real());
-  assert(schema_context.schema.at(dynamic_context.keyword).is_positive());
+  assert(schema_context.schema.at(dynamic_context.keyword).is_positive() ||
+         schema_context.schema.at(dynamic_context.keyword).as_integer() == 0);
 
   if (schema_context.schema.defines("type") &&
       schema_context.schema.at("type").is_string() &&
@@ -2130,13 +2135,16 @@ auto compiler_draft4_validation_minproperties(
     return {};
   }
 
-  return {make(
-      sourcemeta::blaze::InstructionIndex::AssertionObjectSizeGreater, context,
-      schema_context, dynamic_context,
-      ValueUnsignedInteger{
-          static_cast<unsigned long>(
-              schema_context.schema.at(dynamic_context.keyword).as_integer()) -
-          1})};
+  const auto value = static_cast<unsigned long>(
+      schema_context.schema.at(dynamic_context.keyword).as_integer());
+
+  if (value == 0) {
+    return {};
+  }
+
+  return {make(sourcemeta::blaze::InstructionIndex::AssertionObjectSizeGreater,
+               context, schema_context, dynamic_context,
+               ValueUnsignedInteger{value - 1})};
 }
 
 auto compiler_draft4_validation_maximum(const Context &context,
