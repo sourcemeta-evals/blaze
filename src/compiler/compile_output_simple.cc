@@ -4,6 +4,7 @@
 
 #include <algorithm> // std::any_of, std::sort
 #include <cassert>   // assert
+#include <iostream>  // std::cout
 #include <iterator>  // std::back_inserter
 #include <utility>   // std::move
 
@@ -62,17 +63,61 @@ auto SimpleOutput::operator()(
 
   if (type == EvaluationType::Pre) {
     assert(result);
-    const auto &keyword{evaluate_path.back().to_property()};
-    // To ease the output
-    if (keyword == "anyOf" || keyword == "oneOf" || keyword == "not" ||
-        keyword == "if") {
-      this->mask.emplace(evaluate_path, true);
-    } else if (keyword == "contains") {
-      this->mask.emplace(evaluate_path, false);
+    if (evaluate_path.back().is_property()) {
+      const auto &keyword{evaluate_path.back().to_property()};
+      // To ease the output
+      if (keyword == "anyOf" || keyword == "oneOf" || keyword == "not" ||
+          keyword == "if") {
+        this->mask.emplace(evaluate_path, true);
+      } else if (keyword == "contains") {
+        this->mask.emplace(evaluate_path, false);
+      }
     }
   } else if (type == EvaluationType::Post &&
              this->mask.contains(evaluate_path)) {
     this->mask.erase(evaluate_path);
+  }
+
+  // Track contains failures for annotation cleanup - do this immediately when failure occurs
+  if (type == EvaluationType::Post && !result) {
+    // Check if this is a contains subschema evaluation that failed
+    if (evaluate_path.size() >= 2) {
+      for (std::size_t i = 0; i < evaluate_path.size() - 1; ++i) {
+        if (evaluate_path.at(i).is_property() && 
+            evaluate_path.at(i).to_property() == "contains") {
+          // This is a failed subschema within contains
+          // Track the instance location that failed this contains subschema
+          this->contains_mask.emplace(std::make_pair(evaluate_path, instance_location), true);
+          
+          // Immediately clean up annotations for this failed contains subschema
+          for (auto iterator = this->annotations_.begin(); iterator != this->annotations_.end();) {
+            // Check if this annotation is from the failed contains subschema at this instance location
+            if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+                iterator->first.instance_location == instance_location) {
+              iterator = this->annotations_.erase(iterator);
+            } else {
+              iterator++;
+            }
+          }
+          
+          // Also remove all title annotations from contains subschemas regardless of success/failure
+          // This is because contains should only produce the contains annotation, not subschema annotations
+          for (auto iterator = this->annotations_.begin(); iterator != this->annotations_.end();) {
+            // Check if this is a title annotation from a contains subschema
+            if (iterator->first.evaluate_path.size() >= 2 &&
+                iterator->first.evaluate_path.at(0).is_property() &&
+                iterator->first.evaluate_path.at(0).to_property() == "contains" &&
+                iterator->first.evaluate_path.at(1).is_property() &&
+                iterator->first.evaluate_path.at(1).to_property() == "title") {
+              iterator = this->annotations_.erase(iterator);
+            } else {
+              iterator++;
+            }
+          }
+          break;
+        }
+      }
+    }
   }
 
   if (result) {
