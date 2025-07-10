@@ -72,6 +72,54 @@ auto SimpleOutput::operator()(
     }
   } else if (type == EvaluationType::Post &&
              this->mask.contains(evaluate_path)) {
+    // Special handling for contains: clean up annotations for failed items
+    if (evaluate_path.back().is_property() &&
+        evaluate_path.back().to_property() == "contains") {
+      // Find the contains annotation to see which indices matched
+      std::set<std::size_t> matched_indices;
+      for (const auto &[location, annotations] : this->annotations_) {
+        if (location.evaluate_path.size() == evaluate_path.size() &&
+            location.evaluate_path.starts_with_initial(evaluate_path) &&
+            location.instance_location.empty()) {
+          // This is the contains annotation itself
+          for (const auto &annotation : annotations) {
+            if (annotation.is_integer()) {
+              matched_indices.insert(
+                  static_cast<std::size_t>(annotation.to_integer()));
+            }
+          }
+        }
+      }
+
+      // Remove annotations for items that didn't match the contains subschema
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        bool should_remove = false;
+
+        // Check if this annotation is from a contains subschema
+        if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+            iterator->first.evaluate_path.size() > evaluate_path.size()) {
+          // This is a subschema annotation within contains
+          // Check if the instance location corresponds to a matched index
+          if (iterator->first.instance_location.size() == 1 &&
+              iterator->first.instance_location.back().is_index()) {
+            std::size_t index =
+                iterator->first.instance_location.back().to_index();
+            if (matched_indices.find(index) == matched_indices.end()) {
+              // This item didn't match, remove its annotations
+              should_remove = true;
+            }
+          }
+        }
+
+        if (should_remove) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
+      }
+    }
+
     this->mask.erase(evaluate_path);
   }
 
@@ -90,7 +138,13 @@ auto SimpleOutput::operator()(
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
+      bool should_remove = false;
+
       if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+        should_remove = true;
+      }
+
+      if (should_remove) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;

@@ -871,6 +871,153 @@ The object value was not expected to define unevaluated properties
 )JSON");
 }
 
+TEST(Compiler_output_simple, contains_annotation_cleanup_issue) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "number",
+      "title": "Test" 
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("[ \"foo\", 42, true ]")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+
+  EXPECT_TRUE(result);
+
+  bool found_title_annotation_for_0 = false;
+  bool found_title_annotation_for_1 = false;
+  bool found_title_annotation_for_2 = false;
+
+  for (const auto &[location, annotations] : output.annotations()) {
+    if (sourcemeta::core::to_string(location.instance_location) == "/0" &&
+        sourcemeta::core::to_string(location.evaluate_path) ==
+            "/contains/title") {
+      found_title_annotation_for_0 = true;
+    }
+    if (sourcemeta::core::to_string(location.instance_location) == "/1" &&
+        sourcemeta::core::to_string(location.evaluate_path) ==
+            "/contains/title") {
+      found_title_annotation_for_1 = true;
+    }
+    if (sourcemeta::core::to_string(location.instance_location) == "/2" &&
+        sourcemeta::core::to_string(location.evaluate_path) ==
+            "/contains/title") {
+      found_title_annotation_for_2 = true;
+    }
+  }
+
+  EXPECT_FALSE(found_title_annotation_for_0);
+  EXPECT_TRUE(found_title_annotation_for_1);
+  EXPECT_FALSE(found_title_annotation_for_2);
+
+  EXPECT_ANNOTATION_ENTRY(output, "", "/contains", "#/contains", 1);
+  EXPECT_ANNOTATION_VALUE(output, "", "/contains", "#/contains", 0,
+                          sourcemeta::core::JSON{1});
+
+  EXPECT_ANNOTATION_ENTRY(output, "/1", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/1", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Test"});
+}
+
+TEST(Compiler_output_simple, contains_annotation_cleanup_all_fail) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "number",
+      "title": "Test" 
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("[ \"foo\", \"bar\", true ]")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+
+  EXPECT_FALSE(result);
+
+  bool found_title_annotation = false;
+  for (const auto &[location, annotations] : output.annotations()) {
+    if (sourcemeta::core::to_string(location.evaluate_path) ==
+        "/contains/title") {
+      found_title_annotation = true;
+    }
+  }
+
+  EXPECT_FALSE(found_title_annotation);
+  EXPECT_ANNOTATION_COUNT(output, 0);
+}
+
+TEST(Compiler_output_simple, contains_annotation_cleanup_all_pass) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "number",
+      "title": "Test" 
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("[ 1, 2, 3 ]")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+
+  EXPECT_TRUE(result);
+
+  EXPECT_ANNOTATION_ENTRY(output, "", "/contains", "#/contains", 3);
+  EXPECT_ANNOTATION_VALUE(output, "", "/contains", "#/contains", 0,
+                          sourcemeta::core::JSON{0});
+  EXPECT_ANNOTATION_VALUE(output, "", "/contains", "#/contains", 1,
+                          sourcemeta::core::JSON{1});
+  EXPECT_ANNOTATION_VALUE(output, "", "/contains", "#/contains", 2,
+                          sourcemeta::core::JSON{2});
+
+  EXPECT_ANNOTATION_ENTRY(output, "/0", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/0", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Test"});
+
+  EXPECT_ANNOTATION_ENTRY(output, "/1", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/1", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Test"});
+
+  EXPECT_ANNOTATION_ENTRY(output, "/2", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/2", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Test"});
+}
+
 TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2019-09/schema",
