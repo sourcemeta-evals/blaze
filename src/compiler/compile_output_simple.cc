@@ -79,23 +79,52 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // Handle annotation cleanup before masking check so that contains
+  // annotations can be properly cleaned up even when error reporting is
+  // suppressed
+  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+    for (auto iterator = this->annotations_.begin();
+         iterator != this->annotations_.end();) {
+      // For contains subschemas, we need to be more selective about which
+      // annotations to remove. Only remove annotations that are specifically
+      // for the failing instance location under the contains path.
+      bool should_remove = false;
+
+      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+        // Check if this is a contains-related path
+        bool is_contains_path = false;
+        for (const auto &token : evaluate_path) {
+          if (token.is_property() && token.to_property() == "contains") {
+            is_contains_path = true;
+            break;
+          }
+        }
+
+        if (is_contains_path) {
+          // For contains paths, only remove annotations at the specific
+          // failing instance location
+          should_remove =
+              (iterator->first.instance_location == instance_location);
+        } else {
+          // For non-contains paths, use the original logic
+          should_remove = true;
+        }
+      }
+
+      if (should_remove) {
+        iterator = this->annotations_.erase(iterator);
+      } else {
+        iterator++;
+      }
+    }
+  }
+
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
                   [&evaluate_path](const auto &entry) {
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
     return;
-  }
-
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
-    for (auto iterator = this->annotations_.begin();
-         iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
-        iterator = this->annotations_.erase(iterator);
-      } else {
-        iterator++;
-      }
-    }
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
