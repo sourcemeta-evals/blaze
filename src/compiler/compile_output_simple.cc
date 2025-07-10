@@ -4,6 +4,7 @@
 
 #include <algorithm> // std::any_of, std::sort
 #include <cassert>   // assert
+#include <iostream>  // std::cout
 #include <iterator>  // std::back_inserter
 #include <utility>   // std::move
 
@@ -73,6 +74,56 @@ auto SimpleOutput::operator()(
   } else if (type == EvaluationType::Post &&
              this->mask.contains(evaluate_path)) {
     this->mask.erase(evaluate_path);
+
+    // Clean up annotations for failed contains items when contains evaluation
+    // completes
+    const auto &keyword{evaluate_path.back().to_property()};
+    if (keyword == "contains") {
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        bool should_remove = false;
+
+        // Remove annotations for array items that failed contains validation
+        for (const auto &[contains_key, contains_succeeded] :
+             this->contains_mask) {
+          if (!contains_succeeded &&
+              iterator->first.evaluate_path.starts_with_initial(
+                  contains_key.first) &&
+              iterator->first.instance_location == contains_key.second) {
+            should_remove = true;
+            break;
+          }
+        }
+
+        if (should_remove) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
+      }
+
+      // Clean up the contains_mask entries for this contains evaluation
+      for (auto mask_iterator = this->contains_mask.begin();
+           mask_iterator != this->contains_mask.end();) {
+        if (mask_iterator->first.first == evaluate_path) {
+          mask_iterator = this->contains_mask.erase(mask_iterator);
+        } else {
+          mask_iterator++;
+        }
+      }
+    }
+  }
+
+  // Track individual array item failures within contains subschemas
+  if (type == EvaluationType::Post && !result && evaluate_path.size() >= 2 &&
+      evaluate_path.at(evaluate_path.size() - 2).is_property() &&
+      evaluate_path.at(evaluate_path.size() - 2).to_property() == "contains" &&
+      !instance_location.empty()) {
+    // This is a failed evaluation within a contains subschema for a specific
+    // array item
+    auto contains_path = evaluate_path.initial();
+    this->contains_mask.emplace(
+        std::make_pair(contains_path, instance_location), false);
   }
 
   if (result) {
@@ -90,7 +141,25 @@ auto SimpleOutput::operator()(
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
+      bool should_remove = false;
+
       if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+        should_remove = true;
+      }
+
+      // Remove annotations for array items that failed contains validation
+      for (const auto &[contains_key, contains_succeeded] :
+           this->contains_mask) {
+        if (!contains_succeeded &&
+            iterator->first.evaluate_path.starts_with_initial(
+                contains_key.first) &&
+            iterator->first.instance_location == contains_key.second) {
+          should_remove = true;
+          break;
+        }
+      }
+
+      if (should_remove) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
