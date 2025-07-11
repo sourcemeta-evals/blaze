@@ -4,7 +4,10 @@
 
 #include <algorithm> // std::any_of, std::sort
 #include <cassert>   // assert
+#include <iostream>  // std::cout
 #include <iterator>  // std::back_inserter
+#include <set>       // std::set
+#include <sstream>   // std::ostringstream
 #include <utility>   // std::move
 
 namespace sourcemeta::blaze {
@@ -75,6 +78,55 @@ auto SimpleOutput::operator()(
     this->mask.erase(evaluate_path);
   }
 
+  // Special handling for contains: clean up annotations from failed items
+  if (type == EvaluationType::Post && !evaluate_path.empty() &&
+      evaluate_path.back().is_property() &&
+      evaluate_path.back().to_property() == "contains" && result) {
+    // For successful contains, we need to clean up annotations from items that
+    // didn't match We can identify successful items by looking at the contains
+    // annotation value
+    std::set<std::size_t> successful_indices;
+
+    // Find the main contains annotation to get successful indices
+    for (const auto &annotation_entry : this->annotations_) {
+      if (annotation_entry.first.evaluate_path == effective_evaluate_path &&
+          annotation_entry.first.instance_location.empty()) {
+        // Found the main contains annotation
+        for (const auto &value : annotation_entry.second) {
+          if (value.is_integer()) {
+            successful_indices.insert(
+                static_cast<std::size_t>(value.to_integer()));
+          }
+        }
+        break;
+      }
+    }
+
+    // Remove annotations from failed items
+    for (auto iterator = this->annotations_.begin();
+         iterator != this->annotations_.end();) {
+      // Check if this annotation is from a contains subschema
+      if (iterator->first.evaluate_path.starts_with_initial(
+              effective_evaluate_path) &&
+          iterator->first.evaluate_path.size() >
+              effective_evaluate_path.size() &&
+          !iterator->first.instance_location.empty() &&
+          iterator->first.instance_location.back().is_index()) {
+        // This is an annotation from within the contains subschema for a
+        // specific array item
+        std::size_t item_index =
+            iterator->first.instance_location.back().to_index();
+
+        if (successful_indices.find(item_index) == successful_indices.end()) {
+          // This annotation is from a failed contains item, remove it
+          iterator = this->annotations_.erase(iterator);
+          continue;
+        }
+      }
+      iterator++;
+    }
+  }
+
   if (result) {
     return;
   }
@@ -90,7 +142,10 @@ auto SimpleOutput::operator()(
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+      bool should_remove =
+          iterator->first.evaluate_path.starts_with_initial(evaluate_path);
+
+      if (should_remove) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
