@@ -76,6 +76,44 @@ auto SimpleOutput::operator()(
   }
 
   if (result) {
+    // Special handling for contains: when contains validation succeeds,
+    // clean up annotations from items that didn't match
+    if (type == EvaluationType::Post && !evaluate_path.empty()) {
+      const auto &keyword{evaluate_path.back().to_property()};
+      if (keyword == "contains" && !this->annotations_.empty()) {
+        // Find the contains annotation to determine which item(s) matched
+        std::set<sourcemeta::core::WeakPointer> matched_locations;
+
+        for (const auto &[location, annotations] : this->annotations_) {
+          if (location.evaluate_path == effective_evaluate_path &&
+              location.instance_location.empty()) {
+            // This is the contains annotation with the matched index
+            if (!annotations.empty() && annotations.back().is_integer()) {
+              const auto matched_index = annotations.back().to_integer();
+              sourcemeta::core::WeakPointer matched_pointer;
+              matched_pointer.push_back(matched_index);
+              matched_locations.insert(matched_pointer);
+            }
+          }
+        }
+
+        // Remove annotations from non-matching items
+        if (!matched_locations.empty()) {
+          for (auto iterator = this->annotations_.begin();
+               iterator != this->annotations_.end();) {
+            if (iterator->first.evaluate_path.starts_with_initial(
+                    effective_evaluate_path) &&
+                iterator->first.evaluate_path != effective_evaluate_path &&
+                matched_locations.find(iterator->first.instance_location) ==
+                    matched_locations.end()) {
+              iterator = this->annotations_.erase(iterator);
+            } else {
+              iterator++;
+            }
+          }
+        }
+      }
+    }
     return;
   }
 
