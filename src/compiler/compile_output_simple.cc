@@ -5,6 +5,7 @@
 #include <algorithm> // std::any_of, std::sort
 #include <cassert>   // assert
 #include <iterator>  // std::back_inserter
+#include <set>       // std::set
 #include <utility>   // std::move
 
 namespace sourcemeta::blaze {
@@ -72,6 +73,61 @@ auto SimpleOutput::operator()(
     }
   } else if (type == EvaluationType::Post &&
              this->mask.contains(evaluate_path)) {
+    // Special handling for contains: clean up annotations from failed items
+    const auto &keyword{evaluate_path.back().to_property()};
+    if (keyword == "contains" && result && !this->annotations_.empty()) {
+      // For successful contains validation, we need to remove annotations
+      // from items that didn't match the contains subschema
+      // The contains annotation tells us which item(s) matched
+      std::set<std::size_t> matched_indices;
+
+      // Find the contains annotation to see which items matched
+      for (const auto &annotation_entry : this->annotations_) {
+        if (annotation_entry.first.evaluate_path.back().is_property() &&
+            annotation_entry.first.evaluate_path.back().to_property() ==
+                "contains" &&
+            annotation_entry.first.instance_location == instance_location) {
+          // The contains annotation value indicates which items matched
+          for (const auto &value : annotation_entry.second) {
+            if (value.is_integer()) {
+              matched_indices.insert(
+                  static_cast<std::size_t>(value.to_integer()));
+            }
+          }
+        }
+      }
+
+      // Remove annotations from items that didn't match
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        // Check if this annotation is from a contains subschema
+        bool is_contains_subschema_annotation = false;
+        for (const auto &token : iterator->first.evaluate_path) {
+          if (token.is_property() && token.to_property() == "contains") {
+            is_contains_subschema_annotation = true;
+            break;
+          }
+        }
+
+        if (is_contains_subschema_annotation &&
+            iterator->first.evaluate_path != evaluate_path) {
+          // This is an annotation from a contains subschema (not the contains
+          // annotation itself) Check if it's from an item that didn't match
+          const auto &item_location = iterator->first.instance_location;
+          if (!item_location.empty() && item_location.back().is_index()) {
+            std::size_t item_index =
+                static_cast<std::size_t>(item_location.back().to_index());
+            if (matched_indices.find(item_index) == matched_indices.end()) {
+              // This item didn't match, remove its annotations
+              iterator = this->annotations_.erase(iterator);
+              continue;
+            }
+          }
+        }
+        iterator++;
+      }
+    }
+
     this->mask.erase(evaluate_path);
   }
 
