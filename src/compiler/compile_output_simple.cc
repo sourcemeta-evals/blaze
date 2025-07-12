@@ -44,16 +44,37 @@ auto SimpleOutput::operator()(
 
   if (is_annotation(step.type)) {
     if (type == EvaluationType::Post) {
-      Location location{instance_location, std::move(effective_evaluate_path),
-                        step.keyword_location};
-      const auto match{this->annotations_.find(location)};
-      if (match == this->annotations_.cend()) {
-        this->annotations_[std::move(location)].push_back(annotation);
+      // Check if this annotation should be masked based on contains context
+      bool should_store_annotation = true;
 
-        // To avoid emitting the exact same annotation more than once
-        // This is right now mostly because of `unevaluatedItems`
-      } else if (match->second.back() != annotation) {
-        match->second.push_back(annotation);
+      // For annotations within contains subschemas, check if they should be
+      // masked based on the current masking state
+      if (effective_evaluate_path.size() >= 2 &&
+          effective_evaluate_path.at(0).is_property() &&
+          effective_evaluate_path.at(0).to_property() == "contains") {
+        // Check if we're in a masked contains context
+        for (const auto &mask_entry : this->mask) {
+          if (effective_evaluate_path.starts_with(mask_entry.first) &&
+              !mask_entry.second) {
+            // This annotation is within a masked contains context
+            should_store_annotation = false;
+            break;
+          }
+        }
+      }
+
+      if (should_store_annotation) {
+        Location location{instance_location, std::move(effective_evaluate_path),
+                          step.keyword_location};
+        const auto match{this->annotations_.find(location)};
+        if (match == this->annotations_.cend()) {
+          this->annotations_[std::move(location)].push_back(annotation);
+
+          // To avoid emitting the exact same annotation more than once
+          // This is right now mostly because of `unevaluatedItems`
+        } else if (match->second.back() != annotation) {
+          match->second.push_back(annotation);
+        }
       }
     }
 
@@ -90,7 +111,37 @@ auto SimpleOutput::operator()(
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+      bool should_cleanup =
+          iterator->first.evaluate_path.starts_with_initial(evaluate_path);
+
+      // Special handling for contains: when an item fails validation within a
+      // contains subschema, we need to clean up all annotations for that
+      // specific instance location that were generated within the contains
+      // subschema
+      if (!should_cleanup && !result) {
+        // Check if we're in a contains context and this annotation was
+        // generated within a contains subschema for the current failing
+        // instance location
+        if (iterator->first.instance_location == instance_location &&
+            iterator->first.evaluate_path.size() >= 2 &&
+            iterator->first.evaluate_path.at(0).is_property() &&
+            iterator->first.evaluate_path.at(0).to_property() == "contains") {
+          should_cleanup = true;
+        }
+      }
+
+      // Additional cleanup for contains: if we're evaluating within a contains
+      // subschema and this annotation is for a nested keyword (like title),
+      // clean it up when the item validation fails
+      if (!should_cleanup && !result && evaluate_path.size() >= 2 &&
+          evaluate_path.at(0).is_property() &&
+          evaluate_path.at(0).to_property() == "contains" &&
+          iterator->first.instance_location == instance_location &&
+          iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+        should_cleanup = true;
+      }
+
+      if (should_cleanup) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
