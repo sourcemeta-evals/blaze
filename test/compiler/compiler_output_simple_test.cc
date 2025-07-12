@@ -915,3 +915,60 @@ TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
     at evaluate path "/properties/foo/unevaluatedProperties"
 )JSON");
 }
+
+TEST(SimpleOutput, contains_annotations_dropped_for_failed_items) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "number",
+      "title": "Test" 
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{sourcemeta::core::parse_json(R"JSON(
+    [ "foo", 42, true ]
+  )JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+
+  EXPECT_TRUE(result);
+
+  const auto &annotations = output.annotations();
+
+  bool has_annotation_for_0 = false;
+  bool has_annotation_for_1 = false;
+  bool has_annotation_for_2 = false;
+
+  for (const auto &[location, values] : annotations) {
+    const auto instance_location_str =
+        sourcemeta::core::to_string(location.instance_location);
+    const auto evaluate_path_str =
+        sourcemeta::core::to_string(location.evaluate_path);
+
+    if (evaluate_path_str == "/contains/title") {
+      if (instance_location_str == "/0") {
+        has_annotation_for_0 = true;
+      } else if (instance_location_str == "/1") {
+        has_annotation_for_1 = true;
+      } else if (instance_location_str == "/2") {
+        has_annotation_for_2 = true;
+      }
+    }
+  }
+
+  EXPECT_FALSE(has_annotation_for_0)
+      << "Should not have title annotation for /0 (failed contains)";
+  EXPECT_TRUE(has_annotation_for_1)
+      << "Should have title annotation for /1 (passed contains)";
+  EXPECT_FALSE(has_annotation_for_2)
+      << "Should not have title annotation for /2 (failed contains)";
+}

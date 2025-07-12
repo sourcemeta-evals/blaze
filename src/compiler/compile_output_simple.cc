@@ -4,6 +4,7 @@
 
 #include <algorithm> // std::any_of, std::sort
 #include <cassert>   // assert
+#include <iostream>  // std::cout, std::endl
 #include <iterator>  // std::back_inserter
 #include <utility>   // std::move
 
@@ -79,11 +80,24 @@ auto SimpleOutput::operator()(
     return;
   }
 
-  if (std::any_of(this->mask.cbegin(), this->mask.cend(),
-                  [&evaluate_path](const auto &entry) {
-                    return evaluate_path.starts_with(entry.first) &&
-                           !entry.second;
-                  })) {
+  // Check if we should skip due to masking, but allow cleanup for contains
+  // subschemas
+  bool should_skip_due_to_masking = std::any_of(
+      this->mask.cbegin(), this->mask.cend(),
+      [&evaluate_path](const auto &entry) {
+        return evaluate_path.starts_with(entry.first) && !entry.second;
+      });
+
+  // For contains subschemas, we want to allow cleanup even if masked
+  bool is_contains_subschema = false;
+  for (const auto &token : evaluate_path) {
+    if (token.is_property() && token.to_property() == "contains") {
+      is_contains_subschema = true;
+      break;
+    }
+  }
+
+  if (should_skip_due_to_masking && !is_contains_subschema) {
     return;
   }
 
@@ -91,7 +105,42 @@ auto SimpleOutput::operator()(
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
       if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
-        iterator = this->annotations_.erase(iterator);
+        // Special handling for contains: when a subschema within contains
+        // fails, remove all annotations for that instance location under the
+        // contains path
+        bool is_annotation_contains_subschema = false;
+        for (const auto &token : evaluate_path) {
+          if (token.is_property() && token.to_property() == "contains") {
+            is_annotation_contains_subschema = true;
+            break;
+          }
+        }
+
+        if (is_annotation_contains_subschema) {
+          // For contains subschemas, remove annotations for this specific
+          // instance location
+          if (iterator->first.instance_location == instance_location) {
+            // Check if the annotation is under a contains path
+            bool annotation_under_contains = false;
+            for (const auto &token : iterator->first.evaluate_path) {
+              if (token.is_property() && token.to_property() == "contains") {
+                annotation_under_contains = true;
+                break;
+              }
+            }
+
+            if (annotation_under_contains) {
+              iterator = this->annotations_.erase(iterator);
+            } else {
+              iterator++;
+            }
+          } else {
+            iterator++;
+          }
+        } else {
+          // For other keywords, remove all annotations under this path
+          iterator = this->annotations_.erase(iterator);
+        }
       } else {
         iterator++;
       }
