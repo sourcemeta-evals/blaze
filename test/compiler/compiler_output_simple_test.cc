@@ -915,3 +915,57 @@ TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
     at evaluate path "/properties/foo/unevaluatedProperties"
 )JSON");
 }
+
+TEST(Compiler_output_simple, contains_annotations_failure_cleanup) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "number",
+      "title": "Test" 
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON([ "foo", 42, true ])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+  EXPECT_TRUE(result);
+
+  bool found_annotation_at_0 = false;
+  bool found_annotation_at_1 = false;
+  bool found_annotation_at_2 = false;
+  bool found_contains_annotation = false;
+
+  for (const auto &annotation : output.annotations()) {
+    const auto instance_location_str =
+        sourcemeta::core::to_string(annotation.first.instance_location);
+    const auto evaluate_path_str =
+        sourcemeta::core::to_string(annotation.first.evaluate_path);
+
+    if (evaluate_path_str == "/contains/title") {
+      if (instance_location_str == "/0") {
+        found_annotation_at_0 = true;
+      } else if (instance_location_str == "/1") {
+        found_annotation_at_1 = true;
+      } else if (instance_location_str == "/2") {
+        found_annotation_at_2 = true;
+      }
+    } else if (evaluate_path_str == "/contains") {
+      found_contains_annotation = true;
+    }
+  }
+
+  EXPECT_FALSE(found_annotation_at_0);
+  EXPECT_TRUE(found_annotation_at_1);
+  EXPECT_FALSE(found_annotation_at_2);
+  EXPECT_TRUE(found_contains_annotation);
+}

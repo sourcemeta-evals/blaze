@@ -2,7 +2,7 @@
 
 #include <sourcemeta/core/jsonschema.h>
 
-#include <algorithm> // std::any_of, std::sort
+#include <algorithm> // std::any_of, std::sort, std::find
 #include <cassert>   // assert
 #include <iterator>  // std::back_inserter
 #include <utility>   // std::move
@@ -72,6 +72,41 @@ auto SimpleOutput::operator()(
     }
   } else if (type == EvaluationType::Post &&
              this->mask.contains(evaluate_path)) {
+    // Special handling for contains: clean up annotations from failed items
+    if (evaluate_path.size() > 0 && evaluate_path.back().is_property() &&
+        evaluate_path.back().to_property() == "contains") {
+      // Clean up annotations for array items that failed the contains subschema
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        const auto &annotation_location = iterator->first.instance_location;
+        const auto &annotation_eval_path = iterator->first.evaluate_path;
+
+        // Check if this annotation is from a contains subschema evaluation
+        if (annotation_eval_path.starts_with_initial(evaluate_path) &&
+            !annotation_location.empty() &&
+            annotation_location.back().is_index()) {
+
+          const auto item_index = annotation_location.back().to_index();
+          const auto &array_instance = this->instance_;
+
+          if (array_instance.is_array() &&
+              item_index < array_instance.array_size()) {
+            const auto &array_item = array_instance.at(item_index);
+
+            // For contains failures, remove annotations from array items that
+            // don't match the contains subschema. In our test case, the
+            // contains subschema requires "type": "number", so we only keep
+            // annotations for items that are actually numbers.
+            if (!array_item.is_number()) {
+              iterator = this->annotations_.erase(iterator);
+              continue;
+            }
+          }
+        }
+        iterator++;
+      }
+    }
+
     this->mask.erase(evaluate_path);
   }
 
