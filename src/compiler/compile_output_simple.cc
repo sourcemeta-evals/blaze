@@ -5,6 +5,7 @@
 #include <algorithm> // std::any_of, std::sort
 #include <cassert>   // assert
 #include <iterator>  // std::back_inserter
+#include <set>       // std::set
 #include <utility>   // std::move
 
 namespace sourcemeta::blaze {
@@ -32,6 +33,7 @@ auto SimpleOutput::operator()(
     const sourcemeta::core::WeakPointer &evaluate_path,
     const sourcemeta::core::WeakPointer &instance_location,
     const sourcemeta::core::JSON &annotation) -> void {
+
   if (evaluate_path.empty()) {
     return;
   }
@@ -73,6 +75,69 @@ auto SimpleOutput::operator()(
   } else if (type == EvaluationType::Post &&
              this->mask.contains(evaluate_path)) {
     this->mask.erase(evaluate_path);
+  }
+
+  // Handle contains-specific annotation cleanup for failed items
+  // This must happen before the early return for successful results
+  if (type == EvaluationType::Post && !evaluate_path.empty() && result) {
+    const auto &keyword{evaluate_path.back().to_property()};
+
+    // Check if we just finished evaluating a contains instruction successfully
+    if (keyword == "contains") {
+
+      // The contains succeeded overall, but we need to remove annotations
+      // from items that failed the subschema validation
+      // We'll track which items should have annotations by checking
+      // if they have the contains annotation itself
+
+      std::set<sourcemeta::core::WeakPointer> successful_items;
+
+      // First pass: find all items that have the contains annotation
+      // (these are the ones that matched)
+      for (const auto &entry : this->annotations_) {
+        if (entry.first.evaluate_path == effective_evaluate_path) {
+          // This is the contains annotation itself, the value tells us which
+          // items matched
+          for (const auto &annotation_value : entry.second) {
+            if (annotation_value.is_integer()) {
+              sourcemeta::core::WeakPointer successful_item_location =
+                  instance_location;
+              successful_item_location.push_back(annotation_value.to_integer());
+              successful_items.insert(successful_item_location);
+            }
+          }
+        }
+      }
+
+      // Second pass: remove annotations from items that are NOT in the
+      // successful set
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        // Check if this annotation is for a contains subschema
+        if (iterator->first.evaluate_path.starts_with_initial(
+                effective_evaluate_path) &&
+            iterator->first.evaluate_path != effective_evaluate_path) {
+
+          // Check if this annotation's instance location is for a successful
+          // item
+          bool is_successful_item = false;
+          for (const auto &successful_location : successful_items) {
+            if (iterator->first.instance_location == successful_location) {
+              is_successful_item = true;
+              break;
+            }
+          }
+
+          if (!is_successful_item) {
+            iterator = this->annotations_.erase(iterator);
+          } else {
+            iterator++;
+          }
+        } else {
+          iterator++;
+        }
+      }
+    }
   }
 
   if (result) {
