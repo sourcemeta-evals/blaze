@@ -75,6 +75,50 @@ auto SimpleOutput::operator()(
     this->mask.erase(evaluate_path);
   }
 
+  // Special handling for contains subschema failures
+  // When a contains subschema fails (like type validation), we need to clean up
+  // annotations that were created for that specific instance location
+  // This must happen BEFORE the mask check to ensure cleanup occurs
+  if (type == EvaluationType::Post && !result && !this->annotations_.empty()) {
+    // Check if this is a failure within a contains subschema
+    bool is_contains_subschema_failure = false;
+    for (std::size_t i = 0; i < evaluate_path.size(); ++i) {
+      if (evaluate_path.at(i).is_property() &&
+          evaluate_path.at(i).to_property() == "contains") {
+        is_contains_subschema_failure = true;
+        break;
+      }
+    }
+
+    if (is_contains_subschema_failure) {
+      // Remove annotations for this specific instance location that were
+      // created within the contains subschema
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        if (iterator->first.instance_location == instance_location) {
+          // Check if the annotation's evaluate path is within the contains
+          // subschema
+          bool is_contains_annotation = false;
+          for (std::size_t i = 0; i < iterator->first.evaluate_path.size();
+               ++i) {
+            if (iterator->first.evaluate_path.at(i).is_property() &&
+                iterator->first.evaluate_path.at(i).to_property() ==
+                    "contains") {
+              is_contains_annotation = true;
+              break;
+            }
+          }
+
+          if (is_contains_annotation) {
+            iterator = this->annotations_.erase(iterator);
+            continue;
+          }
+        }
+        iterator++;
+      }
+    }
+  }
+
   if (result) {
     return;
   }
