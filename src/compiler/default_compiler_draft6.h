@@ -402,9 +402,19 @@ auto compiler_draft6_validation_propertynames(
     return {};
   }
 
-  Instructions children{compile(
-      context, schema_context, property_relative_dynamic_context(),
-      sourcemeta::core::empty_pointer, sourcemeta::core::empty_pointer)};
+  const SchemaContext property_name_schema_context{
+      schema_context.relative_pointer,
+      schema_context.schema,
+      schema_context.vocabularies,
+      schema_context.base,
+      schema_context.labels,
+      schema_context.references,
+      true};
+
+  Instructions children{compile(context, property_name_schema_context,
+                                property_relative_dynamic_context(),
+                                sourcemeta::core::empty_pointer,
+                                sourcemeta::core::empty_pointer)};
 
   if (children.empty()) {
     return {};

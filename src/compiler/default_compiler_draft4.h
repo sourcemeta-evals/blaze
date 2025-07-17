@@ -579,7 +579,8 @@ auto compiler_draft4_validation_required(const Context &context,
             schema_context.vocabularies,
             schema_context.base,
             schema_context.labels,
-            schema_context.references};
+            schema_context.references,
+            schema_context.is_property_name};
         const DynamicContext new_dynamic_context{
             "properties", sourcemeta::core::empty_pointer,
             sourcemeta::core::empty_pointer, false};

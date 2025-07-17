@@ -45,6 +45,8 @@ struct SchemaContext {
   std::set<std::size_t> labels;
   /// The set of references destinations traversed so far
   std::set<std::string> references;
+  /// Whether we are inside a propertyNames context (suppresses annotations)
+  const bool is_property_name;
 };
 
 /// @ingroup compiler

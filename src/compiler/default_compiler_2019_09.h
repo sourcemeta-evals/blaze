@@ -100,6 +100,10 @@ auto compiler_2019_09_core_annotation(const Context &context,
                                       const SchemaContext &schema_context,
                                       const DynamicContext &dynamic_context,
                                       const Instructions &) -> Instructions {
+  if (schema_context.is_property_name) {
+    return {};
+  }
+
   return {make(sourcemeta::blaze::InstructionIndex::AnnotationEmit, context,
                schema_context, dynamic_context,
                sourcemeta::core::JSON{
@@ -448,6 +452,10 @@ auto compiler_2019_09_content_contentencoding(
     return {};
   }
 
+  if (schema_context.is_property_name) {
+    return {};
+  }
+
   Instructions children{
       make(sourcemeta::blaze::InstructionIndex::AnnotationEmit, context,
            schema_context, dynamic_context,
@@ -468,6 +476,10 @@ auto compiler_2019_09_content_contentmediatype(
     return {};
   }
 
+  if (schema_context.is_property_name) {
+    return {};
+  }
+
   Instructions children{
       make(sourcemeta::blaze::InstructionIndex::AnnotationEmit, context,
            schema_context, dynamic_context,
@@ -485,6 +497,10 @@ auto compiler_2019_09_content_contentschema(
     const DynamicContext &dynamic_context, const Instructions &)
     -> Instructions {
   if (context.mode == Mode::FastValidation) {
+    return {};
+  }
+
+  if (schema_context.is_property_name) {
     return {};
   }
 
@@ -510,6 +526,10 @@ auto compiler_2019_09_format_format(const Context &context,
                                     const DynamicContext &dynamic_context,
                                     const Instructions &) -> Instructions {
   if (context.mode == Mode::FastValidation) {
+    return {};
+  }
+
+  if (schema_context.is_property_name) {
     return {};
   }
 

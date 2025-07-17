@@ -646,6 +646,10 @@ auto sourcemeta::blaze::default_schema_compiler(
       return {};
     }
 
+    if (schema_context.is_property_name) {
+      return {};
+    }
+
     return internal::compiler_2019_09_core_annotation(context, schema_context,
                                                       dynamic_context, current);
   }
