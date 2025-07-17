@@ -100,6 +100,10 @@ auto compiler_2019_09_core_annotation(const Context &context,
                                       const SchemaContext &schema_context,
                                       const DynamicContext &dynamic_context,
                                       const Instructions &) -> Instructions {
+  if (context.mode == Mode::FastValidation) {
+    return {};
+  }
+
   return {make(sourcemeta::blaze::InstructionIndex::AnnotationEmit, context,
                schema_context, dynamic_context,
                sourcemeta::core::JSON{

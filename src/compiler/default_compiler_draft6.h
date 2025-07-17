@@ -402,9 +402,17 @@ auto compiler_draft6_validation_propertynames(
     return {};
   }
 
-  Instructions children{compile(
-      context, schema_context, property_relative_dynamic_context(),
-      sourcemeta::core::empty_pointer, sourcemeta::core::empty_pointer)};
+  Context annotation_suppressed_context{
+      context.root,         context.frame,
+      context.resources,    context.walker,
+      context.resolver,     context.compiler,
+      Mode::FastValidation, context.uses_dynamic_scopes,
+      context.unevaluated,  context.precompiled_static_schemas};
+
+  Instructions children{compile(annotation_suppressed_context, schema_context,
+                                property_relative_dynamic_context(),
+                                sourcemeta::core::empty_pointer,
+                                sourcemeta::core::empty_pointer)};
 
   if (children.empty()) {
     return {};

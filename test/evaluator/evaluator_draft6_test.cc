@@ -691,6 +691,49 @@ TEST(Evaluator_draft6, propertyNames_3) {
   }
 }
 
+TEST(Evaluator_draft6, propertyNames_no_annotations) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "propertyNames": {
+      "title": "Test"
+    }
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{sourcemeta::core::parse_json(R"JSON({
+    "foo": 1
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  std::vector<std::tuple<
+      bool, sourcemeta::core::WeakPointer, sourcemeta::core::WeakPointer,
+      sourcemeta::blaze::Instruction, sourcemeta::core::JSON>>
+      annotation_trace;
+
+  const auto result{evaluator.validate(
+      schema_template, instance,
+      [&annotation_trace](
+          const sourcemeta::blaze::EvaluationType type, bool result,
+          const sourcemeta::blaze::Instruction &step,
+          const sourcemeta::core::WeakPointer &evaluate_path,
+          const sourcemeta::core::WeakPointer &instance_location,
+          const sourcemeta::core::JSON &annotation) {
+        if (type == sourcemeta::blaze::EvaluationType::Post &&
+            step.type == sourcemeta::blaze::InstructionIndex::AnnotationEmit) {
+          annotation_trace.push_back(
+              {result, evaluate_path, instance_location, step, annotation});
+        }
+      })};
+
+  EXPECT_TRUE(result);
+  EXPECT_TRUE(annotation_trace.empty());
+}
+
 TEST(Evaluator_draft6, propertyNames_4) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "http://json-schema.org/draft-06/schema#",

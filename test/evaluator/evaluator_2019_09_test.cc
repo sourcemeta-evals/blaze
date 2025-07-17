@@ -37,7 +37,7 @@ TEST(Evaluator_2019_09, metaschema_hyper_self_exhaustive) {
       "https://json-schema.org/draft/2019-09/hyper-schema")};
   EXPECT_TRUE(metaschema.has_value());
   EVALUATE_WITH_TRACE_EXHAUSTIVE_SUCCESS(metaschema.value(), metaschema.value(),
-                                         171);
+                                         170);
 }
 
 TEST(Evaluator_2019_09, properties_1) {
@@ -5887,4 +5887,47 @@ TEST(Evaluator_2019_09, definitions_1_exhaustive) {
   EVALUATE_TRACE_POST_DESCRIBE(instance, 2,
                                "The string value was expected to validate "
                                "against the statically referenced schema");
+}
+
+TEST(Evaluator_2019_09, propertyNames_no_annotations) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2019-09/schema",
+    "propertyNames": {
+      "title": "Test"
+    }
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{sourcemeta::core::parse_json(R"JSON({
+    "foo": 1
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  std::vector<std::tuple<
+      bool, sourcemeta::core::WeakPointer, sourcemeta::core::WeakPointer,
+      sourcemeta::blaze::Instruction, sourcemeta::core::JSON>>
+      annotation_trace;
+
+  const auto result{evaluator.validate(
+      schema_template, instance,
+      [&annotation_trace](
+          const sourcemeta::blaze::EvaluationType type, bool valid,
+          const sourcemeta::blaze::Instruction &step,
+          const sourcemeta::core::WeakPointer &evaluate_path,
+          const sourcemeta::core::WeakPointer &instance_location,
+          const sourcemeta::core::JSON &annotation) {
+        if (type == sourcemeta::blaze::EvaluationType::Post &&
+            step.type == sourcemeta::blaze::InstructionIndex::AnnotationEmit) {
+          annotation_trace.push_back(
+              {valid, evaluate_path, instance_location, step, annotation});
+        }
+      })};
+
+  EXPECT_TRUE(result);
+  EXPECT_TRUE(annotation_trace.empty());
 }
