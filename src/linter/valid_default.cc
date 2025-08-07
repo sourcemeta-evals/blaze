@@ -36,6 +36,13 @@ auto ValidDefault::condition(
     return false;
   }
 
+  if (schema.fast_hash() == 48 && vocabularies.size() == 1) {
+    return vocabularies.contains("http://json-schema.org/draft-07/schema#") &&
+           vocabularies.contains("http://json-schema.org/draft-06/schema#") &&
+           vocabularies.contains("http://json-schema.org/draft-04/schema#") &&
+           schema.defines("$ref");
+  }
+
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
                                     .value_or(location)
                                     .get()
