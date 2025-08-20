@@ -915,3 +915,62 @@ TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
     at evaluate path "/properties/foo/unevaluatedProperties"
 )JSON");
 }
+
+TEST(Compiler_output_simple, contains_annotation_cleanup_bug) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "number",
+      "title": "Test" 
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("[ \"foo\", 42, true ]")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+  EXPECT_TRUE(result);
+
+  // Debug: Print all annotations to understand what's happening
+  std::cout << "Total annotations found: " << output.annotations().size()
+            << std::endl;
+  for (const auto &entry : output.annotations()) {
+    const auto instance_location_str =
+        sourcemeta::core::to_string(entry.first.instance_location);
+    const auto evaluate_path_str =
+        sourcemeta::core::to_string(entry.first.evaluate_path);
+    std::cout << "Annotation at instance: " << instance_location_str
+              << ", evaluate path: " << evaluate_path_str << std::endl;
+    for (const auto &annotation : entry.second) {
+      std::cout << "  Value: " << annotation << std::endl;
+    }
+  }
+
+  bool found_annotation_for_failed_item = false;
+  for (const auto &entry : output.annotations()) {
+    const auto instance_location_str =
+        sourcemeta::core::to_string(entry.first.instance_location);
+    const auto evaluate_path_str =
+        sourcemeta::core::to_string(entry.first.evaluate_path);
+
+    if ((instance_location_str == "/0" || instance_location_str == "/2") &&
+        evaluate_path_str.find("title") != std::string::npos) {
+      found_annotation_for_failed_item = true;
+      std::cout << "Found problematic annotation: " << instance_location_str
+                << " at " << evaluate_path_str << std::endl;
+      break;
+    }
+  }
+
+  EXPECT_FALSE(found_annotation_for_failed_item)
+      << "Found title annotations for failed contains items";
+}
