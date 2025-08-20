@@ -4,6 +4,7 @@
 
 #include <algorithm> // std::any_of, std::sort
 #include <cassert>   // assert
+#include <iostream>  // std::cout
 #include <iterator>  // std::back_inserter
 #include <utility>   // std::move
 
@@ -32,6 +33,7 @@ auto SimpleOutput::operator()(
     const sourcemeta::core::WeakPointer &evaluate_path,
     const sourcemeta::core::WeakPointer &instance_location,
     const sourcemeta::core::JSON &annotation) -> void {
+
   if (evaluate_path.empty()) {
     return;
   }
@@ -75,6 +77,40 @@ auto SimpleOutput::operator()(
     this->mask.erase(evaluate_path);
   }
 
+  // For contains keyword, we need to clean up annotations even when result is
+  // true because individual items might have failed validation
+  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+    if (evaluate_path.back().is_property()) {
+      const auto &keyword{evaluate_path.back().to_property()};
+      bool is_contains_related =
+          (keyword == "type" || keyword == "title") &&
+          evaluate_path.size() >= 2 &&
+          evaluate_path.at(evaluate_path.size() - 2).is_property() &&
+          evaluate_path.at(evaluate_path.size() - 2).to_property() ==
+              "contains";
+
+      if (is_contains_related && !result) {
+
+        // Remove annotations for this specific instance location under the
+        // contains path
+        for (auto iterator = this->annotations_.begin();
+             iterator != this->annotations_.end();) {
+          bool should_remove =
+              iterator->first.instance_location == instance_location &&
+              iterator->first.evaluate_path.size() >= 2 &&
+              iterator->first.evaluate_path.at(0).is_property() &&
+              iterator->first.evaluate_path.at(0).to_property() == "contains";
+
+          if (should_remove) {
+            iterator = this->annotations_.erase(iterator);
+          } else {
+            iterator++;
+          }
+        }
+      }
+    }
+  }
+
   if (result) {
     return;
   }
@@ -88,10 +124,26 @@ auto SimpleOutput::operator()(
   }
 
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
+
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
       if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
-        iterator = this->annotations_.erase(iterator);
+
+        bool is_contains_failure = std::any_of(
+            this->mask.cbegin(), this->mask.cend(),
+            [&evaluate_path](const auto &entry) {
+              return evaluate_path.starts_with(entry.first) && !entry.second;
+            });
+
+        if (is_contains_failure) {
+          if (iterator->first.instance_location == instance_location) {
+            iterator = this->annotations_.erase(iterator);
+          } else {
+            iterator++;
+          }
+        } else {
+          iterator = this->annotations_.erase(iterator);
+        }
       } else {
         iterator++;
       }
