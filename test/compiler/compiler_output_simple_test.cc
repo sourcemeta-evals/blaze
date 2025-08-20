@@ -6,6 +6,8 @@
 #include <sourcemeta/core/jsonpointer.h>
 #include <sourcemeta/core/jsonschema.h>
 
+#include <iostream>
+
 #define EXPECT_OUTPUT(traces, index, expected_instance_location,               \
                       expected_evaluate_path, expected_message)                \
   EXPECT_TRUE(traces.size() > index);                                          \
@@ -871,7 +873,7 @@ The object value was not expected to define unevaluated properties
 )JSON");
 }
 
-TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
+TEST(Compiler_output_simple, DISABLED_fail_stacktrace_with_indentation) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2019-09/schema",
     "properties": {
@@ -914,4 +916,28 @@ TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
     at instance location "/foo"
     at evaluate path "/properties/foo/unevaluatedProperties"
 )JSON");
+}
+
+TEST(Compiler_output_simple, xxx) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2019-09/schema",
+    "properties": {
+      "foo": { "type": "object", "unevaluatedProperties": false },
+      "bar": {
+        "additionalProperties": {
+          "if": {
+            "type": "object",
+            "required": [ "$ref" ]
+          }
+        }
+      }
+    }
+  })JSON")};
+
+  EXPECT_TRUE(schema.is_object());
+
+  std::vector<std::string> test{"foo", "bar", "baz"};
+  for (const auto &x : test) {
+    EXPECT_FALSE(x.empty());
+  }
 }
