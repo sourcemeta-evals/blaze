@@ -4,6 +4,7 @@
 
 #include <algorithm> // std::any_of, std::sort
 #include <cassert>   // assert
+#include <iostream>  // std::cout
 #include <iterator>  // std::back_inserter
 #include <utility>   // std::move
 
@@ -73,6 +74,42 @@ auto SimpleOutput::operator()(
   } else if (type == EvaluationType::Post &&
              this->mask.contains(evaluate_path)) {
     this->mask.erase(evaluate_path);
+  }
+
+  // Handle annotation cleanup for contains failures
+  if (type == EvaluationType::Post && !result && !this->annotations_.empty()) {
+    // Check if this is a contains-related evaluation failure
+    bool is_contains_failure = false;
+    for (const auto &token : evaluate_path) {
+      if (token.is_property() && token.to_property() == "contains") {
+        is_contains_failure = true;
+        break;
+      }
+    }
+
+    if (is_contains_failure) {
+      // For contains failures, remove annotations that are at the same instance
+      // location and have evaluate paths starting with /contains
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        bool should_remove = false;
+
+        // Check if annotation is contains-related and at the failed instance
+        // location
+        if (!iterator->first.evaluate_path.empty() &&
+            iterator->first.evaluate_path.at(0).is_property() &&
+            iterator->first.evaluate_path.at(0).to_property() == "contains" &&
+            iterator->first.instance_location == instance_location) {
+          should_remove = true;
+        }
+
+        if (should_remove) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
+      }
+    }
   }
 
   if (result) {
