@@ -5,6 +5,7 @@
 #include <algorithm> // std::any_of, std::sort
 #include <cassert>   // assert
 #include <iterator>  // std::back_inserter
+#include <set>       // std::set
 #include <utility>   // std::move
 
 namespace sourcemeta::blaze {
@@ -75,6 +76,56 @@ auto SimpleOutput::operator()(
     this->mask.erase(evaluate_path);
   }
 
+  // Special handling for contains: clean up annotations for non-matching items
+  if (type == EvaluationType::Post && result && !evaluate_path.empty() &&
+      evaluate_path.back().is_property() &&
+      evaluate_path.back().to_property() == "contains") {
+
+    // Find which items matched by looking at the contains annotation
+    std::set<std::size_t> matched_indices;
+
+    // Check the current annotation parameter (this should be the contains
+    // annotation)
+    if (annotation.is_integer()) {
+      matched_indices.insert(static_cast<std::size_t>(annotation.to_integer()));
+    }
+
+    // Also check existing annotations in case it was already stored
+    for (const auto &[location, annotations] : this->annotations_) {
+      if (location.evaluate_path == evaluate_path &&
+          location.instance_location == instance_location) {
+        for (const auto &ann : annotations) {
+          if (ann.is_integer()) {
+            matched_indices.insert(static_cast<std::size_t>(ann.to_integer()));
+          }
+        }
+      }
+    }
+
+    // Remove annotations for items that didn't match
+    for (auto iterator = this->annotations_.begin();
+         iterator != this->annotations_.end();) {
+      // Check if this is a subschema annotation under contains
+      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+          iterator->first.evaluate_path !=
+              evaluate_path && // Don't remove the contains annotation itself
+          !iterator->first.instance_location.empty()) {
+
+        // Get the item index from the instance location
+        const auto &last_token = iterator->first.instance_location.back();
+        if (last_token.is_index()) {
+          std::size_t item_index = last_token.to_index();
+          if (matched_indices.find(item_index) == matched_indices.end()) {
+            // This item didn't match, remove its annotations
+            iterator = this->annotations_.erase(iterator);
+            continue;
+          }
+        }
+      }
+      iterator++;
+    }
+  }
+
   if (result) {
     return;
   }
@@ -87,10 +138,12 @@ auto SimpleOutput::operator()(
     return;
   }
 
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+  if (type == EvaluationType::Post && !result && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+          iterator->first.instance_location.starts_with_initial(
+              instance_location)) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
