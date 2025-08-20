@@ -116,6 +116,10 @@ public:
   auto stacktrace(std::ostream &stream,
                   const std::string &indentation = "") const -> void;
 
+  auto cleanup_contains_annotations(
+      const sourcemeta::core::WeakPointer &evaluate_path,
+      const sourcemeta::core::WeakPointer &instance_location) -> void;
+
 private:
 // Exporting symbols that depends on the standard C++ library is considered
 // safe.
@@ -128,6 +132,7 @@ private:
   container_type output;
   std::map<sourcemeta::core::WeakPointer, bool> mask;
   std::map<Location, std::vector<sourcemeta::core::JSON>> annotations_;
+  std::set<sourcemeta::core::WeakPointer> successful_contains_items_;
 #if defined(_MSC_VER)
 #pragma warning(default : 4251)
 #endif

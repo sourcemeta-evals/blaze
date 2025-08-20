@@ -4,6 +4,7 @@
 
 #include <algorithm> // std::any_of, std::sort
 #include <cassert>   // assert
+#include <iostream>  // std::cerr
 #include <iterator>  // std::back_inserter
 #include <utility>   // std::move
 
@@ -75,6 +76,26 @@ auto SimpleOutput::operator()(
     this->mask.erase(evaluate_path);
   }
 
+  // Track successful contains item evaluations
+  if (type == EvaluationType::Post && result && evaluate_path.size() >= 2) {
+    const auto &parent_keyword = evaluate_path.at(evaluate_path.size() - 2);
+    if (parent_keyword.is_property() &&
+        parent_keyword.to_property() == "contains") {
+      // This is a successful evaluation within a contains subschema
+      this->successful_contains_items_.insert(instance_location);
+    }
+  }
+
+  // Clean up contains annotations when the contains evaluation completes
+  if (type == EvaluationType::Post && evaluate_path.size() >= 1) {
+    const auto &keyword = evaluate_path.back();
+    if (keyword.is_property() && keyword.to_property() == "contains") {
+      // Contains evaluation is complete, clean up annotations for non-matching
+      // items
+      this->cleanup_contains_annotations(evaluate_path, instance_location);
+    }
+  }
+
   if (result) {
     return;
   }
@@ -87,7 +108,7 @@ auto SimpleOutput::operator()(
     return;
   }
 
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+  if (type == EvaluationType::Post && !result && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
       if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
@@ -122,6 +143,34 @@ auto SimpleOutput::stacktrace(std::ostream &stream,
     sourcemeta::core::stringify(entry.evaluate_path, stream);
     stream << "\"\n";
   }
+}
+
+auto SimpleOutput::cleanup_contains_annotations(
+    const sourcemeta::core::WeakPointer &evaluate_path,
+    const sourcemeta::core::WeakPointer &instance_location) -> void {
+  // Clean up annotations for array items that didn't match the contains
+  // subschema
+  for (auto iterator = this->annotations_.begin();
+       iterator != this->annotations_.end();) {
+    // Check if this annotation is from within a contains subschema (but not the
+    // contains annotation itself)
+    if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+        iterator->first.evaluate_path.size() > evaluate_path.size()) {
+      // This is an annotation from within the contains subschema (like title)
+      // Only keep annotations for items that succeeded
+      if (!this->successful_contains_items_.contains(
+              iterator->first.instance_location)) {
+        iterator = this->annotations_.erase(iterator);
+      } else {
+        iterator++;
+      }
+    } else {
+      iterator++;
+    }
+  }
+
+  // Clear the tracking set for this contains evaluation
+  this->successful_contains_items_.clear();
 }
 
 } // namespace sourcemeta::blaze
