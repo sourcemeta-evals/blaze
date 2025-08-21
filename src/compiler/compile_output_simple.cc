@@ -90,17 +90,9 @@ auto SimpleOutput::operator()(
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
-        // The original logic only considered evaluate_path, but for contains
-        // and similar logical operators, we need to consider both evaluate_path
-        // and instance_location. Only drop annotations if the instance location
-        // is at or under the failing location.
-        if (instance_location.empty() ||
-            iterator->first.instance_location.starts_with(instance_location)) {
-          iterator = this->annotations_.erase(iterator);
-        } else {
-          iterator++;
-        }
+      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+          iterator->first.instance_location.starts_with(instance_location)) {
+        iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
       }
