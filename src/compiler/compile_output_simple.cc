@@ -69,9 +69,61 @@ auto SimpleOutput::operator()(
       this->mask.emplace(evaluate_path, true);
     } else if (keyword == "contains") {
       this->mask.emplace(evaluate_path, false);
+      // Track the start of contains evaluation
+      this->contains_evaluation_start_.emplace(evaluate_path,
+                                               this->annotations_.size());
     }
   } else if (type == EvaluationType::Post &&
              this->mask.contains(evaluate_path)) {
+    // Special handling for contains: clean up annotations for failed subschemas
+    if (evaluate_path.back().is_property() &&
+        evaluate_path.back().to_property() == "contains") {
+      const auto start_iter =
+          this->contains_evaluation_start_.find(evaluate_path);
+      if (start_iter != this->contains_evaluation_start_.end()) {
+        const auto start_annotation_count = start_iter->second;
+
+        // If contains succeeded, we need to identify which annotations to keep
+        if (result) {
+          // Get the contains annotation (should be the last one added)
+          std::set<sourcemeta::core::WeakPointer> successful_instances;
+
+          // Find the contains annotation that tells us which instances
+          // succeeded
+          for (auto iter = this->annotations_.begin();
+               iter != this->annotations_.end(); ++iter) {
+            if (iter->first.evaluate_path == evaluate_path &&
+                iter->first.instance_location.empty()) {
+              // This is the main contains annotation with the successful index
+              for (const auto &annotation_value : iter->second) {
+                if (annotation_value.is_integer()) {
+                  successful_instances.insert(
+                      sourcemeta::core::WeakPointer{}.concat(
+                          {static_cast<std::size_t>(
+                              annotation_value.to_integer())}));
+                }
+              }
+              break;
+            }
+          }
+
+          // Remove annotations for instances that didn't match
+          for (auto iter = this->annotations_.begin();
+               iter != this->annotations_.end();) {
+            if (iter->first.evaluate_path.starts_with_initial(evaluate_path) &&
+                !iter->first.instance_location.empty() &&
+                successful_instances.find(iter->first.instance_location) ==
+                    successful_instances.end()) {
+              iter = this->annotations_.erase(iter);
+            } else {
+              ++iter;
+            }
+          }
+        }
+
+        this->contains_evaluation_start_.erase(start_iter);
+      }
+    }
     this->mask.erase(evaluate_path);
   }
 
