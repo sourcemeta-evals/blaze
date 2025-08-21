@@ -940,10 +940,16 @@ TEST(Compiler_output_simple, contains_annotations_failure_cleanup) {
       evaluator.validate(schema_template, instance, std::ref(output))};
   EXPECT_TRUE(result);
 
-  // Expected: only 1 annotation for the successful contains match at index 1
-  // The fix should drop annotations for failed items at /0 and /2
-  EXPECT_ANNOTATION_COUNT(output, 1);
+  // Expected: 2 annotations total
+  // 1 contains annotation with the successful match at index 1
+  // 1 title annotation only for the successful item at /1
+  // Title annotations for /0 and /2 should be dropped
+  EXPECT_ANNOTATION_COUNT(output, 2);
   EXPECT_ANNOTATION_ENTRY(output, "", "/contains", "#/contains", 1);
   EXPECT_ANNOTATION_VALUE(output, "", "/contains", "#/contains", 0,
                           sourcemeta::core::JSON{1});
+  EXPECT_ANNOTATION_ENTRY(output, "/1", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/1", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Test"});
 }

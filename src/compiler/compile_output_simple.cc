@@ -4,6 +4,7 @@
 
 #include <algorithm> // std::any_of, std::sort
 #include <cassert>   // assert
+#include <iostream>  // std::cerr
 #include <iterator>  // std::back_inserter
 #include <utility>   // std::move
 
@@ -76,6 +77,49 @@ auto SimpleOutput::operator()(
   }
 
   if (result) {
+    // Special handling for contains: clean up annotations from failed items
+    if (type == EvaluationType::Post && evaluate_path.back().is_property() &&
+        evaluate_path.back().to_property() == "contains" &&
+        instance_location.empty()) {
+
+      // Find the contains annotation to get successful indices
+      std::vector<std::uint64_t> successful_indices;
+      for (const auto &annotation_entry : this->annotations_) {
+        if (annotation_entry.first.evaluate_path == effective_evaluate_path &&
+            annotation_entry.first.instance_location == instance_location) {
+          for (const auto &value : annotation_entry.second) {
+            if (value.is_integer()) {
+              successful_indices.push_back(
+                  static_cast<std::uint64_t>(value.to_integer()));
+            }
+          }
+          break;
+        }
+      }
+
+      // Remove annotations from failed items
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        // Check if this annotation is under the contains path and at a specific
+        // array index
+        if (iterator->first.evaluate_path.starts_with_initial(
+                effective_evaluate_path) &&
+            iterator->first.instance_location.size() == 1 &&
+            iterator->first.instance_location.back().is_index()) {
+
+          const auto index =
+              iterator->first.instance_location.back().to_index();
+          // If this index is not in the successful indices, remove the
+          // annotation
+          if (std::find(successful_indices.begin(), successful_indices.end(),
+                        index) == successful_indices.end()) {
+            iterator = this->annotations_.erase(iterator);
+            continue;
+          }
+        }
+        iterator++;
+      }
+    }
     return;
   }
 
