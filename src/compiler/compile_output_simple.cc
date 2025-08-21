@@ -90,8 +90,25 @@ auto SimpleOutput::operator()(
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
-          iterator->first.instance_location.starts_with(instance_location)) {
+      // For contains subschemas, we need to drop annotations when any child instruction fails
+      // The failing instruction might be /contains/type while the annotation is /contains/title
+      // So we check if both share the same contains parent path and instance location
+      bool should_drop = false;
+      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+        // Standard case: annotation path starts with failing path
+        should_drop = iterator->first.instance_location.starts_with(instance_location);
+      } else if (evaluate_path.size() >= 2 && evaluate_path.at(evaluate_path.size() - 2).to_property() == "contains") {
+        // Special case for contains: if a contains subschema fails, drop annotations from same instance
+        // that are also under the contains path
+        auto contains_path = evaluate_path;
+        contains_path.pop_back(); // Remove the specific subschema (e.g., "type") to get "/contains"
+        if (iterator->first.evaluate_path.starts_with_initial(contains_path) &&
+            iterator->first.instance_location == instance_location) {
+          should_drop = true;
+        }
+      }
+      
+      if (should_drop) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
