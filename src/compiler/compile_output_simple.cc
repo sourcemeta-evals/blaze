@@ -90,7 +90,29 @@ auto SimpleOutput::operator()(
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
+      bool should_remove = false;
+
       if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+        // For contains subschemas, we need to check both evaluate_path and
+        // instance_location The annotation's evaluate_path should start with a
+        // contains path
+        bool is_contains_annotation = false;
+        for (const auto &token : iterator->first.evaluate_path) {
+          if (token.is_property() && token.to_property() == "contains") {
+            is_contains_annotation = true;
+            break;
+          }
+        }
+
+        if (is_contains_annotation) {
+          should_remove = iterator->first.instance_location.starts_with_initial(
+              instance_location);
+        } else {
+          should_remove = true;
+        }
+      }
+
+      if (should_remove) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;

@@ -871,6 +871,54 @@ The object value was not expected to define unevaluated properties
 )JSON");
 }
 
+TEST(Compiler_output_simple, contains_annotations_cleanup_bug) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "number",
+      "title": "Test" 
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("[ \"foo\", 42, true ]")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+  EXPECT_TRUE(result);
+
+  // After the fix: annotations for failed validations at /0 and /2 should be
+  // cleaned up We should only have 2 annotations: one for contains and one for
+  // the title at /1
+  EXPECT_ANNOTATION_COUNT(output, 2);
+
+  // Based on existing contains tests, we expect:
+  // 1. A contains annotation at root showing the successful index (1)
+  EXPECT_ANNOTATION_ENTRY(output, "", "/contains", "#/contains", 1);
+  EXPECT_ANNOTATION_VALUE(output, "", "/contains", "#/contains", 0,
+                          sourcemeta::core::JSON{1});
+
+  // 2. Title annotations - the bug is that we get them for all indices instead
+  // of just /1 These should only exist for the successful match at /1:
+  EXPECT_ANNOTATION_ENTRY(output, "/1", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/1", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Test"});
+
+  // The bug: these annotations for failed validations should NOT exist:
+  // EXPECT_ANNOTATION_ENTRY(output, "/0", "/contains/title",
+  // "#/contains/title", 1); EXPECT_ANNOTATION_ENTRY(output, "/2",
+  // "/contains/title", "#/contains/title", 1);
+}
+
 TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2019-09/schema",
