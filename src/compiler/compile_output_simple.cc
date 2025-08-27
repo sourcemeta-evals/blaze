@@ -75,22 +75,41 @@ auto SimpleOutput::operator()(
     this->mask.erase(evaluate_path);
   }
 
-  if (result) {
-    return;
-  }
-
-  if (std::any_of(this->mask.cbegin(), this->mask.cend(),
-                  [&evaluate_path](const auto &entry) {
-                    return evaluate_path.starts_with(entry.first) &&
-                           !entry.second;
-                  })) {
-    return;
-  }
-
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
+      bool should_drop = false;
       if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+        // Check if we're in a contains evaluation context
+        bool is_contains_failure = false;
+        
+        // Look for contains mask entries to determine if this is a contains context
+        for (const auto &mask_entry : this->mask) {
+          if (mask_entry.first.back().is_property() && 
+              mask_entry.first.back().to_property() == "contains" &&
+              !mask_entry.second &&
+              iterator->first.evaluate_path.starts_with(mask_entry.first)) {
+            // This annotation is from a contains subschema evaluation
+            // Only drop if it's at the exact instance location that failed
+            if (iterator->first.instance_location == instance_location) {
+              is_contains_failure = true;
+            }
+            break;
+          }
+        }
+        
+        if (is_contains_failure) {
+          should_drop = true;
+        } else if (!std::any_of(this->mask.cbegin(), this->mask.cend(),
+                               [&iterator](const auto &entry) {
+                                 return iterator->first.evaluate_path.starts_with(entry.first) && !entry.second;
+                               })) {
+          // For non-contains failures, use the original logic
+          should_drop = true;
+        }
+      }
+
+      if (should_drop) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;

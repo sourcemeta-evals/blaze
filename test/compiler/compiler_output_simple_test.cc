@@ -915,3 +915,105 @@ TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
     at evaluate path "/properties/foo/unevaluatedProperties"
 )JSON");
 }
+
+TEST(Compiler_output_simple, contains_annotation_dropping) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "number",
+      "title": "Test" 
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON([ "foo", 42, true ])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+
+  EXPECT_TRUE(result);
+
+  EXPECT_ANNOTATION_COUNT(output, 2);
+  EXPECT_ANNOTATION_ENTRY(output, "", "/contains", "#/contains", 1);
+  EXPECT_ANNOTATION_VALUE(output, "", "/contains", "#/contains", 0,
+                          sourcemeta::core::JSON{1});
+  EXPECT_ANNOTATION_ENTRY(output, "/1", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/1", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Test"});
+}
+
+TEST(Compiler_output_simple, contains_annotation_dropping_all_fail) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "number",
+      "title": "Test" 
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON([ "foo", "bar", true ])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+
+  EXPECT_FALSE(result);
+
+  EXPECT_ANNOTATION_COUNT(output, 0);
+}
+
+TEST(Compiler_output_simple, contains_annotation_dropping_multiple_matches) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "number",
+      "title": "NumberTitle" 
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON([ "foo", 42, 3.14, true ])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+
+  EXPECT_TRUE(result);
+
+  EXPECT_ANNOTATION_COUNT(output, 3);
+  EXPECT_ANNOTATION_ENTRY(output, "", "/contains", "#/contains", 1);
+  EXPECT_ANNOTATION_VALUE(output, "", "/contains", "#/contains", 0,
+                          sourcemeta::core::JSON{1});
+  EXPECT_ANNOTATION_ENTRY(output, "/1", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/1", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"NumberTitle"});
+  EXPECT_ANNOTATION_ENTRY(output, "/2", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/2", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"NumberTitle"});
+}
