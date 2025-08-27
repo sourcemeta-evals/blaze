@@ -91,7 +91,31 @@ auto SimpleOutput::operator()(
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
       if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
-        iterator = this->annotations_.erase(iterator);
+        // Only remove annotations if the instance location also matches
+        // This fixes the bug where annotations from successful items were being
+        // incorrectly removed when other items at the same evaluate path failed
+        bool instance_locations_match = true;
+
+        // Compare instance locations by checking if they have the same size and
+        // elements
+        if (iterator->first.instance_location.size() !=
+            instance_location.size()) {
+          instance_locations_match = false;
+        } else {
+          for (std::size_t i = 0;
+               i < instance_location.size() && instance_locations_match; ++i) {
+            if (iterator->first.instance_location.at(i) !=
+                instance_location.at(i)) {
+              instance_locations_match = false;
+            }
+          }
+        }
+
+        if (instance_locations_match) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
       } else {
         iterator++;
       }
