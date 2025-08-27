@@ -5,6 +5,7 @@
 #include <algorithm> // std::any_of, std::sort
 #include <cassert>   // assert
 #include <iterator>  // std::back_inserter
+#include <set>       // std::set
 #include <utility>   // std::move
 
 namespace sourcemeta::blaze {
@@ -75,6 +76,59 @@ auto SimpleOutput::operator()(
     this->mask.erase(evaluate_path);
   }
 
+  // Special handling for contains keyword completion
+  if (type == EvaluationType::Post && !evaluate_path.empty() &&
+      evaluate_path.back().is_property() &&
+      evaluate_path.back().to_property() == "contains" && result) {
+
+    // When a contains instruction completes successfully, we need to clean up
+    // annotations from items that didn't match. We can determine this by
+    // checking which instance locations have contains annotations vs which have
+    // subschema annotations
+
+    // First, find all instance locations that succeeded (from the contains
+    // annotation)
+    std::set<sourcemeta::core::WeakPointer> successful_locations;
+
+    for (const auto &annotation : this->annotations_) {
+      // Look for the contains annotation itself
+      if (annotation.first.evaluate_path == evaluate_path) {
+        for (const auto &value : annotation.second) {
+          if (value.is_integer()) {
+            sourcemeta::core::WeakPointer success_location;
+            success_location.push_back(
+                static_cast<std::size_t>(value.to_integer()));
+            successful_locations.insert(success_location);
+          }
+        }
+      }
+    }
+
+    // Remove annotations for locations that are not in the successful set
+    for (auto iterator = this->annotations_.begin();
+         iterator != this->annotations_.end();) {
+      bool should_remove = false;
+
+      // Check if this annotation is from a contains subschema (but not the
+      // contains annotation itself)
+      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+          iterator->first.evaluate_path != evaluate_path) {
+
+        // Remove if this location is not in the successful set
+        if (successful_locations.find(iterator->first.instance_location) ==
+            successful_locations.end()) {
+          should_remove = true;
+        }
+      }
+
+      if (should_remove) {
+        iterator = this->annotations_.erase(iterator);
+      } else {
+        iterator++;
+      }
+    }
+  }
+
   if (result) {
     return;
   }
@@ -87,7 +141,7 @@ auto SimpleOutput::operator()(
     return;
   }
 
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+  if (type == EvaluationType::Post && !result && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
       if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
