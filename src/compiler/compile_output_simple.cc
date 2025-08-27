@@ -5,6 +5,7 @@
 #include <algorithm> // std::any_of, std::sort
 #include <cassert>   // assert
 #include <iterator>  // std::back_inserter
+#include <optional>  // std::optional
 #include <utility>   // std::move
 
 namespace sourcemeta::blaze {
@@ -79,6 +80,30 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  if (type == EvaluationType::Post && !result && !this->annotations_.empty()) {
+    std::optional<sourcemeta::core::WeakPointer> contains_parent;
+    for (const auto &entry : this->mask) {
+      if (evaluate_path.starts_with(entry.first) &&
+          entry.first.back().to_property() == "contains") {
+        contains_parent = entry.first;
+        break;
+      }
+    }
+
+    if (contains_parent.has_value()) {
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        if (iterator->first.instance_location == instance_location &&
+            iterator->first.evaluate_path.starts_with_initial(
+                contains_parent.value())) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
+      }
+    }
+  }
+
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
                   [&evaluate_path](const auto &entry) {
                     return evaluate_path.starts_with(entry.first) &&
@@ -87,7 +112,7 @@ auto SimpleOutput::operator()(
     return;
   }
 
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+  if (type == EvaluationType::Post && !result && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
       if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
