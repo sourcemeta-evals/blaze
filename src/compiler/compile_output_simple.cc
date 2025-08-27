@@ -90,7 +90,12 @@ auto SimpleOutput::operator()(
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+      const bool same_path =
+          iterator->first.evaluate_path.starts_with_initial(evaluate_path);
+      const bool same_instance =
+          iterator->first.instance_location.starts_with_initial(
+              instance_location);
+      if (same_path && same_instance) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
