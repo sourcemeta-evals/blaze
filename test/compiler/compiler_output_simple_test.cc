@@ -915,3 +915,47 @@ TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
     at evaluate path "/properties/foo/unevaluatedProperties"
 )JSON");
 }
+TEST(Compiler_output_simple, annotations_contains_retains_only_matches) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { "type": "number", "title": "Test" }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON([ "foo", 42, true ])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+
+  EXPECT_TRUE(result);
+  std::vector<sourcemeta::blaze::SimpleOutput::Entry> traces{output.cbegin(),
+                                                             output.cend()};
+  EXPECT_TRUE(traces.empty());
+
+  // Ensure we don't retain annotations for failing contains items
+  {
+    const auto instance_location0{sourcemeta::core::to_pointer("/0")};
+    const auto evaluate_path_title{
+        sourcemeta::core::to_pointer("/contains/title")};
+    EXPECT_FALSE(output.annotations().contains(
+        {sourcemeta::core::to_weak_pointer(instance_location0),
+         sourcemeta::core::to_weak_pointer(evaluate_path_title),
+         "/contains/title"}));
+  }
+  {
+    const auto instance_location2{sourcemeta::core::to_pointer("/2")};
+    const auto evaluate_path_title{
+        sourcemeta::core::to_pointer("/contains/title")};
+    EXPECT_FALSE(output.annotations().contains(
+        {sourcemeta::core::to_weak_pointer(instance_location2),
+         sourcemeta::core::to_weak_pointer(evaluate_path_title),
+         "/contains/title"}));
+  }
+}

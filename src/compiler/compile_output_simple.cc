@@ -90,10 +90,14 @@ auto SimpleOutput::operator()(
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+      const bool eval_match{
+          iterator->first.evaluate_path.starts_with_initial(evaluate_path)};
+      const bool instance_match{iterator->first.instance_location ==
+                                instance_location};
+      if (eval_match && instance_match) {
         iterator = this->annotations_.erase(iterator);
       } else {
-        iterator++;
+        ++iterator;
       }
     }
   }
