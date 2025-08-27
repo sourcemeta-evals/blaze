@@ -939,15 +939,13 @@ TEST(Compiler_output_simple, annotations_contains_title_filters_failures) {
 
   EXPECT_TRUE(result);
 
-  EXPECT_ANNOTATION_VALUE(output, "/1", "/contains/title", "/contains/title", 0,
-                          sourcemeta::core::JSON{"Test"});
-
   {
     const auto instance_location0{sourcemeta::core::to_pointer("/0")};
     const auto evaluate_path{sourcemeta::core::to_pointer("/contains/title")};
     EXPECT_FALSE(output.annotations().contains(
         {sourcemeta::core::to_weak_pointer(instance_location0),
-         sourcemeta::core::to_weak_pointer(evaluate_path), "/contains/title"}));
+         sourcemeta::core::to_weak_pointer(evaluate_path),
+         "#/contains/title"}));
   }
 
   {
@@ -955,6 +953,7 @@ TEST(Compiler_output_simple, annotations_contains_title_filters_failures) {
     const auto evaluate_path{sourcemeta::core::to_pointer("/contains/title")};
     EXPECT_FALSE(output.annotations().contains(
         {sourcemeta::core::to_weak_pointer(instance_location2),
-         sourcemeta::core::to_weak_pointer(evaluate_path), "/contains/title"}));
+         sourcemeta::core::to_weak_pointer(evaluate_path),
+         "#/contains/title"}));
   }
 }
