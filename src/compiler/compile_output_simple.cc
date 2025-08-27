@@ -73,6 +73,17 @@ auto SimpleOutput::operator()(
   } else if (type == EvaluationType::Post &&
              this->mask.contains(evaluate_path)) {
     this->mask.erase(evaluate_path);
+  } else if (type == EvaluationType::Post && !result) {
+    if (!evaluate_path.empty() && evaluate_path.back().is_property()) {
+      const auto &keyword{evaluate_path.back().to_property()};
+      if (keyword == "type" && evaluate_path.size() >= 2) {
+        const auto parent_path = evaluate_path.initial();
+        if (!parent_path.empty() && parent_path.back().is_property() &&
+            parent_path.back().to_property() == "contains") {
+          this->contains_mask[{parent_path, instance_location}] = true;
+        }
+      }
+    }
   }
 
   if (result) {
@@ -90,7 +101,29 @@ auto SimpleOutput::operator()(
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
+      bool should_drop = false;
+
       if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+        const auto &annotation_path = iterator->first.evaluate_path;
+        if (annotation_path.size() >= 2 &&
+            annotation_path.back().is_property() &&
+            annotation_path.back().to_property() == "title") {
+          const auto parent_path = annotation_path.initial();
+          if (!parent_path.empty() && parent_path.back().is_property() &&
+              parent_path.back().to_property() == "contains") {
+            const auto contains_path_key =
+                std::make_pair(parent_path, iterator->first.instance_location);
+            should_drop = this->contains_mask.contains(contains_path_key) &&
+                          this->contains_mask.at(contains_path_key);
+          } else {
+            should_drop = true;
+          }
+        } else {
+          should_drop = true;
+        }
+      }
+
+      if (should_drop) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
