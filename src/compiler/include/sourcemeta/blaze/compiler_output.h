@@ -115,6 +115,7 @@ public:
 
   auto stacktrace(std::ostream &stream,
                   const std::string &indentation = "") const -> void;
+  auto cleanup_contains_annotations() -> void;
 
 private:
 // Exporting symbols that depends on the standard C++ library is considered

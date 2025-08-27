@@ -5,6 +5,7 @@
 #include <algorithm> // std::any_of, std::sort
 #include <cassert>   // assert
 #include <iterator>  // std::back_inserter
+#include <set>       // std::set
 #include <utility>   // std::move
 
 namespace sourcemeta::blaze {
@@ -87,13 +88,103 @@ auto SimpleOutput::operator()(
     return;
   }
 
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+  // Special cleanup for contains: remove title annotations for items that
+  // didn't match This runs at the end of evaluation when we're back at the root
+  // level
+  if (type == EvaluationType::Post && result && evaluate_path.empty() &&
+      instance_location.empty() && !this->annotations_.empty()) {
+
+    // Collect all matched indices from contains annotations
+    std::set<std::int64_t> matched_indices;
+    for (const auto &[loc, annotations] : this->annotations_) {
+      if (loc.evaluate_path.size() >= 1 &&
+          loc.evaluate_path.back().is_property() &&
+          loc.evaluate_path.back().to_property() == "contains" &&
+          loc.instance_location.empty()) {
+        for (const auto &contains_annotation : annotations) {
+          if (contains_annotation.is_integer()) {
+            matched_indices.insert(contains_annotation.to_integer());
+          }
+        }
+      }
+    }
+
+    // Remove title annotations for items that didn't match
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
-        iterator = this->annotations_.erase(iterator);
-      } else {
-        iterator++;
+      if (iterator->first.evaluate_path.size() >= 2 &&
+          iterator->first.evaluate_path
+              .at(iterator->first.evaluate_path.size() - 2)
+              .is_property() &&
+          iterator->first.evaluate_path
+                  .at(iterator->first.evaluate_path.size() - 2)
+                  .to_property() == "contains" &&
+          iterator->first.evaluate_path.back().is_property() &&
+          iterator->first.evaluate_path.back().to_property() == "title") {
+
+        if (!iterator->first.instance_location.empty() &&
+            iterator->first.instance_location.back().is_index()) {
+          const auto item_index =
+              iterator->first.instance_location.back().to_index();
+
+          if (matched_indices.find(static_cast<std::int64_t>(item_index)) ==
+              matched_indices.end()) {
+            iterator = this->annotations_.erase(iterator);
+            continue;
+          }
+        }
+      }
+      iterator++;
+    }
+  }
+
+  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+
+    if (!result) {
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        // For contains scenarios, we need to clean up annotations that share
+        // the same instance location and have evaluate paths that are siblings
+        // under the same parent
+        bool should_remove = false;
+
+        // Check if both paths are under the same parent (e.g., both under
+        // /contains)
+        if (iterator->first.instance_location == instance_location) {
+          // Check if they share the same parent path by comparing all tokens
+          // except the last
+          if (!evaluate_path.empty() &&
+              !iterator->first.evaluate_path.empty()) {
+            // Check if they share the same parent (e.g., both under /contains)
+            if (evaluate_path.size() >= 2 &&
+                iterator->first.evaluate_path.size() >= 2) {
+              bool same_parent = true;
+              const auto min_size =
+                  std::min(evaluate_path.size() - 1,
+                           iterator->first.evaluate_path.size() - 1);
+              for (std::size_t i = 0; i < min_size; ++i) {
+                if (evaluate_path.at(i) !=
+                    iterator->first.evaluate_path.at(i)) {
+                  same_parent = false;
+                  break;
+                }
+              }
+              should_remove = same_parent;
+            }
+          }
+
+          // Fallback to original logic for non-contains scenarios
+          if (!should_remove) {
+            should_remove = iterator->first.evaluate_path.starts_with_initial(
+                evaluate_path);
+          }
+        }
+
+        if (should_remove) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
       }
     }
   }
@@ -121,6 +212,51 @@ auto SimpleOutput::stacktrace(std::ostream &stream,
     stream << indentation << "  at evaluate path \"";
     sourcemeta::core::stringify(entry.evaluate_path, stream);
     stream << "\"\n";
+  }
+}
+
+auto SimpleOutput::cleanup_contains_annotations() -> void {
+  // Collect all matched indices from contains annotations
+  std::set<std::int64_t> matched_indices;
+  for (const auto &[loc, annotations] : this->annotations_) {
+    if (loc.evaluate_path.size() >= 1 &&
+        loc.evaluate_path.back().is_property() &&
+        loc.evaluate_path.back().to_property() == "contains" &&
+        loc.instance_location.empty()) {
+      for (const auto &contains_annotation : annotations) {
+        if (contains_annotation.is_integer()) {
+          matched_indices.insert(contains_annotation.to_integer());
+        }
+      }
+    }
+  }
+
+  // Remove title annotations for items that didn't match
+  for (auto iterator = this->annotations_.begin();
+       iterator != this->annotations_.end();) {
+    if (iterator->first.evaluate_path.size() >= 2 &&
+        iterator->first.evaluate_path
+            .at(iterator->first.evaluate_path.size() - 2)
+            .is_property() &&
+        iterator->first.evaluate_path
+                .at(iterator->first.evaluate_path.size() - 2)
+                .to_property() == "contains" &&
+        iterator->first.evaluate_path.back().is_property() &&
+        iterator->first.evaluate_path.back().to_property() == "title") {
+
+      if (!iterator->first.instance_location.empty() &&
+          iterator->first.instance_location.back().is_index()) {
+        const auto item_index =
+            iterator->first.instance_location.back().to_index();
+
+        if (matched_indices.find(static_cast<std::int64_t>(item_index)) ==
+            matched_indices.end()) {
+          iterator = this->annotations_.erase(iterator);
+          continue;
+        }
+      }
+    }
+    iterator++;
   }
 }
 
