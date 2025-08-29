@@ -167,7 +167,8 @@ static auto to_string_hashes(
   // The idea with the table of contents is as follows: each index
   // marks the starting and end positions for a string where the size
   // is equal to the index.
-  result.second.resize(hashes.back().first.size() + 1, std::make_pair(0, 0));
+  result.second.resize(hashes.back().first.size() + 1,
+                       sourcemeta::blaze::ValueIndexPair{0, 0});
   for (std::size_t index = 0; index < hashes.size(); index++) {
     result.first.push_back(hashes[index].second);
     const auto string_size{hashes[index].first.size()};
@@ -184,7 +185,8 @@ static auto to_string_hashes(
     assert(lower_bound <= upper_bound);
     assert(lower_bound > 0 && upper_bound > 0);
     assert(string_size < result.second.size());
-    result.second[string_size] = std::make_pair(lower_bound, upper_bound);
+    result.second[string_size] =
+        sourcemeta::blaze::ValueIndexPair{lower_bound, upper_bound};
   }
 
   assert(result.second.size() == hashes.back().first.size() + 1);
