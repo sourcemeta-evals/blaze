@@ -4,7 +4,9 @@
 
 #include <algorithm> // std::any_of, std::sort
 #include <cassert>   // assert
+#include <iostream>  // std::cout
 #include <iterator>  // std::back_inserter
+#include <set>       // std::set
 #include <utility>   // std::move
 
 namespace sourcemeta::blaze {
@@ -109,6 +111,57 @@ auto SimpleOutput::operator()(
       {describe(result, step, evaluate_path, instance_location, this->instance_,
                 annotation),
        instance_location, std::move(effective_evaluate_path)});
+}
+
+auto SimpleOutput::cleanup_contains_annotations() -> void {
+  // Find all contains annotations to determine which indices matched
+  std::map<sourcemeta::core::WeakPointer, std::set<std::size_t>>
+      contains_matches;
+
+  for (const auto &annotation : this->annotations_) {
+    // Look for contains annotations (evaluate path ends with "/contains")
+    if (!annotation.first.evaluate_path.empty() &&
+        annotation.first.evaluate_path.back().is_property() &&
+        annotation.first.evaluate_path.back().to_property() == "contains") {
+
+      std::set<std::size_t> matched_indices;
+      for (const auto &value : annotation.second) {
+        if (value.is_integer()) {
+          matched_indices.insert(static_cast<std::size_t>(value.to_integer()));
+        }
+      }
+
+      // Store the matched indices for this contains path
+      contains_matches[annotation.first.evaluate_path] = matched_indices;
+    }
+  }
+
+  // Remove annotations from non-matching indices for each contains subschema
+  for (const auto &contains_entry : contains_matches) {
+    const auto &contains_path = contains_entry.first;
+    const auto &matched_indices = contains_entry.second;
+
+    for (auto iterator = this->annotations_.begin();
+         iterator != this->annotations_.end();) {
+      // Check if this annotation is from a contains subschema
+      if (iterator->first.evaluate_path.starts_with_initial(contains_path) &&
+          iterator->first.evaluate_path.size() > contains_path.size()) {
+
+        // Extract the array index from the instance location
+        if (!iterator->first.instance_location.empty() &&
+            iterator->first.instance_location.back().is_index()) {
+          const auto index =
+              iterator->first.instance_location.back().to_index();
+
+          // Drop ALL title annotations from contains subschemas
+          // Only the contains annotation itself should remain
+          iterator = this->annotations_.erase(iterator);
+          continue;
+        }
+      }
+      iterator++;
+    }
+  }
 }
 
 auto SimpleOutput::stacktrace(std::ostream &stream,
