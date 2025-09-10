@@ -4,6 +4,7 @@
 
 #include <algorithm> // std::any_of, std::sort
 #include <cassert>   // assert
+#include <iostream>  // std::cout
 #include <iterator>  // std::back_inserter
 #include <utility>   // std::move
 
@@ -32,6 +33,7 @@ auto SimpleOutput::operator()(
     const sourcemeta::core::WeakPointer &evaluate_path,
     const sourcemeta::core::WeakPointer &instance_location,
     const sourcemeta::core::JSON &annotation) -> void {
+
   if (evaluate_path.empty()) {
     return;
   }
@@ -73,6 +75,40 @@ auto SimpleOutput::operator()(
   } else if (type == EvaluationType::Post &&
              this->mask.contains(evaluate_path)) {
     this->mask.erase(evaluate_path);
+  }
+
+  // Handle failed contains subschema validations
+  if (type == EvaluationType::Post && !result && evaluate_path.size() > 0 &&
+      sourcemeta::core::to_string(evaluate_path).find("/contains/") !=
+          std::string::npos &&
+      !instance_location.empty()) {
+    // This is a failed validation within a contains subschema for a specific
+    // array item Remove all annotations that were emitted for this specific
+    // instance location during this contains subschema evaluation
+    auto contains_path_str = sourcemeta::core::to_string(evaluate_path);
+    auto contains_path_end = contains_path_str.find("/contains/");
+    if (contains_path_end != std::string::npos) {
+      // Extract the contains path (e.g., "/contains" from "/contains/type")
+      auto contains_base_str = contains_path_str.substr(
+          0, contains_path_end + 9); // +9 for "/contains"
+      // Find the contains path by going up the evaluate_path until we find
+      // "contains"
+      auto contains_path = evaluate_path;
+      while (!contains_path.empty() &&
+             contains_path.back().to_property() != "contains") {
+        contains_path.pop_back();
+      }
+
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        if (iterator->first.evaluate_path.starts_with_initial(contains_path) &&
+            iterator->first.instance_location == instance_location) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
+      }
+    }
   }
 
   if (result) {
