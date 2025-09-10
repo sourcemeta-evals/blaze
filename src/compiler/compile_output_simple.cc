@@ -4,6 +4,7 @@
 
 #include <algorithm> // std::any_of, std::sort
 #include <cassert>   // assert
+#include <iostream>  // std::cout
 #include <iterator>  // std::back_inserter
 #include <utility>   // std::move
 
@@ -75,6 +76,42 @@ auto SimpleOutput::operator()(
     this->mask.erase(evaluate_path);
   }
 
+  // Special handling for contains keyword - filter annotations from failed
+  // subschema evaluations
+  if (type == EvaluationType::Post && !result && !this->annotations_.empty()) {
+    // Check if this is a contains subschema evaluation
+    auto current_path = evaluate_path;
+    bool is_contains_subschema = false;
+    while (!current_path.empty()) {
+      if (current_path.back().is_property() &&
+          current_path.back().to_property() == "contains") {
+        is_contains_subschema = true;
+        break;
+      }
+      current_path.pop_back();
+    }
+
+    if (is_contains_subschema) {
+      // For failed contains subschema evaluations, drop annotations from this
+      // specific instance location
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+            iterator->first.instance_location == instance_location) {
+          std::cout << "Dropping contains annotation: instance_location=";
+          sourcemeta::core::stringify(iterator->first.instance_location,
+                                      std::cout);
+          std::cout << ", evaluate_path=";
+          sourcemeta::core::stringify(iterator->first.evaluate_path, std::cout);
+          std::cout << std::endl;
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
+      }
+    }
+  }
+
   if (result) {
     return;
   }
@@ -91,6 +128,7 @@ auto SimpleOutput::operator()(
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
       if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
