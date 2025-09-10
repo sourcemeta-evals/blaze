@@ -73,6 +73,49 @@ auto SimpleOutput::operator()(
   } else if (type == EvaluationType::Post &&
              this->mask.contains(evaluate_path)) {
     this->mask.erase(evaluate_path);
+
+    // Clean up annotations for failed contains evaluations
+    if (evaluate_path.back().to_property() == "contains") {
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        bool should_remove = false;
+
+        for (const auto &[failed_eval_path, failed_instance_loc] :
+             this->failed_evaluations) {
+          if (iterator->first.evaluate_path.starts_with_initial(
+                  failed_eval_path) &&
+              iterator->first.instance_location == failed_instance_loc) {
+            should_remove = true;
+            break;
+          }
+        }
+
+        if (should_remove) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
+      }
+    }
+
+    for (auto it = this->failed_evaluations.begin();
+         it != this->failed_evaluations.end();) {
+      if (it->first.starts_with(evaluate_path)) {
+        it = this->failed_evaluations.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  }
+
+  if (!result) {
+    if (std::any_of(this->mask.cbegin(), this->mask.cend(),
+                    [&evaluate_path](const auto &entry) {
+                      return evaluate_path.starts_with(entry.first) &&
+                             entry.first.back().to_property() == "contains";
+                    })) {
+      this->failed_evaluations.emplace(evaluate_path, instance_location);
+    }
   }
 
   if (result) {
@@ -90,7 +133,23 @@ auto SimpleOutput::operator()(
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
+      bool should_remove = false;
+
       if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+        should_remove = true;
+      }
+
+      for (const auto &[failed_eval_path, failed_instance_loc] :
+           this->failed_evaluations) {
+        if (iterator->first.evaluate_path.starts_with_initial(
+                failed_eval_path) &&
+            iterator->first.instance_location == failed_instance_loc) {
+          should_remove = true;
+          break;
+        }
+      }
+
+      if (should_remove) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
