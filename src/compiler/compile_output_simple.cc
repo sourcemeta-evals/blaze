@@ -32,6 +32,7 @@ auto SimpleOutput::operator()(
     const sourcemeta::core::WeakPointer &evaluate_path,
     const sourcemeta::core::WeakPointer &instance_location,
     const sourcemeta::core::JSON &annotation) -> void {
+
   if (evaluate_path.empty()) {
     return;
   }
@@ -79,6 +80,28 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // Track failed items within contains subschemas BEFORE the early return
+  if (type == EvaluationType::Post && !result) {
+    // Check if this failure is within a contains subschema
+    for (const auto &mask_entry : this->mask) {
+      if (evaluate_path.starts_with(mask_entry.first) && !mask_entry.second) {
+        // Remove all annotations for this instance location within the contains
+        // subschema
+        for (auto iterator = this->annotations_.begin();
+             iterator != this->annotations_.end();) {
+          if (iterator->first.evaluate_path.starts_with_initial(
+                  mask_entry.first) &&
+              iterator->first.instance_location == instance_location) {
+            iterator = this->annotations_.erase(iterator);
+          } else {
+            iterator++;
+          }
+        }
+        break;
+      }
+    }
+  }
+
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
                   [&evaluate_path](const auto &entry) {
                     return evaluate_path.starts_with(entry.first) &&
@@ -87,10 +110,13 @@ auto SimpleOutput::operator()(
     return;
   }
 
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+  if (type == EvaluationType::Post && !result && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+          (instance_location.empty() ||
+           iterator->first.instance_location.starts_with_initial(
+               instance_location))) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
