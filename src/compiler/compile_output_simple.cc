@@ -73,6 +73,55 @@ auto SimpleOutput::operator()(
   } else if (type == EvaluationType::Post &&
              this->mask.contains(evaluate_path)) {
     this->mask.erase(evaluate_path);
+
+    // If this is the end of a contains evaluation, clean up annotations
+    // for items that failed the contains subschema
+    if (evaluate_path.back().is_property() &&
+        evaluate_path.back().to_property() == "contains") {
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        // Check if this annotation was emitted during a failed contains
+        // evaluation
+        bool should_drop = false;
+        if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+          // Check if this instance location failed a contains subschema
+          if (this->failed_contains_items.count(
+                  iterator->first.instance_location) > 0) {
+            should_drop = true;
+          }
+        }
+
+        if (should_drop) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
+      }
+
+      // Clear the failed items set for this contains evaluation
+      this->failed_contains_items.clear();
+    }
+  }
+
+  // Track failed contains evaluations by instance location
+  if (type == EvaluationType::Post && !result) {
+    // Check if this is a contains subschema failure
+    bool is_contains_subschema_failure = false;
+    if (evaluate_path.size() >= 2) {
+      // Look for patterns like "/contains/type", "/contains/title", etc.
+      for (std::size_t i = 0; i < evaluate_path.size() - 1; i++) {
+        if (evaluate_path.at(i).is_property() &&
+            evaluate_path.at(i).to_property() == "contains") {
+          is_contains_subschema_failure = true;
+          break;
+        }
+      }
+    }
+
+    if (is_contains_subschema_failure) {
+      // Track this instance location as having failed a contains subschema
+      this->failed_contains_items.insert(instance_location);
+    }
   }
 
   if (result) {
