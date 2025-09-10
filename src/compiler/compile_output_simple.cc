@@ -79,6 +79,11 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // Track failures for this specific instance location and evaluate path
+  if (type == EvaluationType::Post) {
+    this->evaluation_failures[{instance_location, evaluate_path}] = true;
+  }
+
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
                   [&evaluate_path](const auto &entry) {
                     return evaluate_path.starts_with(entry.first) &&
@@ -90,7 +95,32 @@ auto SimpleOutput::operator()(
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
+      bool should_drop = false;
+
       if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+        should_drop = true; // Default behavior for exact path matches
+      } else {
+        // Special handling for contains annotations: if this annotation is from
+        // a contains subschema and there was any failure in the contains
+        // subschema for this instance location, drop the annotation
+        auto annotation_path = iterator->first.evaluate_path;
+        if (!annotation_path.empty() &&
+            annotation_path.at(0).to_property() == "contains") {
+          // Check if there was any failure in the contains subschema for this
+          // instance
+          for (const auto &[failure_key, _] : this->evaluation_failures) {
+            const auto &[failure_instance, failure_evaluate] = failure_key;
+            if (failure_instance == iterator->first.instance_location &&
+                !failure_evaluate.empty() &&
+                failure_evaluate.at(0).to_property() == "contains") {
+              should_drop = true;
+              break;
+            }
+          }
+        }
+      }
+
+      if (should_drop) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
@@ -109,6 +139,35 @@ auto SimpleOutput::operator()(
       {describe(result, step, evaluate_path, instance_location, this->instance_,
                 annotation),
        instance_location, std::move(effective_evaluate_path)});
+}
+
+auto SimpleOutput::cleanup_annotations() -> void {
+  for (auto iterator = this->annotations_.begin();
+       iterator != this->annotations_.end();) {
+    bool should_drop = false;
+
+    auto annotation_path = iterator->first.evaluate_path;
+    if (!annotation_path.empty() &&
+        annotation_path.at(0).to_property() == "contains") {
+      // Check if there was any failure in the contains subschema for this
+      // instance
+      for (const auto &[failure_key, _] : this->evaluation_failures) {
+        const auto &[failure_instance, failure_evaluate] = failure_key;
+        if (failure_instance == iterator->first.instance_location &&
+            !failure_evaluate.empty() &&
+            failure_evaluate.at(0).to_property() == "contains") {
+          should_drop = true;
+          break;
+        }
+      }
+    }
+
+    if (should_drop) {
+      iterator = this->annotations_.erase(iterator);
+    } else {
+      iterator++;
+    }
+  }
 }
 
 auto SimpleOutput::stacktrace(std::ostream &stream,

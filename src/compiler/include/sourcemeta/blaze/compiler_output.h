@@ -99,6 +99,9 @@ public:
   /// instance location and evaluation path
   auto annotations() const -> const auto & { return this->annotations_; }
 
+  /// Clean up annotations that should be dropped based on evaluation failures
+  auto cleanup_annotations() -> void;
+
   struct Location {
     auto operator<(const Location &other) const noexcept -> bool {
       // Perform a lexicographical comparison
@@ -127,6 +130,10 @@ private:
   const sourcemeta::core::WeakPointer base_;
   container_type output;
   std::map<sourcemeta::core::WeakPointer, bool> mask;
+  std::map<
+      std::pair<sourcemeta::core::WeakPointer, sourcemeta::core::WeakPointer>,
+      bool>
+      evaluation_failures;
   std::map<Location, std::vector<sourcemeta::core::JSON>> annotations_;
 #if defined(_MSC_VER)
 #pragma warning(default : 4251)
