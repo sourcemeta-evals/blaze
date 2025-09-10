@@ -4,7 +4,9 @@
 
 #include <algorithm> // std::any_of, std::sort
 #include <cassert>   // assert
+#include <iostream>  // std::cout
 #include <iterator>  // std::back_inserter
+#include <set>       // std::set
 #include <utility>   // std::move
 
 namespace sourcemeta::blaze {
@@ -32,6 +34,7 @@ auto SimpleOutput::operator()(
     const sourcemeta::core::WeakPointer &evaluate_path,
     const sourcemeta::core::WeakPointer &instance_location,
     const sourcemeta::core::JSON &annotation) -> void {
+
   if (evaluate_path.empty()) {
     return;
   }
@@ -73,6 +76,46 @@ auto SimpleOutput::operator()(
   } else if (type == EvaluationType::Post &&
              this->mask.contains(evaluate_path)) {
     this->mask.erase(evaluate_path);
+  }
+
+  // Special handling for contains subschema failures
+  if (type == EvaluationType::Post && !result && !instance_location.empty()) {
+    // Check if this is a failure within a contains subschema
+    bool is_contains_subschema_failure = false;
+    sourcemeta::core::WeakPointer contains_path;
+
+    for (std::size_t i = 0; i < evaluate_path.size(); ++i) {
+      if (evaluate_path.at(i).is_property() &&
+          evaluate_path.at(i).to_property() == "contains") {
+        is_contains_subschema_failure = true;
+        // Create a path up to and including the "contains" keyword
+        contains_path = sourcemeta::core::WeakPointer{};
+        for (std::size_t j = 0; j <= i; ++j) {
+          const auto &token = evaluate_path.at(j);
+          if (token.is_property()) {
+            contains_path.emplace_back(token.to_property());
+          } else {
+            contains_path.emplace_back(token.to_index());
+          }
+        }
+        break;
+      }
+    }
+
+    if (is_contains_subschema_failure) {
+
+      // Remove annotations for this specific instance location under the
+      // contains path
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        if (iterator->first.evaluate_path.starts_with_initial(contains_path) &&
+            iterator->first.instance_location == instance_location) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
+      }
+    }
   }
 
   if (result) {

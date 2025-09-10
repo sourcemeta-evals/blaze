@@ -2204,3 +2204,55 @@ TEST(Evaluator_2020_12, propertyNames_1_exhaustive) {
                                "The object property \"foo\" was expected to "
                                "validate against the given subschema");
 }
+TEST(Evaluator_2020_12, contains_annotations_bug_reproduction) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "number",
+      "title": "Test" 
+    }
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON([ "foo", 42, true ])JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+
+  EXPECT_TRUE(result);
+
+  const auto &annotations = output.annotations();
+
+  bool found_annotation_at_0 = false;
+  bool found_annotation_at_2 = false;
+  bool found_annotation_at_1 = false;
+
+  for (const auto &entry : annotations) {
+    if (entry.first.instance_location.size() == 1) {
+      if (entry.first.instance_location.at(0).is_index() &&
+          entry.first.instance_location.at(0).to_index() == 0) {
+        found_annotation_at_0 = true;
+      }
+      if (entry.first.instance_location.at(0).is_index() &&
+          entry.first.instance_location.at(0).to_index() == 1) {
+        found_annotation_at_1 = true;
+      }
+      if (entry.first.instance_location.at(0).is_index() &&
+          entry.first.instance_location.at(0).to_index() == 2) {
+        found_annotation_at_2 = true;
+      }
+    }
+  }
+
+  EXPECT_FALSE(found_annotation_at_0);
+  EXPECT_TRUE(found_annotation_at_1);
+  EXPECT_FALSE(found_annotation_at_2);
+}
