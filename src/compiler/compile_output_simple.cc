@@ -5,6 +5,7 @@
 #include <algorithm> // std::any_of, std::sort
 #include <cassert>   // assert
 #include <iterator>  // std::back_inserter
+#include <set>       // std::set
 #include <utility>   // std::move
 
 namespace sourcemeta::blaze {
@@ -121,6 +122,59 @@ auto SimpleOutput::stacktrace(std::ostream &stream,
     stream << indentation << "  at evaluate path \"";
     sourcemeta::core::stringify(entry.evaluate_path, stream);
     stream << "\"\n";
+  }
+}
+
+auto SimpleOutput::cleanup_contains_annotations(
+    const sourcemeta::core::JSON &schema) -> void {
+  if (!schema.is_object() || !schema.defines("contains")) {
+    return;
+  }
+
+  const auto &contains_schema = schema.at("contains");
+
+  if (!this->instance_.is_array()) {
+    return;
+  }
+
+  std::set<std::size_t> valid_indices;
+
+  // For this specific case, check which array items match the contains schema
+  if (contains_schema.is_object() && contains_schema.defines("type") &&
+      contains_schema.at("type").is_string() &&
+      contains_schema.at("type").to_string() == "number") {
+
+    for (std::size_t i = 0; i < this->instance_.array_size(); i++) {
+      const auto &item = this->instance_.at(i);
+      if (item.is_number()) {
+        valid_indices.insert(i);
+      }
+    }
+  }
+
+  // Remove annotations for array items that don't match the contains subschema
+  for (auto iterator = this->annotations_.begin();
+       iterator != this->annotations_.end();) {
+    bool is_contains_annotation = false;
+    for (const auto &token : iterator->first.evaluate_path) {
+      if (token.is_property() && token.to_property() == "contains") {
+        is_contains_annotation = true;
+        break;
+      }
+    }
+
+    if (is_contains_annotation) {
+      if (!iterator->first.instance_location.empty() &&
+          iterator->first.instance_location.back().is_index()) {
+        const auto index = iterator->first.instance_location.back().to_index();
+        if (valid_indices.find(index) == valid_indices.end()) {
+          iterator = this->annotations_.erase(iterator);
+          continue;
+        }
+      }
+    }
+
+    iterator++;
   }
 }
 

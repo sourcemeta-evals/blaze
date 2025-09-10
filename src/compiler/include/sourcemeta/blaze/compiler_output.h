@@ -116,6 +116,10 @@ public:
   auto stacktrace(std::ostream &stream,
                   const std::string &indentation = "") const -> void;
 
+  /// Clean up annotations for failed contains evaluations
+  auto cleanup_contains_annotations(const sourcemeta::core::JSON &schema)
+      -> void;
+
 private:
 // Exporting symbols that depends on the standard C++ library is considered
 // safe.
