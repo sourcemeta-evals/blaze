@@ -4,9 +4,7 @@
 
 #include <algorithm> // std::any_of, std::sort
 #include <cassert>   // assert
-#include <iostream>  // std::cout
 #include <iterator>  // std::back_inserter
-#include <set>       // std::set
 #include <utility>   // std::move
 
 namespace sourcemeta::blaze {
