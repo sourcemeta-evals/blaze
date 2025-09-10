@@ -4,6 +4,7 @@
 
 #include <algorithm> // std::any_of, std::sort
 #include <cassert>   // assert
+#include <iostream>  // std::cout
 #include <iterator>  // std::back_inserter
 #include <utility>   // std::move
 
@@ -79,11 +80,32 @@ auto SimpleOutput::operator()(
     return;
   }
 
-  if (std::any_of(this->mask.cbegin(), this->mask.cend(),
-                  [&evaluate_path](const auto &entry) {
-                    return evaluate_path.starts_with(entry.first) &&
-                           !entry.second;
-                  })) {
+  // Check if we should skip annotation dropping due to masking
+  // Special handling for contains: we still want to drop annotations for
+  // specific instance locations that fail, even though contains has a false
+  // mask
+  bool skip_due_to_mask = false;
+  bool is_contains_failure = false;
+
+  for (const auto &entry : this->mask) {
+    if (evaluate_path.starts_with(entry.first) && !entry.second) {
+      // Check if this is a contains subschema
+      for (std::size_t i = 0; i < entry.first.size(); i++) {
+        if (entry.first.at(i).is_property() &&
+            entry.first.at(i).to_property() == "contains") {
+          is_contains_failure = true;
+          break;
+        }
+      }
+
+      if (!is_contains_failure) {
+        skip_due_to_mask = true;
+        break;
+      }
+    }
+  }
+
+  if (skip_due_to_mask) {
     return;
   }
 
@@ -91,7 +113,31 @@ auto SimpleOutput::operator()(
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
       if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
-        iterator = this->annotations_.erase(iterator);
+        // Check if the annotation being considered for dropping is from a
+        // contains subschema
+        bool annotation_is_from_contains = false;
+        for (std::size_t i = 0; i < iterator->first.evaluate_path.size(); i++) {
+          if (iterator->first.evaluate_path.at(i).is_property() &&
+              iterator->first.evaluate_path.at(i).to_property() == "contains") {
+            annotation_is_from_contains = true;
+            break;
+          }
+        }
+
+        if (annotation_is_from_contains) {
+          // For annotations from contains subschemas, only drop them if they
+          // are at the specific instance_location that failed (the current
+          // instance_location)
+          if (iterator->first.instance_location == instance_location) {
+            iterator = this->annotations_.erase(iterator);
+          } else {
+            iterator++;
+          }
+        } else {
+          // For non-contains annotations, use original logic (drop all
+          // matching)
+          iterator = this->annotations_.erase(iterator);
+        }
       } else {
         iterator++;
       }
