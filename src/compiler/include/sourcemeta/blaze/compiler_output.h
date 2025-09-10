@@ -97,7 +97,67 @@ public:
 
   /// Access annotations that were collected during evaluation, indexed by
   /// instance location and evaluation path
-  auto annotations() const -> const auto & { return this->annotations_; }
+  auto annotations() const -> const auto & {
+    // Filter out annotations from failed contains items
+    static thread_local std::map<Location, std::vector<sourcemeta::core::JSON>>
+        filtered_annotations;
+    filtered_annotations.clear();
+
+    for (const auto &[location, annotation_list] : this->annotations_) {
+      bool should_include = true;
+
+      // Check if this annotation is from a contains subschema
+      bool is_contains_annotation = false;
+      sourcemeta::core::WeakPointer contains_path;
+      for (std::size_t i = 0; i < location.evaluate_path.size(); i++) {
+        const auto &token = location.evaluate_path.at(i);
+        if (token.is_property() && token.to_property() == "contains") {
+          is_contains_annotation = true;
+          // Create a path up to and including the contains keyword
+          contains_path = location.evaluate_path;
+          while (contains_path.size() > i + 1) {
+            contains_path.pop_back();
+          }
+          break;
+        }
+      }
+
+      if (is_contains_annotation) {
+        // Check if this instance location was successful for this contains
+        // evaluation
+        bool found_success = false;
+
+        if (location.instance_location.empty()) {
+          // For contains annotations at the root level (empty instance
+          // location), include them if ANY item was successful for this
+          // contains path
+          for (const auto &success_entry : this->successful_contains_items) {
+            if (success_entry.first == contains_path) {
+              found_success = true;
+              break;
+            }
+          }
+        } else {
+          // For contains annotations at specific instance locations,
+          // only include if that specific location was successful
+          for (const auto &success_entry : this->successful_contains_items) {
+            if (success_entry.first == contains_path &&
+                success_entry.second == location.instance_location) {
+              found_success = true;
+              break;
+            }
+          }
+        }
+        should_include = found_success;
+      }
+
+      if (should_include) {
+        filtered_annotations[location] = annotation_list;
+      }
+    }
+
+    return filtered_annotations;
+  }
 
   struct Location {
     auto operator<(const Location &other) const noexcept -> bool {
@@ -128,6 +188,9 @@ private:
   container_type output;
   std::map<sourcemeta::core::WeakPointer, bool> mask;
   std::map<Location, std::vector<sourcemeta::core::JSON>> annotations_;
+  std::set<
+      std::pair<sourcemeta::core::WeakPointer, sourcemeta::core::WeakPointer>>
+      successful_contains_items;
 #if defined(_MSC_VER)
 #pragma warning(default : 4251)
 #endif

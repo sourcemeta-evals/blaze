@@ -44,6 +44,7 @@ auto SimpleOutput::operator()(
 
   if (is_annotation(step.type)) {
     if (type == EvaluationType::Post) {
+
       Location location{instance_location, std::move(effective_evaluate_path),
                         step.keyword_location};
       const auto match{this->annotations_.find(location)};
@@ -63,6 +64,7 @@ auto SimpleOutput::operator()(
   if (type == EvaluationType::Pre) {
     assert(result);
     const auto &keyword{evaluate_path.back().to_property()};
+
     // To ease the output
     if (keyword == "anyOf" || keyword == "oneOf" || keyword == "not" ||
         keyword == "if") {
@@ -70,9 +72,37 @@ auto SimpleOutput::operator()(
     } else if (keyword == "contains") {
       this->mask.emplace(evaluate_path, false);
     }
-  } else if (type == EvaluationType::Post &&
-             this->mask.contains(evaluate_path)) {
-    this->mask.erase(evaluate_path);
+  } else if (type == EvaluationType::Post) {
+    // Check if this evaluation is related to any mask entry
+    bool is_masked_evaluation = this->mask.contains(evaluate_path);
+    bool is_contains_subschema = false;
+    sourcemeta::core::WeakPointer contains_mask_path;
+
+    // Also check if this is a subschema evaluation within a contains context
+    if (!is_masked_evaluation) {
+      for (const auto &mask_entry : this->mask) {
+        if (mask_entry.first.back().is_property() &&
+            mask_entry.first.back().to_property() == "contains" &&
+            evaluate_path.starts_with_initial(mask_entry.first)) {
+          is_contains_subschema = true;
+          contains_mask_path = mask_entry.first;
+          break;
+        }
+      }
+    }
+
+    if (is_masked_evaluation || is_contains_subschema) {
+      // Track successful contains item evaluations
+      if (result && !instance_location.empty() && is_contains_subschema) {
+        // This specific instance location passed a subschema within contains
+        this->successful_contains_items.emplace(contains_mask_path,
+                                                instance_location);
+      }
+
+      if (is_masked_evaluation) {
+        this->mask.erase(evaluate_path);
+      }
+    }
   }
 
   if (result) {
@@ -88,9 +118,41 @@ auto SimpleOutput::operator()(
   }
 
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
+    // Check if this is a contains subschema evaluation that failed
+    bool is_contains_subschema = false;
+    sourcemeta::core::WeakPointer contains_path;
+
+    // Look for a contains keyword in the evaluate path
+    for (std::size_t i = 0; i < evaluate_path.size(); i++) {
+      if (evaluate_path.at(i).is_property() &&
+          evaluate_path.at(i).to_property() == "contains") {
+        is_contains_subschema = true;
+        // Get the path up to and including the contains keyword
+        contains_path = evaluate_path;
+        while (contains_path.size() > i + 1) {
+          contains_path.pop_back();
+        }
+        break;
+      }
+    }
+
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
+      bool should_drop = false;
+
       if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+        if (is_contains_subschema && !instance_location.empty()) {
+          // For contains subschema failures, only drop annotations for the
+          // specific instance location that failed
+          should_drop =
+              (iterator->first.instance_location == instance_location);
+        } else {
+          // For other failures, drop all annotations under the evaluate path
+          should_drop = true;
+        }
+      }
+
+      if (should_drop) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;

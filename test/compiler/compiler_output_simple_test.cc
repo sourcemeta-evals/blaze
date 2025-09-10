@@ -915,3 +915,46 @@ TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
     at evaluate path "/properties/foo/unevaluatedProperties"
 )JSON");
 }
+
+TEST(Compiler_output_simple, contains_title_annotation_bug) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "number",
+      "title": "Test" 
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("[ \"foo\", 42, true ]")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+  EXPECT_TRUE(result);
+
+  // The bug: SimpleOutput should only retain title annotations for items
+  // that successfully match the contains subschema (only /1 in this case)
+
+  std::vector<std::size_t> title_annotation_indices;
+  for (const auto &[location, annotations] : output.annotations()) {
+    if (location.evaluate_path.back().to_property() == "title") {
+      if (location.instance_location.size() == 1) {
+        title_annotation_indices.push_back(
+            location.instance_location.back().to_index());
+      }
+    }
+  }
+
+  EXPECT_EQ(title_annotation_indices.size(), 1);
+  if (!title_annotation_indices.empty()) {
+    EXPECT_EQ(title_annotation_indices[0], 1);
+  }
+}
