@@ -99,6 +99,9 @@ public:
   /// instance location and evaluation path
   auto annotations() const -> const auto & { return this->annotations_; }
 
+  /// Clean up contains-related annotations for array items that didn't match
+  auto cleanup_contains_annotations() -> void;
+
   struct Location {
     auto operator<(const Location &other) const noexcept -> bool {
       // Perform a lexicographical comparison
