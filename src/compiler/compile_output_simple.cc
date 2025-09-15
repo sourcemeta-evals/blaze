@@ -5,6 +5,7 @@
 #include <algorithm> // std::any_of, std::sort
 #include <cassert>   // assert
 #include <iterator>  // std::back_inserter
+#include <optional>  // std::optional
 #include <utility>   // std::move
 
 namespace sourcemeta::blaze {
@@ -72,6 +73,59 @@ auto SimpleOutput::operator()(
     }
   } else if (type == EvaluationType::Post &&
              this->mask.contains(evaluate_path)) {
+    // Special handling for contains: clean up annotations from failed
+    // validations
+    if (evaluate_path.back().is_property() &&
+        evaluate_path.back().to_property() == "contains" &&
+        !this->annotations_.empty()) {
+
+      // For contains, we need to clean up annotations from items that didn't
+      // match We do this by checking if there's a successful contains
+      // annotation
+      bool contains_succeeded = false;
+      std::optional<sourcemeta::core::JSON> contains_annotation_value;
+
+      // Find the contains annotation to see which item(s) matched
+      for (const auto &[location, entries] : this->annotations_) {
+        if (location.evaluate_path.back().is_property() &&
+            location.evaluate_path.back().to_property() == "contains" &&
+            location.instance_location.empty()) {
+          contains_succeeded = true;
+          if (!entries.empty()) {
+            contains_annotation_value = entries.back();
+          }
+          break;
+        }
+      }
+
+      if (contains_succeeded && contains_annotation_value &&
+          contains_annotation_value->is_integer()) {
+        // Clean up annotations from non-matching items
+        const auto matching_index = contains_annotation_value->to_integer();
+        for (auto iterator = this->annotations_.begin();
+             iterator != this->annotations_.end();) {
+          // Check if this annotation is from a contains subschema
+          if (iterator->first.evaluate_path.starts_with_initial(
+                  evaluate_path) &&
+              !iterator->first.instance_location.empty()) {
+
+            // Extract the array index from the instance location
+            const auto &instance_loc = iterator->first.instance_location;
+            if (instance_loc.size() == 1 && instance_loc.back().is_index()) {
+              const auto item_index =
+                  static_cast<std::int64_t>(instance_loc.back().to_index());
+              // Remove annotation if it's not from the matching item
+              if (item_index != matching_index) {
+                iterator = this->annotations_.erase(iterator);
+                continue;
+              }
+            }
+          }
+          iterator++;
+        }
+      }
+    }
+
     this->mask.erase(evaluate_path);
   }
 
@@ -87,10 +141,12 @@ auto SimpleOutput::operator()(
     return;
   }
 
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+  if (type == EvaluationType::Post && !result && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+          iterator->first.instance_location.starts_with_initial(
+              instance_location)) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
