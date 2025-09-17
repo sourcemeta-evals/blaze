@@ -35,13 +35,22 @@ auto ValidExamples::condition(
       !vocabularies.contains(
           "https://json-schema.org/draft/2019-09/vocab/meta-data") &&
       !vocabularies.contains("http://json-schema.org/draft-07/schema#") &&
-      !vocabularies.contains("http://json-schema.org/draft-06/schema#")) {
+      !vocabularies.contains("http://json-schema.org/draft-06/schema#") &&
+      !vocabularies.contains("http://json-schema.org/draft-04/schema#")) {
     return false;
   }
 
   if (!schema.is_object() || !schema.defines("examples") ||
       !schema.at("examples").is_array() || schema.at("examples").empty()) {
     return false;
+  }
+
+  // In Draft 7 and older, siblings to $ref must be ignored per JSON Schema spec
+  if (schema.defines("$ref") &&
+      (vocabularies.contains("http://json-schema.org/draft-07/schema#") ||
+       vocabularies.contains("http://json-schema.org/draft-06/schema#") ||
+       vocabularies.contains("http://json-schema.org/draft-04/schema#"))) {
+    return false; // Skip validation for $ref siblings in older drafts
   }
 
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
