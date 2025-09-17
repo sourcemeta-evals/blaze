@@ -26,6 +26,10 @@ public:
 
     std::vector<Pointer> locations;
     for (const auto &entry : schema.as_object()) {
+      if (entry.first == "default" || entry.first == "examples") {
+        continue;
+      }
+      
       const auto metadata{walker(entry.first, vocabularies)};
       if (metadata.type == sourcemeta::core::SchemaKeywordType::Other ||
           metadata.type == sourcemeta::core::SchemaKeywordType::Reference) {
