@@ -36,6 +36,10 @@ auto ValidDefault::condition(
     return false;
   }
 
+  if (vocabularies.size() == 1) {
+    return false;
+  }
+
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
                                     .value_or(location)
                                     .get()
