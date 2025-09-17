@@ -5,6 +5,8 @@
 #include <sourcemeta/core/json.h>
 #include <sourcemeta/core/jsonschema.h>
 
+#include <iostream>
+
 static auto transformer_callback_error(const sourcemeta::core::Pointer &,
                                        const std::string_view,
                                        const std::string_view,
@@ -614,4 +616,35 @@ TEST(Linter, valid_examples_13) {
   })JSON")};
 
   EXPECT_EQ(schema, expected);
+}
+
+TEST(Linter, DISABLED_valid_examples_14) {
+  for (std::size_t index = 0; index < 10; index++) {
+    std::cerr << index << "\n";
+    sourcemeta::core::SchemaTransformer bundle;
+    bundle.add<sourcemeta::blaze::ValidExamples>(
+        sourcemeta::blaze::default_schema_compiler);
+
+    auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "foo": { "type": "string", "examples": [ "bar" ] }
+    }
+  })JSON")};
+
+    const auto result = bundle.apply(
+        schema, sourcemeta::core::schema_official_walker,
+        sourcemeta::core::schema_official_resolver, transformer_callback_error);
+
+    EXPECT_TRUE(result);
+
+    const auto expected{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "foo": { "type": "string", "examples": [ "bar" ] }
+    }
+  })JSON")};
+
+    EXPECT_EQ(schema, expected);
+  }
 }

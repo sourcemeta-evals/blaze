@@ -28,7 +28,7 @@ auto ValidExamples::condition(
     const sourcemeta::core::SchemaFrame &frame,
     const sourcemeta::core::SchemaFrame::Location &location,
     const sourcemeta::core::SchemaWalker &walker,
-    const sourcemeta::core::SchemaResolver &resolver) const
+    const sourcemeta::core::SchemaResolver &schema_resolver) const
     -> sourcemeta::core::SchemaTransformRule::Result {
   if (!vocabularies.contains(
           "https://json-schema.org/draft/2020-12/vocab/meta-data") &&
@@ -44,6 +44,15 @@ auto ValidExamples::condition(
     return false;
   }
 
+  // We have to ignore siblings to `$ref`
+  if (vocabularies.contains("http://json-schema.org/draft-07/schema#") ||
+      vocabularies.contains("http://json-schema.org/draft-06/schema#") ||
+      vocabularies.contains("http://json-schema.org/draft-04/schema#")) {
+    if (schema.defines("$ref")) {
+      return false;
+    }
+  }
+
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
                                     .value_or(location)
                                     .get()
@@ -56,9 +65,9 @@ auto ValidExamples::condition(
     default_id = std::nullopt;
   }
 
-  const auto subschema{sourcemeta::core::wrap(root, location.pointer, resolver,
-                                              location.dialect)};
-  const auto schema_template{compile(subschema, walker, resolver,
+  const auto subschema{sourcemeta::core::wrap(
+      root, location.pointer, schema_resolver, location.dialect)};
+  const auto schema_template{compile(subschema, walker, schema_resolver,
                                      this->compiler_, Mode::FastValidation,
                                      location.dialect, default_id)};
 
