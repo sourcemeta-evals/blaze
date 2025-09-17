@@ -1,5 +1,7 @@
 #include <sourcemeta/blaze/evaluator.h>
 #include <sourcemeta/blaze/linter.h>
+#include <sourcemeta/core/jsonschema.h>
+#include <sourcemeta/core/jsonschema_frame.h>
 
 #include <functional> // std::ref, std::cref
 #include <sstream>    // std::ostringstream
@@ -33,6 +35,19 @@ auto ValidDefault::condition(
   }
 
   if (!schema.is_object() || !schema.defines("default")) {
+    return false;
+  }
+
+  // In older drafts, $ref overrides sibling keywords including default
+  if (schema.defines("$ref") &&
+      (location.dialect == "http://json-schema.org/draft-07/schema#" ||
+       location.dialect == "http://json-schema.org/draft-07/hyper-schema#" ||
+       location.dialect == "http://json-schema.org/draft-06/schema#" ||
+       location.dialect == "http://json-schema.org/draft-06/hyper-schema#" ||
+       location.dialect == "http://json-schema.org/draft-04/schema#" ||
+       location.dialect == "http://json-schema.org/draft-04/hyper-schema#" ||
+       location.dialect == "http://json-schema.org/draft-03/schema#" ||
+       location.dialect == "http://json-schema.org/draft-03/hyper-schema#")) {
     return false;
   }
 
