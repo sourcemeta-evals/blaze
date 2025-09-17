@@ -1,5 +1,6 @@
 #include <sourcemeta/blaze/evaluator.h>
 #include <sourcemeta/blaze/linter.h>
+#include <sourcemeta/core/jsonschema.h>
 
 #include <functional> // std::ref, std::cref
 #include <sstream>    // std::ostringstream
@@ -34,6 +35,22 @@ auto ValidDefault::condition(
 
   if (!schema.is_object() || !schema.defines("default")) {
     return false;
+  }
+
+  // In Draft 7 and older, $ref siblings are ignored, so we should not lint them
+  if (schema.defines("$ref")) {
+    const auto &base_dialect = location.dialect;
+    // Check if this is a draft version where $ref overrides adjacent keywords
+    if (base_dialect == "http://json-schema.org/draft-07/schema#" ||
+        base_dialect == "http://json-schema.org/draft-07/hyper-schema#" ||
+        base_dialect == "http://json-schema.org/draft-06/schema#" ||
+        base_dialect == "http://json-schema.org/draft-06/hyper-schema#" ||
+        base_dialect == "http://json-schema.org/draft-04/schema#" ||
+        base_dialect == "http://json-schema.org/draft-04/hyper-schema#" ||
+        base_dialect == "http://json-schema.org/draft-03/schema#" ||
+        base_dialect == "http://json-schema.org/draft-03/hyper-schema#") {
+      return false;
+    }
   }
 
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
