@@ -44,7 +44,11 @@ auto ValidExamples::condition(
   // We have to ignore siblings to `$ref`
   if (vocabularies.contains("http://json-schema.org/draft-07/schema#") ||
       vocabularies.contains("http://json-schema.org/draft-06/schema#") ||
-      vocabularies.contains("http://json-schema.org/draft-04/schema#")) {
+      vocabularies.contains("http://json-schema.org/draft-04/schema#") ||
+      vocabularies.contains("http://json-schema.org/draft-03/schema#") ||
+      vocabularies.contains("http://json-schema.org/draft-02/schema#") ||
+      vocabularies.contains("http://json-schema.org/draft-01/schema#") ||
+      vocabularies.contains("http://json-schema.org/draft-00/schema#")) {
     if (schema.defines("$ref")) {
       return false;
     }
