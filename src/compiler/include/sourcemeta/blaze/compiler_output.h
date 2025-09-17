@@ -116,6 +116,9 @@ public:
   auto stacktrace(std::ostream &stream,
                   const std::string &indentation = "") const -> void;
 
+  // Clean up annotations from failed contains subschemas
+  auto cleanup_failed_contains_annotations() -> void;
+
 private:
 // Exporting symbols that depends on the standard C++ library is considered
 // safe.
@@ -128,6 +131,9 @@ private:
   container_type output;
   std::map<sourcemeta::core::WeakPointer, bool> mask;
   std::map<Location, std::vector<sourcemeta::core::JSON>> annotations_;
+  std::set<
+      std::pair<sourcemeta::core::WeakPointer, sourcemeta::core::WeakPointer>>
+      failed_validations_;
 #if defined(_MSC_VER)
 #pragma warning(default : 4251)
 #endif

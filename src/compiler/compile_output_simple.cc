@@ -4,7 +4,9 @@
 
 #include <algorithm> // std::any_of, std::sort
 #include <cassert>   // assert
+#include <iostream>  // std::cerr
 #include <iterator>  // std::back_inserter
+#include <set>       // std::set
 #include <utility>   // std::move
 
 namespace sourcemeta::blaze {
@@ -87,6 +89,11 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // Record failed validation for annotation filtering
+  if (type == EvaluationType::Post) {
+    this->failed_validations_.emplace(instance_location, evaluate_path);
+  }
+
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
@@ -121,6 +128,89 @@ auto SimpleOutput::stacktrace(std::ostream &stream,
     stream << indentation << "  at evaluate path \"";
     sourcemeta::core::stringify(entry.evaluate_path, stream);
     stream << "\"\n";
+  }
+}
+
+auto SimpleOutput::cleanup_failed_contains_annotations() -> void {
+  // Only proceed if there are contains-related annotations
+  bool has_contains_annotations = false;
+  for (const auto &annotation : this->annotations_) {
+    for (std::size_t i = 0; i < annotation.first.evaluate_path.size(); ++i) {
+      if (annotation.first.evaluate_path.at(i).is_property() &&
+          annotation.first.evaluate_path.at(i).to_property() == "contains") {
+        has_contains_annotations = true;
+        break;
+      }
+    }
+    if (has_contains_annotations)
+      break;
+  }
+
+  if (!has_contains_annotations) {
+    return;
+  }
+
+  // Find the contains annotation at root level to determine which indices
+  // succeeded
+  std::set<int> successful_indices;
+
+  for (const auto &annotation : this->annotations_) {
+    // Look for contains annotation at root level (empty instance location)
+    if (annotation.first.instance_location.empty() &&
+        annotation.first.evaluate_path.size() >= 1 &&
+        annotation.first.evaluate_path.back().is_property() &&
+        annotation.first.evaluate_path.back().to_property() == "contains") {
+
+      // Extract successful indices from the contains annotation values
+      for (const auto &value : annotation.second) {
+        if (value.is_integer()) {
+          int index = static_cast<int>(value.to_integer());
+          successful_indices.insert(index);
+        }
+      }
+      break;
+    }
+  }
+
+  // Remove annotations from instance locations that are not in
+  // successful_indices
+  for (auto iterator = this->annotations_.begin();
+       iterator != this->annotations_.end();) {
+    bool should_drop = false;
+
+    // Check if this is a contains-related annotation at a specific instance
+    // location
+    if (!iterator->first.instance_location.empty() &&
+        iterator->first.instance_location.size() == 1 &&
+        iterator->first.instance_location.at(0).is_index()) {
+
+      // Check if the evaluate path contains "contains"
+      bool is_contains_annotation = false;
+      for (std::size_t i = 0; i < iterator->first.evaluate_path.size(); ++i) {
+        if (iterator->first.evaluate_path.at(i).is_property() &&
+            iterator->first.evaluate_path.at(i).to_property() == "contains") {
+          is_contains_annotation = true;
+          break;
+        }
+      }
+
+      if (is_contains_annotation) {
+        // Get the array index from the instance location
+        int array_index = static_cast<int>(
+            iterator->first.instance_location.at(0).to_index());
+
+        // Drop annotation if this index is not in the successful set
+        if (successful_indices.find(array_index) == successful_indices.end()) {
+          should_drop = true;
+        }
+      }
+    }
+
+    if (should_drop) {
+      iterator = this->annotations_.erase(iterator);
+    } else {
+      iterator++;
+    }
   }
 }
 
