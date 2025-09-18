@@ -84,6 +84,33 @@ auto SimpleOutput::operator()(
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
+    // When a validation fails under a contains mask, remove annotations
+    // for the same instance location that were added under the contains path
+    if (type == EvaluationType::Post && !result &&
+        !this->annotations_.empty()) {
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        // Remove annotations for the same instance location under contains
+        if (iterator->first.instance_location == instance_location) {
+          // Check if this annotation is under a contains path
+          bool is_under_contains = false;
+          for (const auto &token : iterator->first.evaluate_path) {
+            if (token.is_property() && token.to_property() == "contains") {
+              is_under_contains = true;
+              break;
+            }
+          }
+
+          if (is_under_contains) {
+            iterator = this->annotations_.erase(iterator);
+          } else {
+            iterator++;
+          }
+        } else {
+          iterator++;
+        }
+      }
+    }
     return;
   }
 

@@ -2204,3 +2204,56 @@ TEST(Evaluator_2020_12, propertyNames_1_exhaustive) {
                                "The object property \"foo\" was expected to "
                                "validate against the given subschema");
 }
+
+TEST(Evaluator_2020_12, contains_annotation_filtering_simpleoutput) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "number",
+      "title": "Test" 
+    }
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("[ \"foo\", 42, true ]")};
+
+  // Use Exhaustive mode like the working contains_2_exhaustive test
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+
+  EXPECT_TRUE(result);
+
+  const auto &annotations = output.annotations();
+
+  bool found_annotation_for_index_1 = false;
+  bool found_annotation_for_index_0 = false;
+  bool found_annotation_for_index_2 = false;
+
+  for (const auto &[location, annotation_list] : annotations) {
+    if (location.instance_location.size() == 1 &&
+        location.instance_location.at(0).is_index()) {
+      const auto index = location.instance_location.at(0).to_index();
+      if (index == 0) {
+        found_annotation_for_index_0 = true;
+      } else if (index == 1) {
+        found_annotation_for_index_1 = true;
+        EXPECT_EQ(annotation_list.size(), 1);
+        EXPECT_EQ(annotation_list[0], sourcemeta::core::JSON{"Test"});
+      } else if (index == 2) {
+        found_annotation_for_index_2 = true;
+      }
+    }
+  }
+
+  EXPECT_TRUE(found_annotation_for_index_1);
+  EXPECT_FALSE(found_annotation_for_index_0);
+  EXPECT_FALSE(found_annotation_for_index_2);
+}
