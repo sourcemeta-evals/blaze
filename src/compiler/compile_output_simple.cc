@@ -70,9 +70,68 @@ auto SimpleOutput::operator()(
     } else if (keyword == "contains") {
       this->mask.emplace(evaluate_path, false);
     }
-  } else if (type == EvaluationType::Post &&
-             this->mask.contains(evaluate_path)) {
-    this->mask.erase(evaluate_path);
+  } else if (type == EvaluationType::Post) {
+    if (this->mask.contains(evaluate_path)) {
+      this->mask.erase(evaluate_path);
+    }
+    // Track individual item evaluation results for contains subschemas
+    if (!evaluate_path.empty()) {
+      // Check if this evaluation is under a contains path
+      for (const auto &[mask_path, _] : this->mask) {
+        if (!mask_path.empty() &&
+            mask_path.back().to_property() == "contains" &&
+            evaluate_path.starts_with_initial(mask_path)) {
+          // This is an evaluation under a contains path, track the result per
+          // instance location
+          this->location_mask[std::make_pair(mask_path, instance_location)] =
+              result;
+          break;
+        }
+      }
+    }
+  }
+
+  // Handle annotation dropping for contains failures regardless of result
+  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+    for (auto iterator = this->annotations_.begin();
+         iterator != this->annotations_.end();) {
+      bool should_drop = false;
+
+      // Check if this annotation should be dropped due to contains failure
+      for (const auto &[location_key, success] : this->location_mask) {
+        const auto &[eval_path, inst_loc] = location_key;
+        if (!success &&
+            iterator->first.evaluate_path.starts_with_initial(eval_path) &&
+            iterator->first.instance_location == inst_loc) {
+          should_drop = true;
+          break;
+        }
+      }
+
+      // Original logic for other cases (only when result is false)
+      // Skip this logic if we're in a contains evaluation, as that's handled
+      // above
+      bool is_contains_evaluation = false;
+      for (const auto &[mask_path, _] : this->mask) {
+        if (!mask_path.empty() &&
+            mask_path.back().to_property() == "contains" &&
+            evaluate_path.starts_with_initial(mask_path)) {
+          is_contains_evaluation = true;
+          break;
+        }
+      }
+
+      if (!should_drop && !result && !is_contains_evaluation &&
+          iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+        should_drop = true;
+      }
+
+      if (should_drop) {
+        iterator = this->annotations_.erase(iterator);
+      } else {
+        iterator++;
+      }
+    }
   }
 
   if (result) {
@@ -85,17 +144,6 @@ auto SimpleOutput::operator()(
                            !entry.second;
                   })) {
     return;
-  }
-
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
-    for (auto iterator = this->annotations_.begin();
-         iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
-        iterator = this->annotations_.erase(iterator);
-      } else {
-        iterator++;
-      }
-    }
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
