@@ -84,6 +84,24 @@ auto SimpleOutput::operator()(
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
+    if (type == EvaluationType::Post && !result &&
+        !this->annotations_.empty()) {
+      for (const auto &entry : this->mask) {
+        if (evaluate_path.starts_with(entry.first) && !entry.second) {
+          for (auto iterator = this->annotations_.begin();
+               iterator != this->annotations_.end();) {
+            if (iterator->first.evaluate_path.starts_with_initial(
+                    entry.first) &&
+                iterator->first.instance_location == instance_location) {
+              iterator = this->annotations_.erase(iterator);
+            } else {
+              iterator++;
+            }
+          }
+          break;
+        }
+      }
+    }
     return;
   }
 
