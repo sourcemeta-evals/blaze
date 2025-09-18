@@ -72,6 +72,50 @@ auto SimpleOutput::operator()(
     }
   } else if (type == EvaluationType::Post &&
              this->mask.contains(evaluate_path)) {
+    const auto &keyword{evaluate_path.back().to_property()};
+    if (keyword == "contains") {
+      // For contains, clean up annotations from failed subschema evaluations
+      // We need to check which array indices had successful matches by looking
+      // at the contains annotation
+      Location contains_location{sourcemeta::core::WeakPointer{}, evaluate_path,
+                                 step.keyword_location};
+
+      std::set<std::size_t> successful_indices;
+      const auto contains_annotation_iter =
+          this->annotations_.find(contains_location);
+      if (contains_annotation_iter != this->annotations_.end()) {
+        // Extract successful indices from the contains annotation
+        for (const auto &annotation_value : contains_annotation_iter->second) {
+          if (annotation_value.is_integer() &&
+              annotation_value.to_integer() >= 0) {
+            successful_indices.insert(
+                static_cast<std::size_t>(annotation_value.to_integer()));
+          }
+        }
+      }
+
+      // Remove annotations from failed contains subschema evaluations
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+            iterator->first.evaluate_path.size() > evaluate_path.size() &&
+            !iterator->first.instance_location.empty()) {
+
+          // Check if this annotation is from an array index that didn't match
+          if (iterator->first.instance_location.size() == 1 &&
+              iterator->first.instance_location.at(0).is_index()) {
+            const auto index =
+                iterator->first.instance_location.at(0).to_index();
+            if (successful_indices.find(index) == successful_indices.end()) {
+              // This annotation is from a failed contains match, remove it
+              iterator = this->annotations_.erase(iterator);
+              continue;
+            }
+          }
+        }
+        iterator++;
+      }
+    }
     this->mask.erase(evaluate_path);
   }
 
