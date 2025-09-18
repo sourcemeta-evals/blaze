@@ -79,12 +79,23 @@ auto SimpleOutput::operator()(
     return;
   }
 
-  if (std::any_of(this->mask.cbegin(), this->mask.cend(),
-                  [&evaluate_path](const auto &entry) {
-                    return evaluate_path.starts_with(entry.first) &&
-                           !entry.second;
-                  })) {
-    return;
+  for (const auto &entry : this->mask) {
+    if (evaluate_path.starts_with(entry.first) && !entry.second) {
+      // Masked group like "contains": before suppressing the failure,
+      // drop annotations for this instance item under the masked path.
+      if (type == EvaluationType::Post && !this->annotations_.empty()) {
+        for (auto it = this->annotations_.begin();
+             it != this->annotations_.end();) {
+          if (it->first.instance_location == instance_location &&
+              it->first.evaluate_path.starts_with_initial(entry.first)) {
+            it = this->annotations_.erase(it);
+          } else {
+            ++it;
+          }
+        }
+      }
+      return;
+    }
   }
 
   if (type == EvaluationType::Post && !this->annotations_.empty()) {

@@ -915,3 +915,60 @@ TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
     at evaluate path "/properties/foo/unevaluatedProperties"
 )JSON");
 }
+
+TEST(Compiler_output_simple, annotations_contains_title_filtered_per_item) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": {
+      "type": "number",
+      "title": "Test"
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON([ "foo", 42, true ])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+
+  // contains should pass because of 42
+  EXPECT_TRUE(result);
+
+  // Collect only annotations under /contains/title and check by instance item
+  bool found0 = false, found1 = false, found2 = false;
+  std::size_t count_title = 0;
+
+  for (const auto &entry : output.annotations()) {
+    const auto eval_path =
+        sourcemeta::core::to_string(entry.first.evaluate_path);
+    const auto inst_loc =
+        sourcemeta::core::to_string(entry.first.instance_location);
+    if (eval_path == "/contains/title") {
+      count_title++;
+      if (inst_loc == "/0")
+        found0 = true;
+      if (inst_loc == "/1")
+        found1 = true;
+      if (inst_loc == "/2")
+        found2 = true;
+
+      // The only title value is "Test"
+      ASSERT_FALSE(entry.second.empty());
+      EXPECT_EQ(entry.second.at(0), sourcemeta::core::JSON{"Test"});
+    }
+  }
+
+  // Only the matching item (/1) should retain the annotation
+  EXPECT_EQ(count_title, 1U);
+  EXPECT_FALSE(found0);
+  EXPECT_TRUE(found1);
+  EXPECT_FALSE(found2);
+}
