@@ -915,3 +915,64 @@ TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
     at evaluate path "/properties/foo/unevaluatedProperties"
 )JSON");
 }
+
+TEST(Compiler_output_simple, annotations_contains_drops_failed_items) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": {
+      "type": "number",
+      "title": "Test"
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON(["foo", 42, true])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+
+  EXPECT_TRUE(result);
+
+  const auto &annotations = output.annotations();
+
+  std::size_t count_at_0 = 0, count_at_1 = 0, count_at_2 = 0;
+  for (const auto &kv : annotations) {
+    const auto &loc = kv.first;
+    if (sourcemeta::core::to_string(loc.evaluate_path) == "/contains/title") {
+      const auto inst = sourcemeta::core::to_string(loc.instance_location);
+      if (inst == "/0")
+        count_at_0 += kv.second.size();
+      if (inst == "/1")
+        count_at_1 += kv.second.size();
+      if (inst == "/2")
+        count_at_2 += kv.second.size();
+    }
+  }
+
+  EXPECT_EQ(count_at_0, 0u);
+  EXPECT_GT(count_at_1, 0u);
+  EXPECT_EQ(count_at_2, 0u);
+
+  bool found_test_for_1 = false;
+  for (const auto &kv : annotations) {
+    const auto &loc = kv.first;
+    if (sourcemeta::core::to_string(loc.evaluate_path) == "/contains/title" &&
+        sourcemeta::core::to_string(loc.instance_location) == "/1") {
+      for (const auto &val : kv.second) {
+        if (val == sourcemeta::core::JSON{"Test"}) {
+          found_test_for_1 = true;
+          break;
+        }
+      }
+    }
+  }
+  EXPECT_TRUE(found_test_for_1);
+}
