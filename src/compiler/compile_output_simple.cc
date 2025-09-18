@@ -84,6 +84,25 @@ auto SimpleOutput::operator()(
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
+    // When masked (e.g., contains) we still need to drop annotations for the
+    // current failing evaluation trace (evaluate_path + instance_location).
+    // Only drop annotations that are from the exact failing path and instance.
+    if (type == EvaluationType::Post && !result &&
+        !this->annotations_.empty()) {
+      for (auto it = this->annotations_.begin();
+           it != this->annotations_.end();) {
+        // For contains, we want to drop annotations that are from subschemas
+        // applied to the current failing instance location
+        const bool is_subschema_annotation =
+            it->first.evaluate_path.starts_with_initial(evaluate_path) &&
+            it->first.instance_location == instance_location;
+        if (is_subschema_annotation) {
+          it = this->annotations_.erase(it);
+        } else {
+          ++it;
+        }
+      }
+    }
     return;
   }
 
