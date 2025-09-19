@@ -84,6 +84,20 @@ auto SimpleOutput::operator()(
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
+    // We are inside a masked context (e.g., contains children) and this step
+    // failed. Prune annotations for this failing item under the same evaluate
+    // path subtree.
+    if (!this->annotations_.empty()) {
+      for (auto it = this->annotations_.begin();
+           it != this->annotations_.end();) {
+        if (it->first.instance_location == instance_location &&
+            it->first.evaluate_path.starts_with_initial(evaluate_path)) {
+          it = this->annotations_.erase(it);
+        } else {
+          ++it;
+        }
+      }
+    }
     return;
   }
 
