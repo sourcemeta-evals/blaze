@@ -948,3 +948,64 @@ TEST(Output_simple, fail_stacktrace_with_indentation) {
     at evaluate path "/properties/foo/unevaluatedProperties"
 )JSON");
 }
+
+TEST(Output_simple, contains_annotation_filtering_bug_reproduction) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "number",
+      "title": "Test" 
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("[ \"foo\", 42, true ]")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+
+  EXPECT_TRUE(result);
+
+  // Verify that title annotations are only present for the matching item
+  // The issue described in the task was that title annotations were incorrectly
+  // retained for items that fail against contains subschemas. This test ensures
+  // that only the matching item (/1) has the title annotation.
+
+  // Check if title annotations exist for each array item
+  bool has_title_annotation_for_0 = false;
+  bool has_title_annotation_for_1 = false;
+  bool has_title_annotation_for_2 = false;
+
+  for (const auto &[location, annotations] : output.annotations()) {
+    if (sourcemeta::core::to_string(location.evaluate_path) ==
+        "/contains/title") {
+      const auto instance_loc_str =
+          sourcemeta::core::to_string(location.instance_location);
+      if (instance_loc_str == "/0") {
+        has_title_annotation_for_0 = true;
+      } else if (instance_loc_str == "/1") {
+        has_title_annotation_for_1 = true;
+      } else if (instance_loc_str == "/2") {
+        has_title_annotation_for_2 = true;
+      }
+    }
+  }
+
+  // Only /1 should have the title annotation (the matching number)
+  // /0 and /2 should NOT have title annotations as they don't match the
+  // contains subschema
+  EXPECT_FALSE(has_title_annotation_for_0)
+      << "Title annotation should NOT exist for /0 (non-matching string)";
+  EXPECT_TRUE(has_title_annotation_for_1)
+      << "Title annotation should exist for /1 (the matching number)";
+  EXPECT_FALSE(has_title_annotation_for_2)
+      << "Title annotation should NOT exist for /2 (non-matching boolean)";
+}
