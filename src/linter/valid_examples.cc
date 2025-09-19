@@ -44,6 +44,15 @@ auto ValidExamples::condition(
     return false;
   }
 
+  // Skip linting siblings to $ref in Draft 7 and older
+  const bool is_modern_core =
+      vocabularies.contains(
+          "https://json-schema.org/draft/2019-09/vocab/core") ||
+      vocabularies.contains("https://json-schema.org/draft/2020-12/vocab/core");
+  if (schema.defines("$ref") && !is_modern_core) {
+    return false;
+  }
+
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
                                     .value_or(location)
                                     .get()
