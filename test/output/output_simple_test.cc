@@ -948,3 +948,52 @@ TEST(Output_simple, fail_stacktrace_with_indentation) {
     at evaluate path "/properties/foo/unevaluatedProperties"
 )JSON");
 }
+
+TEST(Output_simple, contains_annotation_bug_reproduction) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "number",
+      "title": "Test" 
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("[ \"foo\", 42, true ]")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+
+  EXPECT_TRUE(result);
+
+  EXPECT_ANNOTATION_COUNT(output, 2);
+
+  EXPECT_ANNOTATION_ENTRY(output, "", "/contains", "#/contains", 1);
+  EXPECT_ANNOTATION_ENTRY(output, "/1", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/1", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Test"});
+
+  const auto instance_location_0{sourcemeta::core::to_pointer("/0")};
+  const auto instance_location_2{sourcemeta::core::to_pointer("/2")};
+  const auto evaluate_path{sourcemeta::core::to_pointer("/contains/title")};
+  const std::string schema_location{"#/contains/title"};
+
+  const sourcemeta::blaze::SimpleOutput::Location location_0{
+      sourcemeta::core::to_weak_pointer(instance_location_0),
+      sourcemeta::core::to_weak_pointer(evaluate_path), schema_location};
+  const sourcemeta::blaze::SimpleOutput::Location location_2{
+      sourcemeta::core::to_weak_pointer(instance_location_2),
+      sourcemeta::core::to_weak_pointer(evaluate_path), schema_location};
+
+  EXPECT_FALSE(output.annotations().contains(location_0));
+  EXPECT_FALSE(output.annotations().contains(location_2));
+}

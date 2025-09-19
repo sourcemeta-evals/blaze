@@ -81,8 +81,20 @@ auto SimpleOutput::operator()(
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
-          iterator->first.instance_location == instance_location) {
+      bool should_drop = false;
+
+      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+        if (!evaluate_path.empty() && evaluate_path.back().is_property() &&
+            evaluate_path.back().to_property() == "contains") {
+          should_drop =
+              (iterator->first.instance_location == instance_location);
+        } else {
+          should_drop =
+              (iterator->first.instance_location == instance_location);
+        }
+      }
+
+      if (should_drop) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
