@@ -501,7 +501,7 @@ TEST(Linter, valid_default_10) {
 
   const auto expected{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "items": { "default": 10, "$ref": "ref.json" }
+    "items": { "$ref": "ref.json" }
   })JSON")};
 
   EXPECT_EQ(schema, expected);
@@ -539,7 +539,6 @@ TEST(Linter, valid_default_11) {
 
   const auto expected{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "default": 10,
     "$ref": "ref.json"
   })JSON")};
 
@@ -568,6 +567,39 @@ TEST(Linter, valid_default_12) {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
       "@foo": { "type": "string", "default": "bar" }
+    }
+  })JSON")};
+
+  EXPECT_EQ(schema, expected);
+}
+TEST(Linter, valid_default_ref_sibling_draft7_kept) {
+  sourcemeta::core::SchemaTransformer bundle;
+  bundle.add<sourcemeta::blaze::ValidDefault>(
+      sourcemeta::blaze::default_schema_compiler);
+
+  auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "properties": {
+      "foo": { "$ref": "#/definitions/helper", "default": 1 }
+    },
+    "definitions": {
+      "helper": { "type": "string" }
+    }
+  })JSON")};
+
+  const auto result = bundle.apply(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver, transformer_callback_error);
+
+  EXPECT_TRUE(result);
+
+  const auto expected{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "properties": {
+      "foo": { "$ref": "#/definitions/helper", "default": 1 }
+    },
+    "definitions": {
+      "helper": { "type": "string" }
     }
   })JSON")};
 

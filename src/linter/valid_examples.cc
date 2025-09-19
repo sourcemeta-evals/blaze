@@ -44,6 +44,25 @@ auto ValidExamples::condition(
     return false;
   }
 
+  const bool draft_modern =
+      vocabularies.contains(
+          "https://json-schema.org/draft/2020-12/vocab/meta-data") ||
+      vocabularies.contains(
+          "https://json-schema.org/draft/2019-09/vocab/meta-data");
+  const bool draft_older =
+      vocabularies.contains("http://json-schema.org/draft-07/schema#") ||
+      vocabularies.contains("http://json-schema.org/draft-06/schema#");
+
+  const bool has_ref_sibling = schema.defines("$ref");
+  if (has_ref_sibling) {
+    if (draft_older) {
+      return false;
+    }
+    if (draft_modern) {
+      return "Remove `examples` when sibling to `$ref` in this dialect";
+    }
+  }
+
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
                                     .value_or(location)
                                     .get()
