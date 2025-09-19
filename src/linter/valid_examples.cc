@@ -44,6 +44,14 @@ auto ValidExamples::condition(
     return false;
   }
 
+  // Skip linting for siblings of $ref on Draft-7 and Draft-6
+  const bool is_draft7_or_6 =
+      vocabularies.contains("http://json-schema.org/draft-07/schema#") ||
+      vocabularies.contains("http://json-schema.org/draft-06/schema#");
+  if (is_draft7_or_6 && schema.defines("$ref")) {
+    return false;
+  }
+
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
                                     .value_or(location)
                                     .get()

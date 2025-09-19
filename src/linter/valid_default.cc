@@ -36,6 +36,15 @@ auto ValidDefault::condition(
     return false;
   }
 
+  // Skip linting for siblings of $ref on Draft-7/6/4
+  const bool is_draft7_6_or_4 =
+      vocabularies.contains("http://json-schema.org/draft-07/schema#") ||
+      vocabularies.contains("http://json-schema.org/draft-06/schema#") ||
+      vocabularies.contains("http://json-schema.org/draft-04/schema#");
+  if (is_draft7_6_or_4 && schema.defines("$ref")) {
+    return false;
+  }
+
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
                                     .value_or(location)
                                     .get()
