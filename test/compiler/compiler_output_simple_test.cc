@@ -915,3 +915,52 @@ TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
     at evaluate path "/properties/foo/unevaluatedProperties"
 )JSON");
 }
+
+TEST(Compiler_output_simple, contains_title_drops_failed_item_annotations) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": {
+      "type": "number",
+      "title": "Test"
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON([ "foo", 42, true ])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+
+  EXPECT_TRUE(result);
+  std::vector<sourcemeta::blaze::SimpleOutput::Entry> traces{output.cbegin(),
+                                                             output.cend()};
+  EXPECT_TRUE(traces.empty());
+
+  EXPECT_ANNOTATION_COUNT(output, 1);
+  EXPECT_ANNOTATION_ENTRY(output, "/1", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/1", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Test"});
+
+  {
+    const auto inst0{sourcemeta::core::to_pointer("/0")};
+    const auto eval{sourcemeta::core::to_pointer("/contains/title")};
+    EXPECT_FALSE(output.annotations().contains(
+        {sourcemeta::core::to_weak_pointer(inst0),
+         sourcemeta::core::to_weak_pointer(eval), "#/contains/title"}));
+  }
+  {
+    const auto inst2{sourcemeta::core::to_pointer("/2")};
+    const auto eval{sourcemeta::core::to_pointer("/contains/title")};
+    EXPECT_FALSE(output.annotations().contains(
+        {sourcemeta::core::to_weak_pointer(inst2),
+         sourcemeta::core::to_weak_pointer(eval), "#/contains/title"}));
+  }
+}
