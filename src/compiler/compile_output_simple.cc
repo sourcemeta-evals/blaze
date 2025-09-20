@@ -79,23 +79,51 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+    const std::string &kw_loc = step.keyword_location;
+
+    // Only prune annotations for contains failures if this is a direct child of
+    // contains and we're dealing with a type/validation failure, not the
+    // contains instruction itself
+    const auto contains_pos = kw_loc.rfind("/contains/");
+    if (contains_pos != std::string::npos) {
+      // This is a failure within a contains subschema (e.g., /contains/type)
+      // Find the contains scope (everything up to and including "/contains")
+      const std::string contains_scope =
+          kw_loc.substr(0, contains_pos + std::string("/contains").size());
+
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        const bool same_item =
+            (iterator->first.instance_location == instance_location);
+        const bool same_contains_scope =
+            iterator->first.schema_location.rfind(contains_scope, 0) == 0;
+
+        if (same_item && same_contains_scope) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
+      }
+    } else {
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        if (iterator->first.evaluate_path.starts_with_initial(
+                effective_evaluate_path)) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
+      }
+    }
+  }
+
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
                   [&evaluate_path](const auto &entry) {
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
     return;
-  }
-
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
-    for (auto iterator = this->annotations_.begin();
-         iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
-        iterator = this->annotations_.erase(iterator);
-      } else {
-        iterator++;
-      }
-    }
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
