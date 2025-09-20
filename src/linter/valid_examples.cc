@@ -44,6 +44,14 @@ auto ValidExamples::condition(
     return false;
   }
 
+  // Skip linting for Draft 7 and older when `$ref` is a sibling
+  if (schema.defines("$ref") &&
+      (vocabularies.contains("http://json-schema.org/draft-07/schema#") ||
+       vocabularies.contains("http://json-schema.org/draft-06/schema#") ||
+       vocabularies.contains("http://json-schema.org/draft-04/schema#"))) {
+    return false;
+  }
+
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
                                     .value_or(location)
                                     .get()
