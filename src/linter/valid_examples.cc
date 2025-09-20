@@ -44,6 +44,14 @@ auto ValidExamples::condition(
     return false;
   }
 
+  // Skip linting if this schema object has a $ref and we're in Draft 7 or
+  // older, where siblings to $ref are ignored by implementations.
+  if (schema.defines("$ref") &&
+      (vocabularies.contains("http://json-schema.org/draft-07/schema#") ||
+       vocabularies.contains("http://json-schema.org/draft-06/schema#"))) {
+    return false;
+  }
+
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
                                     .value_or(location)
                                     .get()
