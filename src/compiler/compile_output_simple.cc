@@ -84,6 +84,29 @@ auto SimpleOutput::operator()(
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
+    // Before returning early for masked failures, drop annotations for this
+    // failing item within the contains subtree
+    if (type == EvaluationType::Post && !this->annotations_.empty()) {
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        bool should_erase = false;
+        for (const auto &mask_entry : this->mask) {
+          if (!mask_entry.second &&
+              evaluate_path.starts_with(mask_entry.first) &&
+              iterator->first.instance_location == instance_location &&
+              iterator->first.evaluate_path.starts_with_initial(
+                  mask_entry.first)) {
+            should_erase = true;
+            break;
+          }
+        }
+        if (should_erase) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          ++iterator;
+        }
+      }
+    }
     return;
   }
 

@@ -915,3 +915,68 @@ TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
     at evaluate path "/properties/foo/unevaluatedProperties"
 )JSON");
 }
+TEST(Compiler_output_simple,
+     annotations_drop_for_contains_failed_items_simple) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": {
+      "type": "number",
+      "title": "Test"
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON([ "foo", 42, true ])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+  EXPECT_TRUE(result);
+
+  // No error traces for passing validation
+  std::vector<sourcemeta::blaze::SimpleOutput::Entry> traces{output.cbegin(),
+                                                             output.cend()};
+  EXPECT_TRUE(traces.empty());
+
+  // This test demonstrates the bug: currently ALL items retain title
+  // annotations but only /1 should retain it since it's the only number that
+  // passes contains
+
+  // An annotation for contains count at root is expected
+  EXPECT_ANNOTATION_ENTRY(output, "", "/contains", "#/contains", 1);
+  EXPECT_ANNOTATION_VALUE(output, "", "/contains", "#/contains", 0,
+                          sourcemeta::core::JSON{1});
+
+  // Only the matching item (/1) should retain the title annotation.
+  EXPECT_ANNOTATION_ENTRY(output, "/1", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/1", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Test"});
+
+  // Non-matching items (/0 and /2) must NOT have the title annotation
+  {
+    const auto inst0{
+        sourcemeta::core::to_weak_pointer(sourcemeta::core::to_pointer("/0"))};
+    const auto evaltitle{sourcemeta::core::to_weak_pointer(
+        sourcemeta::core::to_pointer("/contains/title"))};
+    const auto key = sourcemeta::blaze::SimpleOutput::Location{
+        inst0, evaltitle, "#/contains/title"};
+    EXPECT_FALSE(output.annotations().contains(key));
+  }
+  {
+    const auto inst2{
+        sourcemeta::core::to_weak_pointer(sourcemeta::core::to_pointer("/2"))};
+    const auto evaltitle{sourcemeta::core::to_weak_pointer(
+        sourcemeta::core::to_pointer("/contains/title"))};
+    const auto key = sourcemeta::blaze::SimpleOutput::Location{
+        inst2, evaltitle, "#/contains/title"};
+    EXPECT_FALSE(output.annotations().contains(key));
+  }
+}
