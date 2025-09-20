@@ -5,6 +5,7 @@
 #include <algorithm> // std::any_of, std::sort
 #include <cassert>   // assert
 #include <iterator>  // std::back_inserter
+#include <set>       // std::set
 #include <utility>   // std::move
 
 namespace sourcemeta::blaze {
@@ -72,6 +73,12 @@ auto SimpleOutput::operator()(
     }
   } else if (type == EvaluationType::Post &&
              this->mask.contains(evaluate_path)) {
+    // Special handling for contains - clean up annotations from non-matching
+    // items
+    if (result && evaluate_path.back().is_property() &&
+        evaluate_path.back().to_property() == "contains") {
+      this->cleanup_contains_annotations(evaluate_path, annotation);
+    }
     this->mask.erase(evaluate_path);
   }
 
@@ -90,7 +97,9 @@ auto SimpleOutput::operator()(
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+          iterator->first.instance_location.starts_with_initial(
+              instance_location)) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
@@ -109,6 +118,71 @@ auto SimpleOutput::operator()(
       {describe(result, step, evaluate_path, instance_location, this->instance_,
                 annotation),
        instance_location, std::move(effective_evaluate_path)});
+}
+
+auto SimpleOutput::cleanup_contains_annotations(
+    const sourcemeta::core::WeakPointer &contains_evaluate_path,
+    const sourcemeta::core::JSON &contains_annotation) -> void {
+  // Find the actual contains annotation in our annotations collection
+  // The contains annotation should be at instance location "" and evaluate path
+  // "/contains"
+  std::set<std::size_t> matched_indices;
+
+  // Look for the contains annotation
+  for (const auto &annotation_entry : this->annotations_) {
+    if (annotation_entry.first.instance_location.empty() &&
+        annotation_entry.first.evaluate_path.back().is_property() &&
+        annotation_entry.first.evaluate_path.back().to_property() ==
+            "contains") {
+
+      // The contains annotation can be either an array of integers or a single
+      // integer
+      for (const auto &annotation_value : annotation_entry.second) {
+        if (annotation_value.is_array()) {
+          for (const auto &item : annotation_value.as_array()) {
+            if (item.is_integer()) {
+              const auto index = static_cast<std::size_t>(item.to_integer());
+              matched_indices.insert(index);
+            }
+          }
+          break; // Found the array, no need to continue
+        } else if (annotation_value.is_integer()) {
+          const auto index =
+              static_cast<std::size_t>(annotation_value.to_integer());
+          matched_indices.insert(index);
+        }
+      }
+      break; // Found the contains annotation, no need to continue
+    }
+  }
+
+  if (matched_indices.empty()) {
+    return;
+  }
+
+  // Remove annotations for all items that didn't match
+  for (auto iterator = this->annotations_.begin();
+       iterator != this->annotations_.end();) {
+    // Check if this annotation is under the contains path
+    if (iterator->first.evaluate_path.size() > contains_evaluate_path.size() &&
+        iterator->first.evaluate_path.starts_with_initial(
+            contains_evaluate_path)) {
+
+      // Extract the index from the instance location
+      if (!iterator->first.instance_location.empty() &&
+          iterator->first.instance_location.back().is_index()) {
+        const auto item_index =
+            iterator->first.instance_location.back().to_index();
+
+        // Remove annotation if this item didn't match
+        if (matched_indices.find(item_index) == matched_indices.end()) {
+          iterator = this->annotations_.erase(iterator);
+          continue;
+        }
+      }
+    }
+    iterator++;
+  }
 }
 
 auto SimpleOutput::stacktrace(std::ostream &stream,

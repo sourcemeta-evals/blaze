@@ -117,6 +117,9 @@ public:
                   const std::string &indentation = "") const -> void;
 
 private:
+  auto cleanup_contains_annotations(
+      const sourcemeta::core::WeakPointer &contains_evaluate_path,
+      const sourcemeta::core::JSON &contains_annotation) -> void;
 // Exporting symbols that depends on the standard C++ library is considered
 // safe.
 // https://learn.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-2-c4275?view=msvc-170&redirectedfrom=MSDN
