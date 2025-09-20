@@ -4,6 +4,7 @@
 
 #include <algorithm> // std::any_of, std::sort
 #include <cassert>   // assert
+#include <iostream>  // std::cout
 #include <iterator>  // std::back_inserter
 #include <utility>   // std::move
 
@@ -32,6 +33,7 @@ auto SimpleOutput::operator()(
     const sourcemeta::core::WeakPointer &evaluate_path,
     const sourcemeta::core::WeakPointer &instance_location,
     const sourcemeta::core::JSON &annotation) -> void {
+
   if (evaluate_path.empty()) {
     return;
   }
@@ -72,11 +74,56 @@ auto SimpleOutput::operator()(
     }
   } else if (type == EvaluationType::Post &&
              this->mask.contains(evaluate_path)) {
+    // If this is a contains Post, clean up annotations for failed items
+    if (evaluate_path.back().to_property() == "contains") {
+      auto failed_items_it = this->failed_contains_items_.find(evaluate_path);
+      if (failed_items_it != this->failed_contains_items_.end()) {
+        for (const auto &failed_instance : failed_items_it->second) {
+          for (auto iterator = this->annotations_.begin();
+               iterator != this->annotations_.end();) {
+            const bool under_contains_path =
+                iterator->first.evaluate_path.starts_with_initial(
+                    evaluate_path);
+            const bool same_instance =
+                iterator->first.instance_location == failed_instance;
+            if (under_contains_path && same_instance) {
+              iterator = this->annotations_.erase(iterator);
+            } else {
+              iterator++;
+            }
+          }
+        }
+
+        // Clean up the failed items tracking for this contains
+        this->failed_contains_items_.erase(failed_items_it);
+      }
+    }
+
     this->mask.erase(evaluate_path);
   }
 
   if (result) {
     return;
+  }
+
+  // Track failed assertions within contains for later cleanup
+  if (type == EvaluationType::Post && !result) {
+    // Check if we're in a contains context
+    auto contains_it =
+        std::find_if(this->mask.cbegin(), this->mask.cend(),
+                     [&evaluate_path](const auto &entry) {
+                       return !entry.second &&
+                              evaluate_path.starts_with(entry.first) &&
+                              entry.first.back().to_property() == "contains";
+                     });
+
+    if (contains_it != this->mask.cend()) {
+      // We're in a contains context and this assertion failed
+      // Mark this instance location as having failed within this contains
+      // context
+      this->failed_contains_items_[contains_it->first].insert(
+          instance_location);
+    }
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
