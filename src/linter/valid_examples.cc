@@ -44,6 +44,16 @@ auto ValidExamples::condition(
     return false;
   }
 
+  // Skip linting for Draft 7 and 6 when `$ref` is a sibling
+  const bool is_new_meta =
+      vocabularies.contains(
+          "https://json-schema.org/draft/2020-12/vocab/meta-data") ||
+      vocabularies.contains(
+          "https://json-schema.org/draft/2019-09/vocab/meta-data");
+  if (!is_new_meta && schema.defines("$ref")) {
+    return false;
+  }
+
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
                                     .value_or(location)
                                     .get()
