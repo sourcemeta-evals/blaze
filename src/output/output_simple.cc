@@ -81,11 +81,22 @@ auto SimpleOutput::operator()(
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
-          iterator->first.instance_location == instance_location) {
-        iterator = this->annotations_.erase(iterator);
+      const auto &keyword{evaluate_path.back().to_property()};
+      if (keyword == "contains") {
+        if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+            iterator->first.instance_location == instance_location &&
+            iterator->first.evaluate_path.size() > evaluate_path.size()) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
       } else {
-        iterator++;
+        if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+            iterator->first.instance_location == instance_location) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
       }
     }
   }

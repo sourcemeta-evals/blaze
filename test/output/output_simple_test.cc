@@ -836,6 +836,59 @@ TEST(Output_simple, annotations_success_10) {
                           0, sourcemeta::core::JSON{"Test"});
 }
 
+TEST(Output_simple, contains_annotation_bug_reproduction) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "number",
+      "title": "Test" 
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("[ \"foo\", 42, true ]")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+  EXPECT_TRUE(result);
+
+  EXPECT_ANNOTATION_COUNT(output, 2);
+  EXPECT_ANNOTATION_ENTRY(output, "", "/contains", "#/contains", 1);
+  EXPECT_ANNOTATION_ENTRY(output, "/1", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/1", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Test"});
+
+  bool found_annotation_at_0 = false;
+  bool found_annotation_at_2 = false;
+
+  for (const auto &annotation : output.annotations()) {
+    if (annotation.first.instance_location.size() == 1 &&
+        annotation.first.instance_location.at(0).is_index()) {
+      const auto index = annotation.first.instance_location.at(0).to_index();
+      if (index == 0 &&
+          annotation.first.evaluate_path.back().to_property() == "title") {
+        found_annotation_at_0 = true;
+      }
+      if (index == 2 &&
+          annotation.first.evaluate_path.back().to_property() == "title") {
+        found_annotation_at_2 = true;
+      }
+    }
+  }
+
+  EXPECT_FALSE(found_annotation_at_0);
+  EXPECT_FALSE(found_annotation_at_2);
+}
+
 TEST(Output_simple, annotations_failure_1) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
