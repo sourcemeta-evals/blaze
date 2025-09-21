@@ -15,7 +15,6 @@
 #include <map>         // std::map
 #include <optional>    // std::optional, std::nullopt
 #include <ostream>     // std::ostream
-#include <set>         // std::set
 #include <string>      // std::string
 #include <string_view> // std::string_view
 #include <tuple>       // std::tie
@@ -97,7 +96,9 @@ public:
 
   /// Access annotations that were collected during evaluation, indexed by
   /// instance location and evaluation path
-  auto annotations() const -> const auto & { return this->annotations_; }
+  auto annotations() const -> const auto & {
+    return this->filtered_annotations();
+  }
 
   struct Location {
     auto operator<(const Location &other) const noexcept -> bool {
@@ -117,6 +118,9 @@ public:
                   const std::string &indentation = "") const -> void;
 
 private:
+  auto filtered_annotations() const
+      -> const std::map<Location, std::vector<sourcemeta::core::JSON>> &;
+
 // Exporting symbols that depends on the standard C++ library is considered
 // safe.
 // https://learn.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-2-c4275?view=msvc-170&redirectedfrom=MSDN
@@ -128,6 +132,9 @@ private:
   container_type output;
   std::map<sourcemeta::core::WeakPointer, bool> mask;
   std::map<Location, std::vector<sourcemeta::core::JSON>> annotations_;
+  mutable std::map<Location, std::vector<sourcemeta::core::JSON>>
+      filtered_annotations_cache_;
+  mutable bool filtered_annotations_dirty_ = true;
 #if defined(_MSC_VER)
 #pragma warning(default : 4251)
 #endif
