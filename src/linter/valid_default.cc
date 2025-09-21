@@ -40,6 +40,19 @@ auto ValidDefault::condition(
                                     .value_or(location)
                                     .get()
                                     .base_dialect};
+
+  if (schema.defines("$ref")) {
+    if (root_base_dialect == "http://json-schema.org/draft-07/schema#" ||
+        root_base_dialect == "http://json-schema.org/draft-07/hyper-schema#" ||
+        root_base_dialect == "http://json-schema.org/draft-06/schema#" ||
+        root_base_dialect == "http://json-schema.org/draft-06/hyper-schema#" ||
+        root_base_dialect == "http://json-schema.org/draft-04/schema#" ||
+        root_base_dialect == "http://json-schema.org/draft-04/hyper-schema#" ||
+        root_base_dialect == "http://json-schema.org/draft-03/schema#" ||
+        root_base_dialect == "http://json-schema.org/draft-03/hyper-schema#") {
+      return false;
+    }
+  }
   std::optional<std::string> default_id{location.base};
   if (sourcemeta::core::identify(root, root_base_dialect).has_value()) {
     // We want to only set a default identifier if the root schema does not
