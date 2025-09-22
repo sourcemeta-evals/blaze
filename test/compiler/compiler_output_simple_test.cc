@@ -915,3 +915,69 @@ TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
     at evaluate path "/properties/foo/unevaluatedProperties"
 )JSON");
 }
+TEST(Compiler_output_simple, contains_annotation_dropping_bug) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "number",
+      "title": "Test" 
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON([ "foo", 42, true ])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+
+  EXPECT_TRUE(result);
+
+  const auto &annotations = output.annotations();
+
+  // Should only have annotations for the successful item at index 1
+  // Items at index 0 and 2 should have their annotations dropped
+  EXPECT_EQ(annotations.size(), 2);
+
+  // Verify we have the contains annotation showing 1 match
+  bool found_contains_annotation = false;
+  bool found_title_annotation_for_matching_item = false;
+  bool found_title_annotation_for_failing_item = false;
+
+  for (const auto &[location, values] : annotations) {
+    if (location.evaluate_path.size() == 1 &&
+        location.evaluate_path.at(0).is_property() &&
+        location.evaluate_path.at(0).to_property() == "contains" &&
+        location.instance_location.empty()) {
+      found_contains_annotation = true;
+      EXPECT_EQ(values.size(), 1);
+      EXPECT_EQ(values[0], sourcemeta::core::JSON{1});
+    } else if (location.evaluate_path.size() == 2 &&
+               location.evaluate_path.at(0).is_property() &&
+               location.evaluate_path.at(0).to_property() == "contains" &&
+               location.evaluate_path.at(1).is_property() &&
+               location.evaluate_path.at(1).to_property() == "title") {
+      if (location.instance_location.size() == 1) {
+        const auto index = location.instance_location.at(0).to_index();
+        if (index == 1) {
+          found_title_annotation_for_matching_item = true;
+          EXPECT_EQ(values.size(), 1);
+          EXPECT_EQ(values[0], sourcemeta::core::JSON{"Test"});
+        } else if (index == 0 || index == 2) {
+          found_title_annotation_for_failing_item = true;
+        }
+      }
+    }
+  }
+
+  EXPECT_TRUE(found_contains_annotation);
+  EXPECT_TRUE(found_title_annotation_for_matching_item);
+  EXPECT_FALSE(found_title_annotation_for_failing_item);
+}
