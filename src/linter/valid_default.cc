@@ -32,6 +32,14 @@ auto ValidDefault::condition(
     return false;
   }
 
+  if ((vocabularies.contains("http://json-schema.org/draft-07/schema#") ||
+       vocabularies.contains("http://json-schema.org/draft-06/schema#") ||
+       vocabularies.contains("http://json-schema.org/draft-04/schema#")) &&
+      schema.is_object() && schema.defines("$ref") &&
+      schema.defines("default")) {
+    return false;
+  }
+
   if (!schema.is_object() || !schema.defines("default")) {
     return false;
   }
