@@ -63,16 +63,48 @@ auto SimpleOutput::operator()(
   if (type == EvaluationType::Pre) {
     assert(result);
     const auto &keyword{evaluate_path.back().to_property()};
-    // To ease the output
+    // To ease the output (important-comment)
     if (keyword == "anyOf" || keyword == "oneOf" || keyword == "not" ||
         keyword == "if") {
       this->mask.emplace(evaluate_path, true);
     } else if (keyword == "contains") {
       this->mask.emplace(evaluate_path, false);
     }
-  } else if (type == EvaluationType::Post &&
-             this->mask.contains(evaluate_path)) {
-    this->mask.erase(evaluate_path);
+  } else if (type == EvaluationType::Post) {
+    if (this->mask.contains(evaluate_path)) {
+      const auto &keyword{evaluate_path.back().to_property()};
+      if (keyword == "contains") {
+        if (!this->annotations_.empty()) {
+          for (auto iterator = this->annotations_.begin();
+               iterator != this->annotations_.end();) {
+            if (iterator->first.evaluate_path.starts_with_initial(
+                    evaluate_path) &&
+                !iterator->first.instance_location.empty()) {
+              if (this->failed_contains.contains(
+                      iterator->first.instance_location)) {
+                iterator = this->annotations_.erase(iterator);
+                continue;
+              }
+            }
+            iterator++;
+          }
+        }
+        this->failed_contains.clear();
+      }
+      this->mask.erase(evaluate_path);
+    }
+
+    if (!result) {
+      for (const auto &entry : this->mask) {
+        if (evaluate_path.starts_with(entry.first) && !entry.second) {
+          const auto &keyword{entry.first.back().to_property()};
+          if (keyword == "contains") {
+            this->failed_contains.insert(instance_location);
+            break;
+          }
+        }
+      }
+    }
   }
 
   if (result) {
@@ -87,7 +119,7 @@ auto SimpleOutput::operator()(
     return;
   }
 
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+  if (type == EvaluationType::Post && !result && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
       if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
