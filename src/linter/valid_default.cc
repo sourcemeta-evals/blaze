@@ -32,6 +32,14 @@ auto ValidDefault::condition(
     return false;
   }
 
+  // In Draft 7 and older, ignore siblings to $ref
+  if (schema.is_object() && schema.defines("$ref") &&
+      (vocabularies.contains("http://json-schema.org/draft-07/schema#") ||
+       vocabularies.contains("http://json-schema.org/draft-06/schema#") ||
+       vocabularies.contains("http://json-schema.org/draft-04/schema#"))) {
+    return false;
+  }
+
   if (!schema.is_object() || !schema.defines("default")) {
     return false;
   }
