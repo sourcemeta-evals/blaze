@@ -915,3 +915,89 @@ TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
     at evaluate path "/properties/foo/unevaluatedProperties"
 )JSON");
 }
+
+TEST(Compiler_output_simple, contains_title_annotation_bug_reproduction) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "number",
+      "title": "Test" 
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON([ "foo", 42, true ])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+  EXPECT_TRUE(result);
+
+  bool has_annotation_at_0 = false;
+  bool has_annotation_at_2 = false;
+
+  for (const auto &annotation_entry : output.annotations()) {
+    if (annotation_entry.first.instance_location ==
+            sourcemeta::core::to_weak_pointer(
+                sourcemeta::core::to_pointer("/0")) &&
+        annotation_entry.first.evaluate_path ==
+            sourcemeta::core::to_weak_pointer(
+                sourcemeta::core::to_pointer("/contains/title"))) {
+      has_annotation_at_0 = true;
+    }
+    if (annotation_entry.first.instance_location ==
+            sourcemeta::core::to_weak_pointer(
+                sourcemeta::core::to_pointer("/2")) &&
+        annotation_entry.first.evaluate_path ==
+            sourcemeta::core::to_weak_pointer(
+                sourcemeta::core::to_pointer("/contains/title"))) {
+      has_annotation_at_2 = true;
+    }
+  }
+
+  EXPECT_FALSE(has_annotation_at_0)
+      << "Title annotation should not exist at /0";
+  EXPECT_FALSE(has_annotation_at_2)
+      << "Title annotation should not exist at /2";
+}
+
+TEST(Compiler_output_simple, contains_title_annotation_fixed) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "number",
+      "title": "Test" 
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON([ "foo", 42, true ])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+  EXPECT_TRUE(result);
+
+  EXPECT_ANNOTATION_ENTRY(output, "/1", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/1", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Test"});
+
+  EXPECT_ANNOTATION_ENTRY(output, "", "/contains", "#/contains", 1);
+  EXPECT_ANNOTATION_VALUE(output, "", "/contains", "#/contains", 0,
+                          sourcemeta::core::JSON{1});
+}
