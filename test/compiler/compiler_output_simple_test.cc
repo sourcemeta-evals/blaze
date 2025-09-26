@@ -915,3 +915,71 @@ TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
     at evaluate path "/properties/foo/unevaluatedProperties"
 )JSON");
 }
+
+TEST(Compiler_output_simple, contains_annotations_bug_reproduction) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "number",
+      "title": "Test" 
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON([ "foo", 42, true ])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+
+  EXPECT_TRUE(result);
+
+  // The bug: SimpleOutput incorrectly retains title annotations for /0 and /2
+  // These should be dropped because those elements fail the contains subschema
+  // Only /1 (the number 42) should have the title annotation
+
+  const auto &annotations = output.annotations();
+
+  // Count annotations that have "Test" as the title for locations /0 and /2
+  int incorrect_annotations = 0;
+  for (const auto &[location, annotation_list] : annotations) {
+    // Check if this is a title annotation from contains evaluation
+    if (location.evaluate_path.back().is_property() &&
+        location.evaluate_path.back().to_property() == "title") {
+      // Check if the path contains "contains" keyword
+      bool has_contains = false;
+      for (const auto &token : location.evaluate_path) {
+        if (token.is_property() && token.to_property() == "contains") {
+          has_contains = true;
+          break;
+        }
+      }
+      if (has_contains) {
+        // Check if it's for instance location /0 or /2 (which should not have
+        // title annotations)
+        if ((location.instance_location.size() == 1 &&
+             location.instance_location.back().is_index() &&
+             (location.instance_location.back().to_index() == 0 ||
+              location.instance_location.back().to_index() == 2))) {
+          for (const auto &annotation : annotation_list) {
+            if (annotation.is_string() && annotation.to_string() == "Test") {
+              incorrect_annotations++;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // After the fix, there should be no incorrect annotations for /0 and /2
+  EXPECT_EQ(incorrect_annotations, 0)
+      << "Title annotations should only be retained for elements that match "
+         "the contains subschema";
+}

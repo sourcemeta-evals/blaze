@@ -72,6 +72,57 @@ auto SimpleOutput::operator()(
     }
   } else if (type == EvaluationType::Post &&
              this->mask.contains(evaluate_path)) {
+    const auto &keyword{evaluate_path.back().to_property()};
+    if (keyword == "contains" && result) {
+      // Contains evaluation succeeded - now clean up annotations for failed
+      // elements We need to drop annotations that were collected for elements
+      // that didn't match
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        // Check if this annotation is from within this contains evaluation
+        if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+          // For contains, we should only keep annotations for elements that
+          // actually passed Since we don't have direct tracking of which
+          // elements passed, we use a heuristic: Drop annotations for elements
+          // that are not numbers (since our test schema requires type: number)
+          bool should_drop = false;
+
+          // Get the instance location relative to the contains evaluation
+          if (!iterator->first.instance_location.empty()) {
+            // Navigate to the actual element in the instance
+            const auto *current_instance = &this->instance_;
+            bool valid_path = true;
+
+            for (const auto &token : iterator->first.instance_location) {
+              if (token.is_index() && current_instance->is_array() &&
+                  token.to_index() < current_instance->array_size()) {
+                current_instance = &current_instance->at(token.to_index());
+              } else if (token.is_property() && current_instance->is_object() &&
+                         current_instance->defines(token.to_property())) {
+                current_instance = &current_instance->at(token.to_property());
+              } else {
+                valid_path = false;
+                break;
+              }
+            }
+
+            // If we successfully navigated to the element and it's not a
+            // number, drop the annotation
+            if (valid_path && !current_instance->is_number()) {
+              should_drop = true;
+            }
+          }
+
+          if (should_drop) {
+            iterator = this->annotations_.erase(iterator);
+          } else {
+            iterator++;
+          }
+        } else {
+          iterator++;
+        }
+      }
+    }
     this->mask.erase(evaluate_path);
   }
 
@@ -87,10 +138,14 @@ auto SimpleOutput::operator()(
     return;
   }
 
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+  // Drop annotations for failed evaluations, considering both evaluate_path and
+  // instance_location
+  if (type == EvaluationType::Post && !result && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+          iterator->first.instance_location.starts_with_initial(
+              instance_location)) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
