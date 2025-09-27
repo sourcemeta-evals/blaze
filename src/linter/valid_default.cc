@@ -36,6 +36,16 @@ auto ValidDefault::condition(
     return false;
   }
 
+  // In Draft 7 and older, ignore keywords that are siblings to $ref
+  const bool is_draft_7_or_older =
+      vocabularies.contains("http://json-schema.org/draft-04/schema#") ||
+      vocabularies.contains("http://json-schema.org/draft-06/schema#") ||
+      vocabularies.contains("http://json-schema.org/draft-07/schema#");
+
+  if (is_draft_7_or_older && schema.defines("$ref")) {
+    return false;
+  }
+
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
                                     .value_or(location)
                                     .get()
