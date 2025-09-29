@@ -4,7 +4,9 @@
 
 #include <algorithm> // std::any_of, std::sort
 #include <cassert>   // assert
+#include <iostream>  // std::cout
 #include <iterator>  // std::back_inserter
+#include <set>       // std::set
 #include <utility>   // std::move
 
 namespace sourcemeta::blaze {
@@ -87,7 +89,7 @@ auto SimpleOutput::operator()(
     return;
   }
 
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+  if (type == EvaluationType::Post && !this->annotations_.empty() && !result) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
       if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
@@ -109,6 +111,44 @@ auto SimpleOutput::operator()(
       {describe(result, step, evaluate_path, instance_location, this->instance_,
                 annotation),
        instance_location, std::move(effective_evaluate_path)});
+}
+
+auto SimpleOutput::cleanup_contains_annotations() -> void {
+  // Find all contains annotations to determine which indices matched
+  std::set<std::size_t> matched_indices;
+  for (const auto &annotation : this->annotations_) {
+    if (annotation.first.evaluate_path.size() == 1 &&
+        annotation.first.evaluate_path.at(0).is_property() &&
+        annotation.first.evaluate_path.at(0).to_property() == "contains" &&
+        annotation.first.instance_location.empty()) {
+      // This is the main contains annotation with matched indices
+      for (const auto &value : annotation.second) {
+        if (value.is_integer()) {
+          matched_indices.insert(static_cast<std::size_t>(value.to_integer()));
+        }
+      }
+    }
+  }
+
+  // Remove annotations from contains subschemas for unmatched indices
+  for (auto iterator = this->annotations_.begin();
+       iterator != this->annotations_.end();) {
+    // Check if this is a contains subschema annotation
+    if (iterator->first.evaluate_path.size() >= 2 &&
+        iterator->first.evaluate_path.at(0).is_property() &&
+        iterator->first.evaluate_path.at(0).to_property() == "contains" &&
+        iterator->first.instance_location.size() == 1 &&
+        iterator->first.instance_location.at(0).is_index()) {
+
+      std::size_t index = iterator->first.instance_location.at(0).to_index();
+      if (matched_indices.find(index) == matched_indices.end()) {
+        // This annotation is from an unmatched index - remove it
+        iterator = this->annotations_.erase(iterator);
+        continue;
+      }
+    }
+    iterator++;
+  }
 }
 
 auto SimpleOutput::stacktrace(std::ostream &stream,

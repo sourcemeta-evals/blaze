@@ -113,6 +113,8 @@ public:
     const std::string schema_location;
   };
 
+  auto cleanup_contains_annotations() -> void;
+
   auto stacktrace(std::ostream &stream,
                   const std::string &indentation = "") const -> void;
 
