@@ -84,6 +84,26 @@ auto SimpleOutput::operator()(
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
+    if (type == EvaluationType::Post && !this->annotations_.empty()) {
+      const auto contains_entry = std::find_if(
+          this->mask.cbegin(), this->mask.cend(),
+          [&evaluate_path](const auto &entry) {
+            return evaluate_path.starts_with(entry.first) && !entry.second;
+          });
+
+      if (contains_entry != this->mask.cend()) {
+        for (auto iterator = this->annotations_.begin();
+             iterator != this->annotations_.end();) {
+          if (iterator->first.instance_location == instance_location &&
+              iterator->first.evaluate_path.starts_with_initial(
+                  contains_entry->first)) {
+            iterator = this->annotations_.erase(iterator);
+          } else {
+            iterator++;
+          }
+        }
+      }
+    }
     return;
   }
 
