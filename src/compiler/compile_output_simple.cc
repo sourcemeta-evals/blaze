@@ -63,7 +63,6 @@ auto SimpleOutput::operator()(
   if (type == EvaluationType::Pre) {
     assert(result);
     const auto &keyword{evaluate_path.back().to_property()};
-    // To ease the output
     if (keyword == "anyOf" || keyword == "oneOf" || keyword == "not" ||
         keyword == "if") {
       this->mask.emplace(evaluate_path, true);
@@ -72,6 +71,30 @@ auto SimpleOutput::operator()(
     }
   } else if (type == EvaluationType::Post &&
              this->mask.contains(evaluate_path)) {
+    const auto failed_it = this->failed_locations_.find(evaluate_path);
+    if (failed_it != this->failed_locations_.end()) {
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        if (iterator->first.evaluate_path.starts_with(evaluate_path)) {
+          bool should_drop = false;
+          for (const auto &failed_loc : failed_it->second) {
+            if (iterator->first.instance_location.starts_with(failed_loc)) {
+              should_drop = true;
+              break;
+            }
+          }
+          if (should_drop) {
+            iterator = this->annotations_.erase(iterator);
+          } else {
+            iterator++;
+          }
+        } else {
+          iterator++;
+        }
+      }
+      this->failed_locations_.erase(failed_it);
+    }
+
     this->mask.erase(evaluate_path);
   }
 
@@ -79,12 +102,13 @@ auto SimpleOutput::operator()(
     return;
   }
 
-  if (std::any_of(this->mask.cbegin(), this->mask.cend(),
-                  [&evaluate_path](const auto &entry) {
-                    return evaluate_path.starts_with(entry.first) &&
-                           !entry.second;
-                  })) {
-    return;
+  for (const auto &mask_entry : this->mask) {
+    if (evaluate_path.starts_with(mask_entry.first) && !mask_entry.second) {
+      if (type == EvaluationType::Post) {
+        this->failed_locations_[mask_entry.first].insert(instance_location);
+      }
+      return;
+    }
   }
 
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
