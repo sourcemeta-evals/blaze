@@ -79,6 +79,31 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // Drop annotations for specific instance locations that fail under false
+  // masks (like contains)
+  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+    const auto mask_entry = std::find_if(
+        this->mask.cbegin(), this->mask.cend(),
+        [&evaluate_path](const auto &entry) {
+          return evaluate_path.starts_with(entry.first) && !entry.second;
+        });
+
+    if (mask_entry != this->mask.cend()) {
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        // Drop annotations only at the exact current instance location
+        // to avoid dropping parent or sibling annotations
+        if (iterator->first.evaluate_path.starts_with_initial(
+                mask_entry->first) &&
+            iterator->first.instance_location == instance_location) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
+      }
+    }
+  }
+
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
                   [&evaluate_path](const auto &entry) {
                     return evaluate_path.starts_with(entry.first) &&
