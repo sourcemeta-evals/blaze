@@ -79,14 +79,53 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // Check if we're in a masked path and run appropriate annotation dropping
+  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+    // Find the longest matching masked path (to handle nested cases)
+    auto masked_path_iter = this->mask.cend();
+    for (auto iter = this->mask.cbegin(); iter != this->mask.cend(); ++iter) {
+      if (evaluate_path.starts_with(iter->first)) {
+        if (masked_path_iter == this->mask.cend() ||
+            iter->first.size() > masked_path_iter->first.size()) {
+          masked_path_iter = iter;
+        }
+      }
+    }
+
+    if (masked_path_iter != this->mask.cend()) {
+      const auto &masked_path = masked_path_iter->first;
+      const bool is_contains = !masked_path_iter->second;
+
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        // For contains, check both evaluate_path AND instance_location
+        // For anyOf/oneOf/not/if, check only evaluate_path
+        const bool should_drop =
+            is_contains
+                ? (iterator->first.evaluate_path.starts_with_initial(
+                       masked_path) &&
+                   iterator->first.instance_location == instance_location)
+                : iterator->first.evaluate_path.starts_with_initial(
+                      evaluate_path);
+
+        if (should_drop) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
+      }
+    }
+  }
+
+  // Return early for all masked paths
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
                   [&evaluate_path](const auto &entry) {
-                    return evaluate_path.starts_with(entry.first) &&
-                           !entry.second;
+                    return evaluate_path.starts_with(entry.first);
                   })) {
     return;
   }
 
+  // Standard annotation dropping logic for non-masked paths
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
@@ -96,13 +135,6 @@ auto SimpleOutput::operator()(
         iterator++;
       }
     }
-  }
-
-  if (std::any_of(this->mask.cbegin(), this->mask.cend(),
-                  [&evaluate_path](const auto &entry) {
-                    return evaluate_path.starts_with(entry.first);
-                  })) {
-    return;
   }
 
   this->output.push_back(
