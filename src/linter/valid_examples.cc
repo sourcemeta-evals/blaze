@@ -39,6 +39,16 @@ auto ValidExamples::condition(
     return false;
   }
 
+  const bool is_2019_09_or_later =
+      vocabularies.contains(
+          "https://json-schema.org/draft/2020-12/vocab/meta-data") ||
+      vocabularies.contains(
+          "https://json-schema.org/draft/2019-09/vocab/meta-data");
+
+  if (!is_2019_09_or_later && schema.is_object() && schema.defines("$ref")) {
+    return false;
+  }
+
   if (!schema.is_object() || !schema.defines("examples") ||
       !schema.at("examples").is_array() || schema.at("examples").empty()) {
     return false;
