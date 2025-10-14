@@ -79,23 +79,37 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // When a validation fails, remove annotations from the failed instance
+  // This must happen before checking the mask, as we need to clean up
+  // annotations even for suppressed failures (e.g., within contains)
+  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+    for (auto iterator = this->annotations_.begin();
+         iterator != this->annotations_.end();) {
+      // A trace of evaluation is uniquely identified by the combination
+      // of evaluate path and instance location. When removing annotations
+      // for failed validations, we need to consider both to avoid
+      // incorrectly removing annotations from successful validations at
+      // different instance locations (e.g., in contains with mixed results)
+      //
+      // For evaluate_path: use starts_with_initial to match siblings
+      // (e.g., remove /contains/title when /contains/type fails)
+      // For instance_location: use starts_with to match exact or descendants
+      // (e.g., remove annotations at /0 or /0/foo, but not at parent "")
+      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+          iterator->first.instance_location.starts_with(instance_location)) {
+        iterator = this->annotations_.erase(iterator);
+      } else {
+        iterator++;
+      }
+    }
+  }
+
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
                   [&evaluate_path](const auto &entry) {
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
     return;
-  }
-
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
-    for (auto iterator = this->annotations_.begin();
-         iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
-        iterator = this->annotations_.erase(iterator);
-      } else {
-        iterator++;
-      }
-    }
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
