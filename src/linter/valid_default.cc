@@ -1,5 +1,6 @@
 #include <sourcemeta/blaze/evaluator.h>
 #include <sourcemeta/blaze/linter.h>
+#include <sourcemeta/blaze/output.h>
 
 #include <functional> // std::ref, std::cref
 #include <sstream>    // std::ostringstream
@@ -36,12 +37,13 @@ auto ValidDefault::condition(
     return false;
   }
 
-  if (schema.defines("$ref") &&
-      !vocabularies.contains(
-          "https://json-schema.org/draft/2020-12/vocab/meta-data") &&
-      !vocabularies.contains(
-          "https://json-schema.org/draft/2019-09/vocab/meta-data")) {
-    return false;
+  // We have to ignore siblings to `$ref`
+  if (vocabularies.contains("http://json-schema.org/draft-07/schema#") ||
+      vocabularies.contains("http://json-schema.org/draft-06/schema#") ||
+      vocabularies.contains("http://json-schema.org/draft-04/schema#")) {
+    if (schema.defines("$ref")) {
+      return false;
+    }
   }
 
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
@@ -49,7 +51,8 @@ auto ValidDefault::condition(
                                     .get()
                                     .base_dialect};
   std::optional<std::string> default_id{location.base};
-  if (sourcemeta::core::identify(root, root_base_dialect).has_value()) {
+  if (sourcemeta::core::identify(root, root_base_dialect).has_value() ||
+      default_id.value().empty()) {
     // We want to only set a default identifier if the root schema does not
     // have an explicit identifier. Otherwise, we can get into corner case
     // when wrapping the schema
@@ -74,10 +77,12 @@ auto ValidDefault::condition(
 
   std::ostringstream message;
   output.stacktrace(message);
-  return message.str();
+  return {{{"default"}}, std::move(message).str()};
 }
 
-auto ValidDefault::transform(sourcemeta::core::JSON &schema) const -> void {
+auto ValidDefault::transform(
+    sourcemeta::core::JSON &schema,
+    const sourcemeta::core::SchemaTransformRule::Result &) const -> void {
   schema.erase("default");
 }
 

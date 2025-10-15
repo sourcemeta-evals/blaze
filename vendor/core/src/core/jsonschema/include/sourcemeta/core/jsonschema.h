@@ -19,6 +19,7 @@
 // NOLINTEND(misc-include-cleaner)
 
 #include <cstdint>     // std::uint8_t
+#include <functional>  // std::function
 #include <optional>    // std::optional, std::nullopt
 #include <set>         // std::set
 #include <string>      // std::string
@@ -387,47 +388,6 @@ auto schema_format_compare(const JSON::String &left, const JSON::String &right)
 
 /// @ingroup jsonschema
 ///
-/// Remove every identifer from a schema, rephrasing references (if any) as
-/// needed.
-///
-/// As a big caveat, unidentifying a schema with embedded schema
-/// resources will result in standalone instances of the `$schema` keyword,
-/// which will not be valid according to the specification (the `$schema`
-/// keyword must only occur within schema resources). We advise against using
-/// unidentified schema for anything other than serving non-compliant JSON
-/// Schema implementations that do not support identifier.
-///
-/// ```cpp
-/// #include <sourcemeta/core/json.h>
-/// #include <sourcemeta/core/jsonschema.h>
-/// #include <cassert>
-///
-/// sourcemeta::core::JSON schema =
-///   sourcemeta::core::parse_json(R"JSON({
-///   "$id": "https://www.example.com/schema",
-///   "$schema": "https://json-schema.org/draft/2020-12/schema",
-///   "$ref": "another",
-/// })JSON");
-///
-/// sourcemeta::core::unidentify(schema,
-///   sourcemeta::core::schema_official_walker,
-///   sourcemeta::core::schema_official_resolver);
-///
-/// const sourcemeta::core::JSON expected =
-///   sourcemeta::core::parse_json(R"JSON({
-///   "$schema": "https://json-schema.org/draft/2020-12/schema",
-///   "$ref": "https://www.example.com/another",
-/// })JSON");
-///
-/// assert(schema == expected);
-/// ```
-SOURCEMETA_CORE_JSONSCHEMA_EXPORT
-auto unidentify(
-    JSON &schema, const SchemaWalker &walker, const SchemaResolver &resolver,
-    const std::optional<std::string> &default_dialect = std::nullopt) -> void;
-
-/// @ingroup jsonschema
-///
 /// A reference visitor to try to turn every possible absolute reference in a
 /// schema into a relative one. For example:
 ///
@@ -556,6 +516,30 @@ auto wrap(const JSON &schema, const Pointer &pointer,
           const SchemaResolver &resolver,
           const std::optional<std::string> &default_dialect = std::nullopt)
     -> JSON;
+
+/// @ingroup jsonschema
+///
+/// Parse a JSON Schema `type` string into one or more native JSON type
+/// definition. For example:
+///
+/// ```cpp
+/// #include <sourcemeta/core/json.h>
+/// #include <sourcemeta/core/jsonschema.h>
+/// #include <cassert>
+/// #include <set>
+///
+/// std::set<sourcemeta::core::JSON::Type> types;
+/// sourcemeta::core::parse_schema_type("number",
+///   [&types](const auto type) { types.emplace(type); });
+///
+/// assert(types.size() == 2);
+/// assert(types.contains(sourcemeta::core::JSON::Type::Integer));
+/// assert(types.contains(sourcemeta::core::JSON::Type::Real));
+/// ```
+SOURCEMETA_CORE_JSONSCHEMA_EXPORT
+auto parse_schema_type(const JSON::String &type,
+                       const std::function<void(const JSON::Type)> &callback)
+    -> void;
 
 } // namespace sourcemeta::core
 
