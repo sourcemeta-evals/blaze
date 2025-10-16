@@ -6,6 +6,7 @@
 #endif
 
 #include <sourcemeta/core/json.h>
+#include <sourcemeta/core/jsonpointer.h>
 
 #include <sourcemeta/blaze/evaluator.h>
 
@@ -76,6 +77,60 @@ auto SOURCEMETA_BLAZE_OUTPUT_EXPORT
 standard(Evaluator &evaluator, const Template &schema,
          const sourcemeta::core::JSON &instance, const StandardOutput format)
     -> sourcemeta::core::JSON;
+
+/// @ingroup output
+/// Perform JSON Schema evaluation using Standard Output formats with
+/// instance position information. This overload takes a PointerPositionTracker
+/// and augments error and annotation unit objects with an `instancePosition`
+/// array property containing `[lineStart, columnStart, lineEnd, columnEnd]`.
+///
+/// For example:
+///
+/// ```cpp
+/// #include <sourcemeta/blaze/compiler.h>
+/// #include <sourcemeta/blaze/evaluator.h>
+/// #include <sourcemeta/blaze/output.h>
+///
+/// #include <sourcemeta/core/json.h>
+/// #include <sourcemeta/core/jsonpointer.h>
+/// #include <sourcemeta/core/jsonschema.h>
+///
+/// #include <cassert>
+/// #include <iostream>
+/// #include <sstream>
+///
+/// const auto schema_string = R"JSON({
+///   "$schema": "https://json-schema.org/draft/2020-12/schema",
+///   "type": "string"
+/// })JSON";
+///
+/// const auto instance_string = R"JSON({
+///   "foo": "bar"
+/// })JSON";
+///
+/// const auto schema{sourcemeta::core::parse_json(schema_string)};
+/// const auto schema_template{sourcemeta::blaze::compile(
+///     schema, sourcemeta::core::schema_official_walker,
+///     sourcemeta::core::schema_official_resolver,
+///     sourcemeta::core::default_schema_compiler)};
+///
+/// sourcemeta::core::PointerPositionTracker tracker;
+/// std::istringstream stream{instance_string};
+/// const auto instance{sourcemeta::core::parse_json(stream,
+/// std::ref(tracker))};
+///
+/// sourcemeta::blaze::Evaluator evaluator;
+/// const auto result{sourcemeta::blaze::standard(
+///   evaluator, schema_template, instance, tracker,
+///   sourcemeta::blaze::StandardOutput::Basic)};
+///
+/// // Result will include instancePosition arrays for each error/annotation
+/// ```
+auto SOURCEMETA_BLAZE_OUTPUT_EXPORT
+standard(Evaluator &evaluator, const Template &schema,
+         const sourcemeta::core::JSON &instance,
+         const sourcemeta::core::PointerPositionTracker &positions,
+         const StandardOutput format) -> sourcemeta::core::JSON;
 
 } // namespace sourcemeta::blaze
 
