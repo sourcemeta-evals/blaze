@@ -6,6 +6,7 @@
 #endif
 
 #include <sourcemeta/core/json.h>
+#include <sourcemeta/core/jsonpointer.h>
 
 #include <sourcemeta/blaze/evaluator.h>
 
@@ -76,6 +77,63 @@ auto SOURCEMETA_BLAZE_OUTPUT_EXPORT
 standard(Evaluator &evaluator, const Template &schema,
          const sourcemeta::core::JSON &instance, const StandardOutput format)
     -> sourcemeta::core::JSON;
+
+/// @ingroup output
+/// Perform JSON Schema evaluation using Standard Output formats with instance
+/// position tracking. This overload accepts a PointerPositionTracker to augment
+/// error and annotation units with instancePosition arrays containing
+/// [lineStart, columnStart, lineEnd, columnEnd] information.
+///
+/// For example:
+///
+/// ```cpp
+/// #include <sourcemeta/blaze/compiler.h>
+/// #include <sourcemeta/blaze/evaluator.h>
+/// #include <sourcemeta/blaze/output.h>
+///
+/// #include <sourcemeta/core/json.h>
+/// #include <sourcemeta/core/jsonpointer.h>
+/// #include <sourcemeta/core/jsonschema.h>
+///
+/// #include <cassert>
+/// #include <iostream>
+/// #include <sstream>
+///
+/// const auto input{R"JSON({
+///   "foo": 1
+/// })JSON"};
+///
+/// sourcemeta::core::PointerPositionTracker tracker;
+/// std::istringstream stream{input};
+/// const auto instance{sourcemeta::core::parse_json(stream,
+/// std::ref(tracker))};
+///
+/// const sourcemeta::core::JSON schema =
+///     sourcemeta::core::parse_json(R"JSON({
+///   "$schema": "https://json-schema.org/draft/2020-12/schema",
+///   "properties": {
+///     "foo": { "type": "string" }
+///   }
+/// })JSON");
+///
+/// const auto schema_template{sourcemeta::blaze::compile(
+///     schema, sourcemeta::core::schema_official_walker,
+///     sourcemeta::core::schema_official_resolver,
+///     sourcemeta::core::default_schema_compiler)};
+///
+/// sourcemeta::blaze::Evaluator evaluator;
+///
+/// const auto result{sourcemeta::blaze::standard(
+///   evaluator, schema_template, instance, tracker,
+///   sourcemeta::blaze::StandardOutput::Basic)};
+///
+/// // The result will include instancePosition in errors
+/// ```
+auto SOURCEMETA_BLAZE_OUTPUT_EXPORT
+standard(Evaluator &evaluator, const Template &schema,
+         const sourcemeta::core::JSON &instance,
+         const sourcemeta::core::PointerPositionTracker &tracker,
+         const StandardOutput format) -> sourcemeta::core::JSON;
 
 } // namespace sourcemeta::blaze
 
