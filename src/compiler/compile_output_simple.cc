@@ -79,23 +79,73 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // Clean up annotations for failed validations BEFORE checking the mask
+  // This is crucial for 'contains' where we need to drop annotations from
+  // items that failed, even though the overall contains might succeed
+  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+    // Check if we're inside a masked context (like contains)
+    // If so, we need to clean up annotations for this specific instance
+    // location
+    const bool in_masked_context = std::any_of(
+        this->mask.cbegin(), this->mask.cend(),
+        [&evaluate_path](const auto &entry) {
+          return evaluate_path.starts_with(entry.first) && !entry.second;
+        });
+
+    if (in_masked_context) {
+      // Find the mask entry to determine the parent path
+      for (const auto &mask_entry : this->mask) {
+        if (evaluate_path.starts_with(mask_entry.first) && !mask_entry.second) {
+          // Clean up annotations under this mask's path at the current instance
+          // location but ONLY for non-root instance locations (to preserve the
+          // mask's own annotations)
+          if (!instance_location.empty()) {
+            for (auto iterator = this->annotations_.begin();
+                 iterator != this->annotations_.end();) {
+              // Only erase annotations that are at the EXACT same instance
+              // location or a child location (not parent locations like root)
+              // We need to check if the annotation's instance_location starts
+              // with the failed instance_location using regular starts_with
+              // (not starts_with_initial which skips the last element)
+              const bool same_or_child_location =
+                  !iterator->first.instance_location.empty() &&
+                  (iterator->first.instance_location == instance_location ||
+                   iterator->first.instance_location.starts_with(
+                       instance_location));
+
+              if (iterator->first.evaluate_path.starts_with_initial(
+                      mask_entry.first) &&
+                  same_or_child_location) {
+                iterator = this->annotations_.erase(iterator);
+              } else {
+                iterator++;
+              }
+            }
+          }
+          break;
+        }
+      }
+    } else {
+      // Normal cleanup: remove annotations under the failed evaluate path
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+            iterator->first.instance_location.starts_with_initial(
+                instance_location)) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
+      }
+    }
+  }
+
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
                   [&evaluate_path](const auto &entry) {
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
     return;
-  }
-
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
-    for (auto iterator = this->annotations_.begin();
-         iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
-        iterator = this->annotations_.erase(iterator);
-      } else {
-        iterator++;
-      }
-    }
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
