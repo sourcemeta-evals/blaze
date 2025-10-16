@@ -6,6 +6,7 @@
 #endif
 
 #include <sourcemeta/core/json.h>
+#include <sourcemeta/core/jsonpointer.h>
 
 #include <sourcemeta/blaze/evaluator.h>
 
@@ -75,6 +76,48 @@ enum class StandardOutput {
 auto SOURCEMETA_BLAZE_OUTPUT_EXPORT
 standard(Evaluator &evaluator, const Template &schema,
          const sourcemeta::core::JSON &instance, const StandardOutput format)
+    -> sourcemeta::core::JSON;
+
+/// @ingroup output
+/// Perform JSON Schema evaluation using Standard Output formats with instance
+/// position tracking. This overload augments error and annotation units with
+/// `instancePosition` array property containing [lineStart, columnStart,
+/// lineEnd, columnEnd]. For example:
+///
+/// ```cpp
+/// #include <sourcemeta/blaze/compiler.h>
+/// #include <sourcemeta/blaze/evaluator.h>
+/// #include <sourcemeta/blaze/output.h>
+///
+/// #include <sourcemeta/core/json.h>
+/// #include <sourcemeta/core/jsonschema.h>
+/// #include <sourcemeta/core/jsonpointer.h>
+///
+/// const sourcemeta::core::JSON schema =
+///     sourcemeta::core::parse_json(R"JSON({
+///   "$schema": "https://json-schema.org/draft/2020-12/schema",
+///   "type": "string"
+/// })JSON");
+///
+/// const auto schema_template{sourcemeta::blaze::compile(
+///     schema, sourcemeta::core::schema_official_walker,
+///     sourcemeta::core::schema_official_resolver,
+///     sourcemeta::core::default_schema_compiler)};
+///
+/// sourcemeta::core::PointerPositionTracker tracker;
+/// const sourcemeta::core::JSON instance =
+///     sourcemeta::core::parse_json(R"JSON("foo bar")JSON", std::ref(tracker));
+///
+/// sourcemeta::blaze::Evaluator evaluator;
+///
+/// const auto result{sourcemeta::blaze::standard(
+///   evaluator, schema_template, instance,
+///   sourcemeta::blaze::StandardOutput::Basic, tracker)};
+/// ```
+auto SOURCEMETA_BLAZE_OUTPUT_EXPORT
+standard(Evaluator &evaluator, const Template &schema,
+         const sourcemeta::core::JSON &instance, const StandardOutput format,
+         const sourcemeta::core::PointerPositionTracker &tracker)
     -> sourcemeta::core::JSON;
 
 } // namespace sourcemeta::blaze
