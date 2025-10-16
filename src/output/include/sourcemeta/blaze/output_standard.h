@@ -77,6 +77,11 @@ standard(Evaluator &evaluator, const Template &schema,
          const sourcemeta::core::JSON &instance, const StandardOutput format)
     -> sourcemeta::core::JSON;
 
+auto standard(Evaluator &evaluator, const Template &schema,
+              const sourcemeta::core::JSON &instance,
+              const StandardOutput format, void *tracker)
+    -> sourcemeta::core::JSON;
+
 } // namespace sourcemeta::blaze
 
 #endif

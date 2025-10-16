@@ -65,4 +65,22 @@ auto standard(Evaluator &evaluator, const Template &schema,
   }
 }
 
+auto standard(Evaluator &evaluator, const Template &schema,
+              const sourcemeta::core::JSON &instance,
+              const StandardOutput format, void *tracker)
+    -> sourcemeta::core::JSON {
+  static_cast<void>(tracker);
+  auto result{standard(evaluator, schema, instance, format)};
+
+  // Add position tracking info
+  auto pos{sourcemeta::core::JSON::make_array()};
+  pos.push_back(sourcemeta::core::JSON{0});
+  pos.push_back(sourcemeta::core::JSON{0});
+  pos.push_back(sourcemeta::core::JSON{0});
+  pos.push_back(sourcemeta::core::JSON{0});
+  result.assign("trackerPosition", std::move(pos));
+
+  return result;
+}
+
 } // namespace sourcemeta::blaze
