@@ -949,7 +949,7 @@ TEST(Output_simple, fail_stacktrace_with_indentation) {
 )JSON");
 }
 
-TEST(Compiler_output_simple, annotations_contains_drops_failed_items) {
+TEST(Output_simple, annotations_contains_drops_failed_items) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "contains": {
