@@ -317,3 +317,33 @@ TEST(Output_standard_basic, failure_1) {
 
   EXPECT_EQ(result, expected);
 }
+
+TEST(Output_standard_basic, with_tracker_error_case) {
+  const auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "foo": { "type": "string" }
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation)};
+
+  sourcemeta::core::PointerPositionTracker tracker;
+  const auto instance{sourcemeta::core::parse_json(R"JSON({
+    "foo": "bar"
+  })JSON",
+                                                   std::ref(tracker))};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{sourcemeta::blaze::standard(
+      evaluator, schema_template, instance,
+      sourcemeta::blaze::StandardOutput::Basic, tracker)};
+
+  EXPECT_TRUE(result.is_object());
+  EXPECT_TRUE(result.defines("valid"));
+  EXPECT_TRUE(result.at("valid").to_boolean());
+}
