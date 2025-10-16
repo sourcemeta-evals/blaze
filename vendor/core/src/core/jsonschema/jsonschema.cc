@@ -1,19 +1,29 @@
 #include <sourcemeta/core/jsonschema.h>
 
-#include <cassert>     // assert
-#include <cstdint>     // std::uint64_t
-#include <functional>  // std::less
-#include <limits>      // std::numeric_limits
-#include <numeric>     // std::accumulate
-#include <sstream>     // std::ostringstream
-#include <type_traits> // std::remove_reference_t
-#include <utility>     // std::move
+#include <cassert>       // assert
+#include <cstdint>       // std::uint64_t
+#include <limits>        // std::numeric_limits
+#include <numeric>       // std::accumulate
+#include <sstream>       // std::ostringstream
+#include <type_traits>   // std::remove_reference_t
+#include <unordered_map> // std::unordered_map
+#include <utility>       // std::move
 
 auto sourcemeta::core::is_schema(const sourcemeta::core::JSON &schema) -> bool {
   return schema.is_object() || schema.is_boolean();
 }
 
-static auto id_keyword_guess(const sourcemeta::core::JSON &schema)
+// TODO: Make this function detect schemas only using identifier/comment
+// keywords, etc
+auto sourcemeta::core::is_empty_schema(const sourcemeta::core::JSON &schema)
+    -> bool {
+  return (schema.is_boolean() && schema.to_boolean()) ||
+         (schema.is_object() && schema.empty());
+}
+
+namespace {
+
+auto id_keyword_guess(const sourcemeta::core::JSON &schema)
     -> std::optional<std::string> {
   if (schema.defines("$id") && schema.at("$id").is_string()) {
     if (!schema.defines("id") ||
@@ -54,6 +64,8 @@ static auto id_keyword(const std::string &base_dialect) -> std::string {
   error << "Unrecognized base dialect: " << base_dialect;
   throw sourcemeta::core::SchemaError(error.str());
 }
+
+} // namespace
 
 auto sourcemeta::core::identify(
     const sourcemeta::core::JSON &schema, const SchemaResolver &resolver,
@@ -96,7 +108,7 @@ auto sourcemeta::core::identify(
     return default_id;
   }
 
-  const auto result{identify(schema, maybe_base_dialect.value(), default_id)};
+  auto result{identify(schema, maybe_base_dialect.value(), default_id)};
 
   // A last shot supporting identifiers alongside `$ref` in loose mode
   if (!result.has_value() && strategy == SchemaIdentificationStrategy::Loose) {
@@ -236,15 +248,22 @@ auto sourcemeta::core::metaschema(
     const std::optional<std::string> &default_dialect) -> JSON {
   const auto maybe_dialect{sourcemeta::core::dialect(schema, default_dialect)};
   if (!maybe_dialect.has_value()) {
-    throw sourcemeta::core::SchemaError(
-        "Could not the determine dialect of the schema");
+    throw sourcemeta::core::SchemaUnknownDialectError();
   }
 
   const auto maybe_metaschema{resolver(maybe_dialect.value())};
   if (!maybe_metaschema.has_value()) {
-    throw sourcemeta::core::SchemaResolutionError(
-        maybe_dialect.value(),
-        "Could not resolve the metaschema of the schema");
+    // Relative meta-schema references are invalid according to the
+    // JSON Schema specifications. They must be absolute ones
+    const URI effective_dialect_uri{maybe_dialect.value()};
+    if (effective_dialect_uri.is_relative()) {
+      throw sourcemeta::core::SchemaRelativeMetaschemaResolutionError(
+          maybe_dialect.value());
+    } else {
+      throw sourcemeta::core::SchemaResolutionError(
+          maybe_dialect.value(),
+          "Could not resolve the metaschema of the schema");
+    }
   }
 
   return maybe_metaschema.value();
@@ -306,8 +325,16 @@ auto sourcemeta::core::base_dialect(
   const std::optional<sourcemeta::core::JSON> metaschema{
       resolver(effective_dialect)};
   if (!metaschema.has_value()) {
-    throw sourcemeta::core::SchemaResolutionError(
-        effective_dialect, "Could not resolve the requested schema");
+    // Relative meta-schema references are invalid according to the
+    // JSON Schema specifications. They must be absolute ones
+    const URI effective_dialect_uri{effective_dialect};
+    if (effective_dialect_uri.is_relative()) {
+      throw sourcemeta::core::SchemaRelativeMetaschemaResolutionError(
+          effective_dialect);
+    } else {
+      throw sourcemeta::core::SchemaResolutionError(
+          effective_dialect, "Could not resolve the metaschema of the schema");
+    }
   }
 
   return base_dialect(metaschema.value(), resolver, effective_dialect);
@@ -380,7 +407,24 @@ auto sourcemeta::core::vocabularies(const SchemaResolver &resolver,
   }
 
   /*
-   * (1) If the base dialect is pre-vocabularies, then the
+   * (1) If the dialect is pre-vocabularies, then the
+   * dialect itself is conceptually the only vocabulary
+   */
+
+  // This is an exhaustive list of all official dialects in the pre-vocabulary
+  // world
+  if (dialect == "http://json-schema.org/draft-07/schema#" ||
+      dialect == "http://json-schema.org/draft-06/schema#" ||
+      dialect == "http://json-schema.org/draft-04/schema#" ||
+      dialect == "http://json-schema.org/draft-03/schema#" ||
+      dialect == "http://json-schema.org/draft-02/schema#" ||
+      dialect == "http://json-schema.org/draft-01/schema#" ||
+      dialect == "http://json-schema.org/draft-00/schema#") {
+    return {{dialect, true}};
+  }
+
+  /*
+   * (2) If the base dialect is pre-vocabularies, then the
    * base dialect itself is conceptually the only vocabulary
    */
 
@@ -400,14 +444,14 @@ auto sourcemeta::core::vocabularies(const SchemaResolver &resolver,
   }
 
   /*
-   * (2) If the dialect is vocabulary aware, then fetch such dialect
+   * (3) If the dialect is vocabulary aware, then fetch such dialect
    */
 
   const std::optional<sourcemeta::core::JSON> maybe_schema_dialect{
       resolver(dialect)};
   if (!maybe_schema_dialect.has_value()) {
     throw sourcemeta::core::SchemaResolutionError(
-        dialect, "Could not resolve the requested schema");
+        dialect, "Could not resolve the metaschema of the schema");
   }
   const sourcemeta::core::JSON &schema_dialect{maybe_schema_dialect.value()};
   // At this point we are sure that the dialect is vocabulary aware and the
@@ -415,10 +459,11 @@ auto sourcemeta::core::vocabularies(const SchemaResolver &resolver,
   // complexity of the generic `id` function.
   assert(schema_dialect.defines("$id") &&
          schema_dialect.at("$id").is_string() &&
-         schema_dialect.at("$id").to_string() == dialect);
+         URI::canonicalize(schema_dialect.at("$id").to_string()) ==
+             URI::canonicalize(dialect));
 
   /*
-   * (3) Retrieve the vocabularies explicitly or implicitly declared by the
+   * (4) Retrieve the vocabularies explicitly or implicitly declared by the
    * dialect
    */
 
@@ -447,12 +492,10 @@ auto sourcemeta::core::vocabularies(const SchemaResolver &resolver,
   return result;
 }
 
-auto sourcemeta::core::schema_format_compare(
-    const sourcemeta::core::JSON::String &left,
-    const sourcemeta::core::JSON::String &right) -> bool {
+static auto keyword_rank(const sourcemeta::core::JSON::String &keyword,
+                         const std::uint64_t otherwise) -> std::uint64_t {
   using Rank =
-      std::map<JSON::String, std::uint64_t, std::less<JSON::String>,
-               JSON::Allocator<std::pair<const JSON::String, std::uint64_t>>>;
+      std::unordered_map<sourcemeta::core::JSON::String, std::uint64_t>;
   static Rank rank{// Most core keywords tend to come first
                    {"$schema", 0},
                    {"$id", 1},
@@ -472,88 +515,114 @@ auto sourcemeta::core::schema_format_compare(
                    {"writeOnly", 14},
                    {"default", 15},
 
+                   // This is a placeholder for "x-"-prefixed unknown keywords,
+                   // as they are almost always metadata
+                   {"x", 16},
+
                    // Then references
-                   {"$ref", 16},
-                   {"$dynamicRef", 17},
-                   {"$recursiveRef", 18},
+                   {"$ref", 17},
+                   {"$dynamicRef", 18},
+                   {"$recursiveRef", 19},
 
                    // Then keywords that apply to any type
-                   {"type", 19},
-                   {"disallow", 20},
-                   {"extends", 21},
-                   {"const", 22},
-                   {"enum", 23},
-                   {"optional", 0},
-                   {"requires", 0},
-                   {"allOf", 24},
-                   {"anyOf", 25},
-                   {"oneOf", 26},
-                   {"not", 27},
-                   {"if", 28},
-                   {"then", 29},
-                   {"else", 30},
+                   {"type", 20},
+                   {"disallow", 21},
+                   {"extends", 22},
+                   {"const", 23},
+                   {"enum", 24},
+                   {"optional", 25},
+                   {"requires", 26},
+                   {"allOf", 27},
+                   {"anyOf", 28},
+                   {"oneOf", 29},
+                   {"not", 30},
+                   {"if", 31},
+                   {"then", 32},
+                   {"else", 33},
 
                    // Then keywords about numbers
-                   {"exclusiveMaximum", 31},
-                   {"maximum", 32},
-                   {"maximumCanEqual", 33},
-                   {"exclusiveMinimum", 34},
-                   {"minimum", 35},
-                   {"minimumCanEqual", 36},
-                   {"multipleOf", 37},
-                   {"divisibleBy", 38},
-                   {"maxDecimal", 39},
+                   {"exclusiveMaximum", 34},
+                   {"maximum", 35},
+                   {"maximumCanEqual", 36},
+                   {"exclusiveMinimum", 37},
+                   {"minimum", 38},
+                   {"minimumCanEqual", 39},
+                   {"multipleOf", 40},
+                   {"divisibleBy", 41},
+                   {"maxDecimal", 42},
 
                    // Then keywords about strings
-                   {"pattern", 40},
-                   {"format", 41},
-                   {"maxLength", 42},
-                   {"minLength", 43},
-                   {"contentEncoding", 44},
-                   {"contentMediaType", 45},
-                   {"contentSchema", 46},
+                   {"pattern", 43},
+                   {"format", 44},
+                   {"maxLength", 45},
+                   {"minLength", 46},
+                   {"contentEncoding", 47},
+                   {"contentMediaType", 48},
+                   {"contentSchema", 49},
 
                    // Then keywords about arrays
-                   {"maxItems", 47},
-                   {"minItems", 48},
-                   {"uniqueItems", 49},
-                   {"maxContains", 50},
-                   {"minContains", 51},
-                   {"contains", 52},
-                   {"prefixItems", 53},
-                   {"items", 54},
-                   {"additionalItems", 55},
-                   {"unevaluatedItems", 56},
+                   {"maxItems", 50},
+                   {"minItems", 51},
+                   {"uniqueItems", 52},
+                   {"maxContains", 53},
+                   {"minContains", 54},
+                   {"contains", 55},
+                   {"prefixItems", 56},
+                   {"items", 57},
+                   {"additionalItems", 58},
+                   {"unevaluatedItems", 59},
 
                    // Object
-                   {"required", 57},
-                   {"maxProperties", 58},
-                   {"minProperties", 59},
-                   {"propertyNames", 60},
-                   {"properties", 61},
-                   {"patternProperties", 62},
-                   {"additionalProperties", 63},
-                   {"unevaluatedProperties", 64},
-                   {"dependentRequired", 65},
-                   {"dependencies", 66},
-                   {"dependentSchemas", 67},
+                   {"required", 60},
+                   {"maxProperties", 61},
+                   {"minProperties", 62},
+                   {"propertyNames", 63},
+                   {"properties", 64},
+                   {"patternProperties", 65},
+                   {"additionalProperties", 66},
+                   {"unevaluatedProperties", 67},
+                   {"dependentRequired", 68},
+                   {"dependencies", 69},
+                   {"dependentSchemas", 70},
 
                    // Reusable utilities go last
-                   {"$defs", 68},
-                   {"definitions", 69}};
+                   {"$defs", 71},
+                   {"definitions", 72}};
 
-  if (rank.contains(left) || rank.contains(right)) {
-    constexpr auto DEFAULT{std::numeric_limits<Rank::mapped_type>::max()};
-    const auto left_rank{rank.contains(left) ? rank.at(left) : DEFAULT};
-    const auto right_rank{rank.contains(right) ? rank.at(right) : DEFAULT};
-    // If the ranks are equal, then either the keywords are the same or
-    // none of them are recognized keywords.
-    assert((left_rank != right_rank) ||
-           (left == right || left_rank == DEFAULT));
-    return left_rank < right_rank;
+  // A common pattern that seems to come up often in practice is schema authors
+  // coming up with unknown annotation keywords that are meant to extend or
+  // complement existing ones. For example, `title:en` for `title`, etc. By
+  // checking the prefixes of a keyword, we can accomodate that pattern very
+  // nicely by keeping them right besides the keywords they are supposed to
+  // extend. For performance reasons, we only apply such logic to keywords
+  // that have certain special characters that are commonly used for these kind
+  // of extensions
+  const auto pivot{keyword.find_first_of("-_:")};
+  if (pivot != std::string::npos) {
+    const auto match{rank.find(keyword.substr(0, pivot))};
+    if (match != rank.cend()) {
+      return match->second;
+    }
+  }
+
+  const auto match{rank.find(keyword)};
+  if (match != rank.cend()) {
+    return match->second;
   } else {
-    // For unknown keywords, go alphabetically
+    return otherwise;
+  }
+}
+
+auto sourcemeta::core::schema_format_compare(
+    const sourcemeta::core::JSON::String &left,
+    const sourcemeta::core::JSON::String &right) -> bool {
+  constexpr auto DEFAULT{std::numeric_limits<std::uint64_t>::max()};
+  const auto left_rank{keyword_rank(left, DEFAULT)};
+  const auto right_rank{keyword_rank(right, DEFAULT)};
+  if (left_rank == right_rank) {
     return left < right;
+  } else {
+    return left_rank < right_rank;
   }
 }
 
@@ -637,57 +706,6 @@ auto sourcemeta::core::schema_keyword_priority(
       });
 }
 
-auto sourcemeta::core::unidentify(
-    sourcemeta::core::JSON &schema,
-    const sourcemeta::core::SchemaWalker &walker,
-    const sourcemeta::core::SchemaResolver &resolver,
-    const std::optional<std::string> &default_dialect) -> void {
-  // (1) Re-frame before changing anything
-  sourcemeta::core::SchemaFrame frame{
-      sourcemeta::core::SchemaFrame::Mode::References};
-  frame.analyse(schema, walker, resolver, default_dialect);
-
-  // (2) Remove all identifiers and anchors
-  for (const auto &entry : sourcemeta::core::SchemaIterator{
-           schema, walker, resolver, default_dialect}) {
-    auto &subschema{sourcemeta::core::get(schema, entry.pointer)};
-    if (subschema.is_boolean()) {
-      continue;
-    }
-
-    assert(entry.base_dialect.has_value());
-    sourcemeta::core::anonymize(subschema, entry.base_dialect.value());
-
-    if (entry.vocabularies.contains(
-            "https://json-schema.org/draft/2020-12/vocab/core")) {
-      subschema.erase("$anchor");
-      subschema.erase("$dynamicAnchor");
-    }
-
-    if (entry.vocabularies.contains(
-            "https://json-schema.org/draft/2019-09/vocab/core")) {
-      subschema.erase("$anchor");
-      subschema.erase("$recursiveAnchor");
-    }
-  }
-
-  // (3) Fix-up reference based on pointers from the root
-  for (const auto &[key, reference] : frame.references()) {
-    const auto result{frame.traverse(reference.destination)};
-    if (result.has_value()) {
-      sourcemeta::core::set(
-          schema, key.second,
-          sourcemeta::core::JSON{
-              sourcemeta::core::to_uri(result.value().get().pointer)
-                  .recompose()});
-    } else if (!key.second.empty() && key.second.back().is_property() &&
-               key.second.back().to_property() != "$schema") {
-      sourcemeta::core::set(schema, key.second,
-                            sourcemeta::core::JSON{reference.destination});
-    }
-  }
-}
-
 auto sourcemeta::core::wrap(const sourcemeta::core::JSON::String &identifier)
     -> sourcemeta::core::JSON {
   auto result{JSON::make_object()};
@@ -739,12 +757,10 @@ auto sourcemeta::core::wrap(const sourcemeta::core::JSON &schema,
   result.at("$defs").assign("schema", std::move(copy));
 
   // Add a reference to the schema
-  const URI uri{id};
+  URI uri{id};
   if (!uri.fragment().has_value() || uri.fragment().value().empty()) {
-    std::ostringstream effective_uri;
-    effective_uri << uri.recompose_without_fragment().value_or("")
-                  << to_uri(pointer).recompose();
-    result.assign("$ref", JSON{effective_uri.str()});
+    uri.fragment(to_string(pointer));
+    result.assign("$ref", JSON{uri.recompose()});
   } else {
     result.assign(
         "$ref",
@@ -752,4 +768,26 @@ auto sourcemeta::core::wrap(const sourcemeta::core::JSON &schema,
   }
 
   return result;
+}
+
+auto sourcemeta::core::parse_schema_type(
+    const sourcemeta::core::JSON::String &type,
+    const std::function<void(const sourcemeta::core::JSON::Type)> &callback)
+    -> void {
+  if (type == "null") {
+    callback(sourcemeta::core::JSON::Type::Null);
+  } else if (type == "boolean") {
+    callback(sourcemeta::core::JSON::Type::Boolean);
+  } else if (type == "object") {
+    callback(sourcemeta::core::JSON::Type::Object);
+  } else if (type == "array") {
+    callback(sourcemeta::core::JSON::Type::Array);
+  } else if (type == "number") {
+    callback(sourcemeta::core::JSON::Type::Integer);
+    callback(sourcemeta::core::JSON::Type::Real);
+  } else if (type == "integer") {
+    callback(sourcemeta::core::JSON::Type::Integer);
+  } else if (type == "string") {
+    callback(sourcemeta::core::JSON::Type::String);
+  }
 }
