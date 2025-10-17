@@ -402,6 +402,29 @@ TEST(Evaluator_draft4, required_5_exhaustive) {
                                "The value was expected to be of type object");
 }
 
+TEST(Evaluator_draft4, required_6) {
+  // This is purposely invalid
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "properties": {
+      "foo": {
+        "required": "bar"
+      }
+    }
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{sourcemeta::core::parse_json(R"JSON({
+    "foo": {}
+  })JSON")};
+
+  EVALUATE_WITH_TRACE_FAST_SUCCESS(schema, instance, 1);
+  EVALUATE_TRACE_PRE(0, AssertionTypeStrict, "/type", "#/type", "");
+  EVALUATE_TRACE_POST_SUCCESS(0, AssertionTypeStrict, "/type", "#/type", "");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The value was expected to be of type object");
+}
+
 TEST(Evaluator_draft4, allOf_1) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "http://json-schema.org/draft-04/schema#",
@@ -1018,7 +1041,7 @@ TEST(Evaluator_draft4, properties_2_exhaustive) {
 
   EVALUATE_WITH_TRACE_EXHAUSTIVE_SUCCESS(schema, instance, 3);
 
-  EVALUATE_TRACE_PRE(0, LogicalAnd, "/properties", "#/properties", "");
+  EVALUATE_TRACE_PRE(0, LogicalWhenType, "/properties", "#/properties", "");
   EVALUATE_TRACE_PRE(1, AssertionTypeStrict, "/properties/bar/type",
                      "#/properties/bar/type", "/bar");
   EVALUATE_TRACE_PRE(2, AssertionTypeStrict, "/properties/foo/type",
@@ -1028,7 +1051,8 @@ TEST(Evaluator_draft4, properties_2_exhaustive) {
                               "#/properties/bar/type", "/bar");
   EVALUATE_TRACE_POST_SUCCESS(1, AssertionTypeStrict, "/properties/foo/type",
                               "#/properties/foo/type", "/foo");
-  EVALUATE_TRACE_POST_SUCCESS(2, LogicalAnd, "/properties", "#/properties", "");
+  EVALUATE_TRACE_POST_SUCCESS(2, LogicalWhenType, "/properties", "#/properties",
+                              "");
 
   EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
                                "The value was expected to be of type integer");
@@ -1104,8 +1128,8 @@ TEST(Evaluator_draft4, properties_4_exhaustive) {
 
   EVALUATE_WITH_TRACE_EXHAUSTIVE_SUCCESS(schema, instance, 3);
 
-  EVALUATE_TRACE_PRE(0, LogicalAnd, "/properties", "#/properties", "");
-  EVALUATE_TRACE_PRE(1, LogicalAnd, "/properties/foo/properties",
+  EVALUATE_TRACE_PRE(0, LogicalWhenType, "/properties", "#/properties", "");
+  EVALUATE_TRACE_PRE(1, LogicalWhenType, "/properties/foo/properties",
                      "#/properties/foo/properties", "/foo");
   EVALUATE_TRACE_PRE(2, AssertionTypeStrict,
                      "/properties/foo/properties/bar/type",
@@ -1114,9 +1138,10 @@ TEST(Evaluator_draft4, properties_4_exhaustive) {
   EVALUATE_TRACE_POST_SUCCESS(
       0, AssertionTypeStrict, "/properties/foo/properties/bar/type",
       "#/properties/foo/properties/bar/type", "/foo/bar");
-  EVALUATE_TRACE_POST_SUCCESS(1, LogicalAnd, "/properties/foo/properties",
+  EVALUATE_TRACE_POST_SUCCESS(1, LogicalWhenType, "/properties/foo/properties",
                               "#/properties/foo/properties", "/foo");
-  EVALUATE_TRACE_POST_SUCCESS(2, LogicalAnd, "/properties", "#/properties", "");
+  EVALUATE_TRACE_POST_SUCCESS(2, LogicalWhenType, "/properties", "#/properties",
+                              "");
 
   EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
                                "The value was expected to be of type string");
@@ -1651,6 +1676,94 @@ TEST(Evaluator_draft4, properties_15) {
   }
 }
 
+// From https://github.com/sourcemeta/jsonschema/issues/432
+TEST(Evaluator_draft4, properties_16) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [ "foo", "bar" ],
+    "properties": {
+      "foo": {},
+      "bar": { "type": "object" }
+    }
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{"baz"};
+
+  EVALUATE_WITH_TRACE_FAST_FAILURE(schema, instance, 1);
+
+  EVALUATE_TRACE_PRE(0, AssertionDefinesExactlyStrict, "/required",
+                     "#/required", "");
+  EVALUATE_TRACE_POST_FAILURE(0, AssertionDefinesExactlyStrict, "/required",
+                              "#/required", "");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The value was expected to be an object that "
+                               "only defines properties \"bar\", and \"foo\"");
+}
+
+// From https://github.com/sourcemeta/jsonschema/issues/432
+TEST(Evaluator_draft4, properties_16_exhaustive) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [ "foo", "bar" ],
+    "properties": {
+      "foo": {},
+      "bar": { "type": "object" }
+    }
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{"baz"};
+
+  EVALUATE_WITH_TRACE_EXHAUSTIVE_FAILURE(schema, instance, 1);
+
+  EVALUATE_TRACE_PRE(0, AssertionTypeStrict, "/type", "#/type", "");
+  EVALUATE_TRACE_POST_FAILURE(0, AssertionTypeStrict, "/type", "#/type", "");
+  EVALUATE_TRACE_POST_DESCRIBE(
+      instance, 0,
+      "The value was expected to be of type object but it was of type string");
+}
+
+TEST(Evaluator_draft4, properties_17) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [ "foo", "bar", "baz" ],
+    "properties": {
+      "foo": { "type": "string" },
+      "bar": { "type": "array" },
+      "baz": { "type": "object" }
+    }
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{"baz"};
+
+  EVALUATE_WITH_TRACE_FAST_FAILURE(schema, instance, 1);
+
+  EVALUATE_TRACE_PRE(0, AssertionDefinesExactlyStrictHash3, "/required",
+                     "#/required", "");
+  EVALUATE_TRACE_POST_FAILURE(0, AssertionDefinesExactlyStrictHash3,
+                              "/required", "#/required", "");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The value was expected to be an object that "
+                               "only defines the 3 given properties");
+}
+
+TEST(Evaluator_draft4, properties_18) {
+  // This is purposely invalid
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "properties": "not-an-object"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("\"foo\"")};
+  EVALUATE_WITH_TRACE_FAST_SUCCESS(schema, instance, 0);
+}
+
 TEST(Evaluator_draft4, pattern_1) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "http://json-schema.org/draft-04/schema#",
@@ -1770,6 +1883,18 @@ TEST(Evaluator_draft4, pattern_6) {
   } catch (const std::exception &) {
     FAIL() << "The compile function was expected to throw a schema error";
   }
+}
+
+TEST(Evaluator_draft4, pattern_7) {
+  // This is purposely invalid
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "pattern": 123
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("\"foo\"")};
+  EVALUATE_WITH_TRACE_FAST_SUCCESS(schema, instance, 0);
 }
 
 TEST(Evaluator_draft4, patternProperties_1) {
@@ -2275,6 +2400,18 @@ TEST(Evaluator_draft4, patternProperties_14) {
       "subschema");
 }
 
+TEST(Evaluator_draft4, patternProperties_15) {
+  // This is purposely invalid
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "patternProperties": "not-an-object"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("\"foo\"")};
+  EVALUATE_WITH_TRACE_FAST_SUCCESS(schema, instance, 0);
+}
+
 TEST(Evaluator_draft4, additionalProperties_1) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "http://json-schema.org/draft-04/schema#",
@@ -2559,7 +2696,7 @@ TEST(Evaluator_draft4, additionalProperties_4_exhaustive) {
                      // Note that the caret needs to be URI escaped
                      "#/patternProperties/%5Ebar$/type", "/bar");
 
-  EVALUATE_TRACE_PRE(2, LogicalAnd, "/properties", "#/properties", "");
+  EVALUATE_TRACE_PRE(2, LogicalWhenType, "/properties", "#/properties", "");
   EVALUATE_TRACE_PRE(3, AssertionTypeStrict, "/properties/foo/type",
                      "#/properties/foo/type", "/foo");
 
@@ -2579,7 +2716,8 @@ TEST(Evaluator_draft4, additionalProperties_4_exhaustive) {
   // `properties`
   EVALUATE_TRACE_POST_SUCCESS(2, AssertionTypeStrict, "/properties/foo/type",
                               "#/properties/foo/type", "/foo");
-  EVALUATE_TRACE_POST_SUCCESS(3, LogicalAnd, "/properties", "#/properties", "");
+  EVALUATE_TRACE_POST_SUCCESS(3, LogicalWhenType, "/properties", "#/properties",
+                              "");
 
   // `additionalProperties`
   EVALUATE_TRACE_POST_SUCCESS(4, AssertionTypeStrict,
@@ -3481,6 +3619,18 @@ TEST(Evaluator_draft4, items_10) {
                                "validate against the given subschema");
 }
 
+TEST(Evaluator_draft4, items_11) {
+  // This is purposely invalid
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "items": "not-an-array"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("\"foo\"")};
+  EVALUATE_WITH_TRACE_FAST_SUCCESS(schema, instance, 0);
+}
+
 TEST(Evaluator_draft4, additionalItems_1) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "http://json-schema.org/draft-04/schema#",
@@ -4137,6 +4287,18 @@ TEST(Evaluator_draft4, oneOf_5) {
       "the 3 given subschemas");
 }
 
+TEST(Evaluator_draft4, oneOf_6) {
+  // This is purposely invalid
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "oneOf": "not-an-array"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("\"foo\"")};
+  EVALUATE_WITH_TRACE_FAST_SUCCESS(schema, instance, 0);
+}
+
 TEST(Evaluator_draft4, dependencies_1) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "http://json-schema.org/draft-04/schema#",
@@ -4329,6 +4491,18 @@ TEST(Evaluator_draft4, dependencies_8) {
       "The object value was expected to define the property \"extra\"");
   EVALUATE_TRACE_POST_DESCRIBE(instance, 1,
                                "The object value defined the property \"qux\"");
+}
+
+TEST(Evaluator_draft4, dependencies_9) {
+  // This is purposely invalid
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "dependencies": "not-an-object"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("\"foo\"")};
+  EVALUATE_WITH_TRACE_FAST_SUCCESS(schema, instance, 0);
 }
 
 TEST(Evaluator_draft4, enum_1) {
@@ -4771,14 +4945,15 @@ TEST(Evaluator_draft4, enum_19_exhaustive) {
 
   EVALUATE_WITH_TRACE_EXHAUSTIVE_FAILURE(schema, instance, 2);
 
-  EVALUATE_TRACE_PRE(0, LogicalAnd, "/properties", "#/properties", "");
+  EVALUATE_TRACE_PRE(0, LogicalWhenType, "/properties", "#/properties", "");
   EVALUATE_TRACE_PRE(1, AssertionDefinesStrict, "/properties/foo/required",
                      "#/properties/foo/required", "/foo");
 
   EVALUATE_TRACE_POST_FAILURE(0, AssertionDefinesStrict,
                               "/properties/foo/required",
                               "#/properties/foo/required", "/foo");
-  EVALUATE_TRACE_POST_FAILURE(1, LogicalAnd, "/properties", "#/properties", "");
+  EVALUATE_TRACE_POST_FAILURE(1, LogicalWhenType, "/properties", "#/properties",
+                              "");
 
   EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
                                "The value was expected to be an object that "
@@ -4843,14 +5018,15 @@ TEST(Evaluator_draft4, enum_20_exhaustive) {
 
   EVALUATE_WITH_TRACE_EXHAUSTIVE_FAILURE(schema, instance, 2);
 
-  EVALUATE_TRACE_PRE(0, LogicalAnd, "/properties", "#/properties", "");
+  EVALUATE_TRACE_PRE(0, LogicalWhenType, "/properties", "#/properties", "");
   EVALUATE_TRACE_PRE(1, AssertionDefinesAllStrict, "/properties/foo/required",
                      "#/properties/foo/required", "/foo");
 
   EVALUATE_TRACE_POST_FAILURE(0, AssertionDefinesAllStrict,
                               "/properties/foo/required",
                               "#/properties/foo/required", "/foo");
-  EVALUATE_TRACE_POST_FAILURE(1, LogicalAnd, "/properties", "#/properties", "");
+  EVALUATE_TRACE_POST_FAILURE(1, LogicalWhenType, "/properties", "#/properties",
+                              "");
 
   EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
                                "The value was expected to be an object that "
@@ -4858,6 +5034,18 @@ TEST(Evaluator_draft4, enum_20_exhaustive) {
   EVALUATE_TRACE_POST_DESCRIBE(instance, 1,
                                "The object value was expected to validate "
                                "against the single defined property subschema");
+}
+
+TEST(Evaluator_draft4, enum_21) {
+  // This is purposely invalid
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "enum": "not-an-array"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("\"foo\"")};
+  EVALUATE_WITH_TRACE_FAST_SUCCESS(schema, instance, 0);
 }
 
 TEST(Evaluator_draft4, uniqueItems_1) {
@@ -5103,6 +5291,18 @@ TEST(Evaluator_draft4, minLength_7) {
   EVALUATE_WITH_TRACE_FAST_SUCCESS(schema, instance, 0);
 }
 
+TEST(Evaluator_draft4, minLength_8) {
+  // This is purposely invalid
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "minLength": "not-an-integer"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("\"foo\"")};
+  EVALUATE_WITH_TRACE_FAST_SUCCESS(schema, instance, 0);
+}
+
 TEST(Evaluator_draft4, maxLength_1) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "http://json-schema.org/draft-04/schema#",
@@ -5270,6 +5470,18 @@ TEST(Evaluator_draft4, maxLength_8) {
       instance, 0,
       "The string value \"\" was expected to consist of at most 0 characters "
       "and it consisted of 0 characters");
+}
+
+TEST(Evaluator_draft4, maxLength_9) {
+  // This is purposely invalid
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "maxLength": "not-an-integer"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("\"foo\"")};
+  EVALUATE_WITH_TRACE_FAST_SUCCESS(schema, instance, 0);
 }
 
 TEST(Evaluator_draft4, minItems_1) {
@@ -5481,6 +5693,18 @@ TEST(Evaluator_draft4, minItems_9_exhaustive) {
                                "The value was expected to be of type array");
 }
 
+TEST(Evaluator_draft4, minItems_10) {
+  // This is purposely invalid
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "minItems": "not-an-integer"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("\"foo\"")};
+  EVALUATE_WITH_TRACE_FAST_SUCCESS(schema, instance, 0);
+}
+
 TEST(Evaluator_draft4, maxItems_1) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "http://json-schema.org/draft-04/schema#",
@@ -5668,6 +5892,18 @@ TEST(Evaluator_draft4, maxItems_9) {
                                "most 0 items and it contained 0 items");
 }
 
+TEST(Evaluator_draft4, maxItems_10) {
+  // This is purposely invalid
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "maxItems": "not-an-integer"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("\"foo\"")};
+  EVALUATE_WITH_TRACE_FAST_SUCCESS(schema, instance, 0);
+}
+
 TEST(Evaluator_draft4, minProperties_1) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "http://json-schema.org/draft-04/schema#",
@@ -5801,6 +6037,18 @@ TEST(Evaluator_draft4, minProperties_7) {
   })JSON")};
 
   const sourcemeta::core::JSON instance{sourcemeta::core::parse_json("{}")};
+  EVALUATE_WITH_TRACE_FAST_SUCCESS(schema, instance, 0);
+}
+
+TEST(Evaluator_draft4, minProperties_8) {
+  // This is purposely invalid
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "minProperties": "not-an-integer"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("\"foo\"")};
   EVALUATE_WITH_TRACE_FAST_SUCCESS(schema, instance, 0);
 }
 
@@ -5985,6 +6233,18 @@ TEST(Evaluator_draft4, maxProperties_8) {
       "contained 0 properties");
 }
 
+TEST(Evaluator_draft4, maxProperties_9) {
+  // This is purposely invalid
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "maxProperties": "not-an-integer"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("\"foo\"")};
+  EVALUATE_WITH_TRACE_FAST_SUCCESS(schema, instance, 0);
+}
+
 TEST(Evaluator_draft4, minimum_1) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "http://json-schema.org/draft-04/schema#",
@@ -6085,6 +6345,18 @@ TEST(Evaluator_draft4, minimum_6) {
                                "than or equal to the integer 0");
 }
 
+TEST(Evaluator_draft4, minimum_7) {
+  // This is purposely invalid
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "minimum": "not-a-number"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("\"foo\"")};
+  EVALUATE_WITH_TRACE_FAST_SUCCESS(schema, instance, 0);
+}
+
 TEST(Evaluator_draft4, maximum_1) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "http://json-schema.org/draft-04/schema#",
@@ -6165,6 +6437,18 @@ TEST(Evaluator_draft4, maximum_5) {
   EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
                                "The integer value 0 was expected to be less "
                                "than or equal to the integer 0");
+}
+
+TEST(Evaluator_draft4, maximum_6) {
+  // This is purposely invalid
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "maximum": "not-a-number"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("\"foo\"")};
+  EVALUATE_WITH_TRACE_FAST_SUCCESS(schema, instance, 0);
 }
 
 TEST(Evaluator_draft4, exclusiveMinimum_1) {
@@ -6357,6 +6641,18 @@ TEST(Evaluator_draft4, multipleOf_5) {
   EVALUATE_TRACE_POST_DESCRIBE(
       instance, 0,
       "The number value 6.0 was expected to be divisible by the number 3.2");
+}
+
+TEST(Evaluator_draft4, multipleOf_6) {
+  // This is purposely invalid
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "multipleOf": "not-a-number"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("\"foo\"")};
+  EVALUATE_WITH_TRACE_FAST_SUCCESS(schema, instance, 0);
 }
 
 TEST(Evaluator_draft4, invalid_ref_top_level) {
