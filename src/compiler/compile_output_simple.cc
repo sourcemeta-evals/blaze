@@ -70,9 +70,44 @@ auto SimpleOutput::operator()(
     } else if (keyword == "contains") {
       this->mask.emplace(evaluate_path, false);
     }
-  } else if (type == EvaluationType::Post &&
-             this->mask.contains(evaluate_path)) {
-    this->mask.erase(evaluate_path);
+  } else if (type == EvaluationType::Post) {
+    const auto &keyword{evaluate_path.back().to_property()};
+    if (keyword == "contains") {
+      // Clean up annotations for non-matching items
+      // First, collect the matching indices from the contains annotation
+      std::set<std::size_t> matching_indices;
+      for (const auto &[loc, vals] : this->annotations_) {
+        if (loc.evaluate_path.starts_with_initial(evaluate_path) &&
+            loc.instance_location.empty()) {
+          // This is the contains annotation location
+          for (const auto &val : vals) {
+            if (val.is_integer()) {
+              matching_indices.insert(
+                  static_cast<std::size_t>(val.to_integer()));
+            }
+          }
+        }
+      }
+
+      // Now remove annotations for non-matching items
+      for (auto it = this->annotations_.begin();
+           it != this->annotations_.end();) {
+        if (it->first.evaluate_path.starts_with_initial(evaluate_path) &&
+            !it->first.instance_location.empty() &&
+            it->first.instance_location.back().is_index()) {
+          const auto item_index = it->first.instance_location.back().to_index();
+          if (matching_indices.find(item_index) == matching_indices.end()) {
+            it = this->annotations_.erase(it);
+            continue;
+          }
+        }
+        ++it;
+      }
+    }
+
+    if (this->mask.contains(evaluate_path)) {
+      this->mask.erase(evaluate_path);
+    }
   }
 
   if (result) {
