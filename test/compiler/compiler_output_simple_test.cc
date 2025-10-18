@@ -915,3 +915,51 @@ TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
     at evaluate path "/properties/foo/unevaluatedProperties"
 )JSON");
 }
+
+TEST(Compiler_output_simple,
+     annotations_contains_subschema_annotations_only_for_matching_items) {
+  const auto schema = sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": {
+      "type": "number",
+      "title": "Test"
+    }
+  })JSON");
+
+  const auto schema_template = sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive);
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON([ "foo", 42, true ])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result =
+      evaluator.validate(schema_template, instance, std::ref(output));
+  EXPECT_TRUE(result);
+
+  // Only /1 should carry the title annotation, not /0 or /2
+  EXPECT_ANNOTATION_ENTRY(output, "/1", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/1", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Test"});
+
+  {
+    const auto i0 = sourcemeta::core::to_pointer("/0");
+    const auto ep = sourcemeta::core::to_pointer("/contains/title");
+    EXPECT_FALSE(output.annotations().contains(
+        {sourcemeta::core::to_weak_pointer(i0),
+         sourcemeta::core::to_weak_pointer(ep), "#/contains/title"}));
+  }
+
+  {
+    const auto i2 = sourcemeta::core::to_pointer("/2");
+    const auto ep = sourcemeta::core::to_pointer("/contains/title");
+    EXPECT_FALSE(output.annotations().contains(
+        {sourcemeta::core::to_weak_pointer(i2),
+         sourcemeta::core::to_weak_pointer(ep), "#/contains/title"}));
+  }
+}
