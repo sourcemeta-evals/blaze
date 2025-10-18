@@ -78,16 +78,63 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // Check if we're under a contains context
+  const auto under_contains_it = std::ranges::find_if(
+      this->mask, [&evaluate_path, &instance_location](const auto &entry) {
+        return evaluate_path.starts_with(entry.first) &&
+               entry.second == instance_location &&
+               entry.first.back().to_property() == "contains";
+      });
+  const bool under_contains = under_contains_it != this->mask.cend();
+
+  // Handle annotation cleanup for failures
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
-    for (auto iterator = this->annotations_.begin();
-         iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
-          iterator->first.instance_location == instance_location) {
-        iterator = this->annotations_.erase(iterator);
-      } else {
-        iterator++;
+    const auto &keyword{evaluate_path.back().to_property()};
+
+    // If the contains keyword itself fails, purge all annotations under it
+    if (keyword == "contains") {
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
+      }
+    } else if (under_contains) {
+      // For failures under contains, purge annotations for this specific
+      // instance_location within the contains subtree
+      const auto &contains_root = under_contains_it->first;
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        // Check if annotation is under the contains root and matches the
+        // instance location
+        if (iterator->first.evaluate_path.starts_with_initial(contains_root) &&
+            iterator->first.instance_location == instance_location) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
+      }
+    } else {
+      // For general failures, purge annotations matching both evaluate_path and
+      // instance_location (this is what main branch already does)
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+            iterator->first.instance_location == instance_location) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
       }
     }
+  }
+
+  // Suppress error emission for failures under contains (but not the contains
+  // keyword itself)
+  if (under_contains) {
+    return;
   }
 
   if (std::ranges::any_of(this->mask, [&evaluate_path](const auto &entry) {
