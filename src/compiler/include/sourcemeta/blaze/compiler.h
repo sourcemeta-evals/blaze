@@ -6,7 +6,6 @@
 #endif
 
 #include <sourcemeta/blaze/compiler_error.h>
-#include <sourcemeta/blaze/compiler_output.h>
 #include <sourcemeta/blaze/compiler_unevaluated.h>
 
 #include <sourcemeta/blaze/evaluator.h>
@@ -143,13 +142,13 @@ auto SOURCEMETA_BLAZE_COMPILER_EXPORT default_schema_compiler(
 ///
 /// // Evaluate or encode
 /// ```
-auto SOURCEMETA_BLAZE_COMPILER_EXPORT
-compile(const sourcemeta::core::JSON &schema,
-        const sourcemeta::core::SchemaWalker &walker,
-        const sourcemeta::core::SchemaResolver &resolver,
-        const Compiler &compiler, const Mode mode = Mode::FastValidation,
-        const std::optional<std::string> &default_dialect = std::nullopt)
-    -> Template;
+auto SOURCEMETA_BLAZE_COMPILER_EXPORT compile(
+    const sourcemeta::core::JSON &schema,
+    const sourcemeta::core::SchemaWalker &walker,
+    const sourcemeta::core::SchemaResolver &resolver, const Compiler &compiler,
+    const Mode mode = Mode::FastValidation,
+    const std::optional<std::string> &default_dialect = std::nullopt,
+    const std::optional<std::string> &default_id = std::nullopt) -> Template;
 
 /// @ingroup compiler
 ///
@@ -160,14 +159,14 @@ compile(const sourcemeta::core::JSON &schema,
 /// behavior.
 ///
 /// Don't use this function unless you know what you are doing.
-auto SOURCEMETA_BLAZE_COMPILER_EXPORT
-compile(const sourcemeta::core::JSON &schema,
-        const sourcemeta::core::SchemaWalker &walker,
-        const sourcemeta::core::SchemaResolver &resolver,
-        const Compiler &compiler, const sourcemeta::core::SchemaFrame &frame,
-        const Mode mode = Mode::FastValidation,
-        const std::optional<std::string> &default_dialect = std::nullopt)
-    -> Template;
+auto SOURCEMETA_BLAZE_COMPILER_EXPORT compile(
+    const sourcemeta::core::JSON &schema,
+    const sourcemeta::core::SchemaWalker &walker,
+    const sourcemeta::core::SchemaResolver &resolver, const Compiler &compiler,
+    const sourcemeta::core::SchemaFrame &frame,
+    const Mode mode = Mode::FastValidation,
+    const std::optional<std::string> &default_dialect = std::nullopt,
+    const std::optional<std::string> &default_id = std::nullopt) -> Template;
 
 /// @ingroup compiler
 ///
@@ -184,6 +183,11 @@ compile(const Context &context, const SchemaContext &schema_context,
         const sourcemeta::core::Pointer &instance_suffix =
             sourcemeta::core::empty_pointer,
         const std::optional<std::string> &uri = std::nullopt) -> Instructions;
+
+/// @ingroup compiler
+/// Serialise a template as JSON
+auto SOURCEMETA_BLAZE_COMPILER_EXPORT to_json(const Template &schema_template)
+    -> sourcemeta::core::JSON;
 
 } // namespace sourcemeta::blaze
 
