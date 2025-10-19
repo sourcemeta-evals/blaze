@@ -79,7 +79,8 @@ auto SimpleOutput::operator()(
   }
 
   // Check if we're under a masked keyword (anyOf, oneOf, not, if, contains)
-  // For contains, we need to drop annotations before the early return
+  // For contains specifically, we need to drop annotations before the early
+  // return
   const auto masked_entry = std::ranges::find_if(
       this->mask, [&evaluate_path, &instance_location](const auto &entry) {
         return evaluate_path.starts_with(entry.first) &&
@@ -87,21 +88,30 @@ auto SimpleOutput::operator()(
       });
 
   if (masked_entry != this->mask.cend()) {
-    // Before returning early for masked failures, drop annotations
-    // for this specific instance location under the masked subschema
-    if (type == EvaluationType::Post && !this->annotations_.empty()) {
-      const auto &masked_path = masked_entry->first;
-      for (auto iterator = this->annotations_.begin();
-           iterator != this->annotations_.end();) {
-        if (iterator->first.instance_location == instance_location &&
-            iterator->first.evaluate_path.starts_with_initial(masked_path)) {
-          iterator = this->annotations_.erase(iterator);
-        } else {
-          iterator++;
+    // Only drop annotations for contains keyword
+    // For anyOf/oneOf/not/if, we want to keep annotations from successful
+    // branches
+    assert(!masked_entry->first.empty());
+    assert(masked_entry->first.back().is_property());
+    const auto &masked_keyword{masked_entry->first.back().to_property()};
+
+    if (masked_keyword == "contains") {
+      // Drop annotations for this specific instance location under the contains
+      // subschema
+      if (type == EvaluationType::Post && !this->annotations_.empty()) {
+        const auto &masked_path = masked_entry->first;
+        for (auto iterator = this->annotations_.begin();
+             iterator != this->annotations_.end();) {
+          if (iterator->first.instance_location == instance_location &&
+              iterator->first.evaluate_path.starts_with_initial(masked_path)) {
+            iterator = this->annotations_.erase(iterator);
+          } else {
+            iterator++;
+          }
         }
       }
+      return;
     }
-    return;
   }
 
   if (type == EvaluationType::Post && !this->annotations_.empty()) {

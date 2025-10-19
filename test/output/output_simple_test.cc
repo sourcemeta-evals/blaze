@@ -901,11 +901,18 @@ TEST(Output_simple, annotations_contains_drops_failed_items) {
   const auto instance_location_0{sourcemeta::core::to_pointer("/0")};
   const auto instance_location_2{sourcemeta::core::to_pointer("/2")};
   const auto evaluate_path{sourcemeta::core::to_pointer("/contains/title")};
+  const std::string schema_location{"#/contains/title"};
 
-  EXPECT_FALSE(output.annotations().contains(
-      {sourcemeta::core::to_weak_pointer(instance_location_0),
-       sourcemeta::core::to_weak_pointer(evaluate_path), "#/contains/title"}));
-  EXPECT_FALSE(output.annotations().contains(
-      {sourcemeta::core::to_weak_pointer(instance_location_2),
-       sourcemeta::core::to_weak_pointer(evaluate_path), "#/contains/title"}));
+  EXPECT_FALSE(
+      output.annotations().contains(sourcemeta::blaze::SimpleOutput::Location{
+          .instance_location =
+              sourcemeta::core::to_weak_pointer(instance_location_0),
+          .evaluate_path = sourcemeta::core::to_weak_pointer(evaluate_path),
+          .schema_location = std::cref(schema_location)}));
+  EXPECT_FALSE(
+      output.annotations().contains(sourcemeta::blaze::SimpleOutput::Location{
+          .instance_location =
+              sourcemeta::core::to_weak_pointer(instance_location_2),
+          .evaluate_path = sourcemeta::core::to_weak_pointer(evaluate_path),
+          .schema_location = std::cref(schema_location)}));
 }
