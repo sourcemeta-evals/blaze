@@ -5,10 +5,10 @@
 #include <sourcemeta/core/json.h>
 #include <sourcemeta/core/jsonschema.h>
 
-static auto transformer_callback_error(const sourcemeta::core::Pointer &,
-                                       const std::string_view,
-                                       const std::string_view,
-                                       const std::string_view) -> void {
+static auto transformer_callback_error(
+    const sourcemeta::core::Pointer &, const std::string_view,
+    const std::string_view,
+    const sourcemeta::core::SchemaTransformRule::Result &) -> void {
   throw std::runtime_error("The transform callback must not be called");
 }
 
@@ -28,14 +28,14 @@ TEST(Linter, valid_examples_error_message_without_id_nested) {
   })JSON")};
 
   std::vector<std::tuple<sourcemeta::core::Pointer, std::string, std::string,
-                         std::string>>
+                         sourcemeta::core::SchemaTransformRule::Result>>
       entries;
   const auto result =
       bundle.check(schema, sourcemeta::core::schema_official_walker,
                    sourcemeta::core::schema_official_resolver,
                    [&entries](const auto &pointer, const auto &name,
-                              const auto &message, const auto &description) {
-                     entries.emplace_back(pointer, name, message, description);
+                              const auto &message, const auto &outcome) {
+                     entries.emplace_back(pointer, name, message, outcome);
                    });
 
   EXPECT_FALSE(result.first);
@@ -47,12 +47,18 @@ TEST(Linter, valid_examples_error_message_without_id_nested) {
   EXPECT_EQ(std::get<2>(entries.at(0)),
             "Only include instances in the `examples` array that validate "
             "against the schema");
-  EXPECT_EQ(std::get<3>(entries.at(0)),
+  EXPECT_TRUE(std::get<3>(entries.at(0)).description.has_value());
+  EXPECT_EQ(std::get<3>(entries.at(0)).description.value(),
             R"TXT(Invalid example instance at index 0
   The value was expected to be of type string but it was of type integer
     at instance location ""
     at evaluate path "/type"
 )TXT");
+
+  EXPECT_EQ(std::get<3>(entries.at(0)).locations.size(), 1);
+  EXPECT_EQ(
+      sourcemeta::core::to_string(std::get<3>(entries.at(0)).locations.at(0)),
+      "/examples/0");
 }
 
 TEST(Linter, valid_examples_error_message_without_id_flat) {
@@ -67,14 +73,14 @@ TEST(Linter, valid_examples_error_message_without_id_flat) {
   })JSON")};
 
   std::vector<std::tuple<sourcemeta::core::Pointer, std::string, std::string,
-                         std::string>>
+                         sourcemeta::core::SchemaTransformRule::Result>>
       entries;
   const auto result =
       bundle.check(schema, sourcemeta::core::schema_official_walker,
                    sourcemeta::core::schema_official_resolver,
                    [&entries](const auto &pointer, const auto &name,
-                              const auto &message, const auto &description) {
-                     entries.emplace_back(pointer, name, message, description);
+                              const auto &message, const auto &outcome) {
+                     entries.emplace_back(pointer, name, message, outcome);
                    });
 
   EXPECT_FALSE(result.first);
@@ -85,12 +91,18 @@ TEST(Linter, valid_examples_error_message_without_id_flat) {
   EXPECT_EQ(std::get<2>(entries.at(0)),
             "Only include instances in the `examples` array that validate "
             "against the schema");
-  EXPECT_EQ(std::get<3>(entries.at(0)),
+  EXPECT_TRUE(std::get<3>(entries.at(0)).description.has_value());
+  EXPECT_EQ(std::get<3>(entries.at(0)).description.value(),
             R"TXT(Invalid example instance at index 0
   The value was expected to be of type string but it was of type integer
     at instance location ""
     at evaluate path "/type"
 )TXT");
+
+  EXPECT_EQ(std::get<3>(entries.at(0)).locations.size(), 1);
+  EXPECT_EQ(
+      sourcemeta::core::to_string(std::get<3>(entries.at(0)).locations.at(0)),
+      "/examples/0");
 }
 
 TEST(Linter, valid_examples_error_message_with_id_nested) {
@@ -110,14 +122,14 @@ TEST(Linter, valid_examples_error_message_with_id_nested) {
   })JSON")};
 
   std::vector<std::tuple<sourcemeta::core::Pointer, std::string, std::string,
-                         std::string>>
+                         sourcemeta::core::SchemaTransformRule::Result>>
       entries;
   const auto result =
       bundle.check(schema, sourcemeta::core::schema_official_walker,
                    sourcemeta::core::schema_official_resolver,
                    [&entries](const auto &pointer, const auto &name,
-                              const auto &message, const auto &description) {
-                     entries.emplace_back(pointer, name, message, description);
+                              const auto &message, const auto &outcome) {
+                     entries.emplace_back(pointer, name, message, outcome);
                    });
 
   EXPECT_FALSE(result.first);
@@ -129,12 +141,18 @@ TEST(Linter, valid_examples_error_message_with_id_nested) {
   EXPECT_EQ(std::get<2>(entries.at(0)),
             "Only include instances in the `examples` array that validate "
             "against the schema");
-  EXPECT_EQ(std::get<3>(entries.at(0)),
+  EXPECT_TRUE(std::get<3>(entries.at(0)).description.has_value());
+  EXPECT_EQ(std::get<3>(entries.at(0)).description.value(),
             R"TXT(Invalid example instance at index 0
   The value was expected to be of type string but it was of type integer
     at instance location ""
     at evaluate path "/type"
 )TXT");
+
+  EXPECT_EQ(std::get<3>(entries.at(0)).locations.size(), 1);
+  EXPECT_EQ(
+      sourcemeta::core::to_string(std::get<3>(entries.at(0)).locations.at(0)),
+      "/examples/0");
 }
 
 TEST(Linter, valid_examples_error_message_with_id_flat) {
@@ -150,14 +168,14 @@ TEST(Linter, valid_examples_error_message_with_id_flat) {
   })JSON")};
 
   std::vector<std::tuple<sourcemeta::core::Pointer, std::string, std::string,
-                         std::string>>
+                         sourcemeta::core::SchemaTransformRule::Result>>
       entries;
   const auto result =
       bundle.check(schema, sourcemeta::core::schema_official_walker,
                    sourcemeta::core::schema_official_resolver,
                    [&entries](const auto &pointer, const auto &name,
-                              const auto &message, const auto &description) {
-                     entries.emplace_back(pointer, name, message, description);
+                              const auto &message, const auto &outcome) {
+                     entries.emplace_back(pointer, name, message, outcome);
                    });
 
   EXPECT_FALSE(result.first);
@@ -168,12 +186,18 @@ TEST(Linter, valid_examples_error_message_with_id_flat) {
   EXPECT_EQ(std::get<2>(entries.at(0)),
             "Only include instances in the `examples` array that validate "
             "against the schema");
-  EXPECT_EQ(std::get<3>(entries.at(0)),
+  EXPECT_TRUE(std::get<3>(entries.at(0)).description.has_value());
+  EXPECT_EQ(std::get<3>(entries.at(0)).description.value(),
             R"TXT(Invalid example instance at index 0
   The value was expected to be of type string but it was of type integer
     at instance location ""
     at evaluate path "/type"
 )TXT");
+
+  EXPECT_EQ(std::get<3>(entries.at(0)).locations.size(), 1);
+  EXPECT_EQ(
+      sourcemeta::core::to_string(std::get<3>(entries.at(0)).locations.at(0)),
+      "/examples/0");
 }
 
 TEST(Linter, valid_examples_1) {
@@ -616,7 +640,7 @@ TEST(Linter, valid_examples_13) {
   EXPECT_EQ(schema, expected);
 }
 
-TEST(Linter, valid_examples_14_draft7_ref_sibling) {
+TEST(Linter, valid_examples_14) {
   sourcemeta::core::SchemaTransformer bundle;
   bundle.add<sourcemeta::blaze::ValidExamples>(
       sourcemeta::blaze::default_schema_compiler);
@@ -650,41 +674,7 @@ TEST(Linter, valid_examples_14_draft7_ref_sibling) {
   EXPECT_EQ(schema, expected);
 }
 
-TEST(Linter, valid_examples_15_2019_09_ref_sibling) {
-  sourcemeta::core::SchemaTransformer bundle;
-  bundle.add<sourcemeta::blaze::ValidExamples>(
-      sourcemeta::blaze::default_schema_compiler);
-
-  auto schema{sourcemeta::core::parse_json(R"JSON({
-    "$schema": "https://json-schema.org/draft/2019-09/schema",
-    "properties": {
-      "foo": { "$ref": "#/$defs/helper", "examples": [ 1 ] }
-    },
-    "$defs": {
-      "helper": { "type": "string" }
-    }
-  })JSON")};
-
-  const auto result = bundle.apply(
-      schema, sourcemeta::core::schema_official_walker,
-      sourcemeta::core::schema_official_resolver, transformer_callback_error);
-
-  EXPECT_TRUE(result);
-
-  const auto expected{sourcemeta::core::parse_json(R"JSON({
-    "$schema": "https://json-schema.org/draft/2019-09/schema",
-    "properties": {
-      "foo": { "$ref": "#/$defs/helper" }
-    },
-    "$defs": {
-      "helper": { "type": "string" }
-    }
-  })JSON")};
-
-  EXPECT_EQ(schema, expected);
-}
-
-TEST(Linter, valid_examples_16_2020_12_ref_sibling) {
+TEST(Linter, valid_examples_15) {
   sourcemeta::core::SchemaTransformer bundle;
   bundle.add<sourcemeta::blaze::ValidExamples>(
       sourcemeta::blaze::default_schema_compiler);
@@ -692,9 +682,9 @@ TEST(Linter, valid_examples_16_2020_12_ref_sibling) {
   auto schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
-      "foo": { "$ref": "#/$defs/helper", "examples": [ 1 ] }
+      "foo": { "$ref": "#/definitions/helper", "examples": [ 1 ] }
     },
-    "$defs": {
+    "definitions": {
       "helper": { "type": "string" }
     }
   })JSON")};
@@ -708,9 +698,9 @@ TEST(Linter, valid_examples_16_2020_12_ref_sibling) {
   const auto expected{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
-      "foo": { "$ref": "#/$defs/helper" }
+      "foo": { "$ref": "#/definitions/helper" }
     },
-    "$defs": {
+    "definitions": {
       "helper": { "type": "string" }
     }
   })JSON")};
