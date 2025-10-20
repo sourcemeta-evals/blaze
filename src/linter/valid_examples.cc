@@ -44,6 +44,20 @@ auto ValidExamples::condition(
     return false;
   }
 
+  // In Draft 7 and older, keywords that are siblings to $ref are ignored
+  // So we should not validate examples if $ref is present
+  if (schema.defines("$ref")) {
+    const auto &base_dialect = location.base_dialect;
+    if (base_dialect == "http://json-schema.org/draft-07/schema#" ||
+        base_dialect == "http://json-schema.org/draft-07/hyper-schema#" ||
+        base_dialect == "http://json-schema.org/draft-06/schema#" ||
+        base_dialect == "http://json-schema.org/draft-06/hyper-schema#" ||
+        base_dialect == "http://json-schema.org/draft-04/schema#" ||
+        base_dialect == "http://json-schema.org/draft-04/hyper-schema#") {
+      return false;
+    }
+  }
+
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
                                     .value_or(location)
                                     .get()
