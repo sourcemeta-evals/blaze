@@ -44,16 +44,28 @@ auto SimpleOutput::operator()(
 
   if (is_annotation(step.type)) {
     if (type == EvaluationType::Post) {
-      Location location{instance_location, std::move(effective_evaluate_path),
-                        step.keyword_location};
-      const auto match{this->annotations_.find(location)};
-      if (match == this->annotations_.cend()) {
-        this->annotations_[std::move(location)].push_back(annotation);
+      // Check if this annotation should be blocked due to a previous failure
+      bool should_block = false;
+      for (const auto &drop_entry : this->drop_annotations_) {
+        if (drop_entry.instance_location == instance_location &&
+            effective_evaluate_path.starts_with(drop_entry.evaluate_path)) {
+          should_block = true;
+          break;
+        }
+      }
 
-        // To avoid emitting the exact same annotation more than once
-        // This is right now mostly because of `unevaluatedItems`
-      } else if (match->second.back() != annotation) {
-        match->second.push_back(annotation);
+      if (!should_block) {
+        Location location{instance_location, std::move(effective_evaluate_path),
+                          step.keyword_location};
+        const auto match{this->annotations_.find(location)};
+        if (match == this->annotations_.cend()) {
+          this->annotations_[std::move(location)].push_back(annotation);
+
+          // To avoid emitting the exact same annotation more than once
+          // This is right now mostly because of `unevaluatedItems`
+        } else if (match->second.back() != annotation) {
+          match->second.push_back(annotation);
+        }
       }
     }
 
@@ -79,23 +91,62 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // Handle annotation cleanup BEFORE the mask-based early return
+  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+    // Check if we're under a contains evaluation by looking for "contains" in
+    // the mask
+    bool is_under_contains = false;
+    sourcemeta::core::WeakPointer contains_base_path;
+    sourcemeta::core::WeakPointer effective_contains_base;
+
+    for (const auto &entry : this->mask) {
+      if (!entry.second && evaluate_path.starts_with(entry.first)) {
+        // This is a contains mask (value is false) and we're under it
+        is_under_contains = true;
+        contains_base_path = entry.first;
+        effective_contains_base = contains_base_path.resolve_from(this->base_);
+        break;
+      }
+    }
+
+    for (auto iterator = this->annotations_.begin();
+         iterator != this->annotations_.end();) {
+      bool should_remove = false;
+
+      if (is_under_contains) {
+        // For contains, remove annotations that:
+        // 1. Have the same instance_location
+        // 2. Have an evaluate_path that starts with the contains base path
+        should_remove =
+            (iterator->first.instance_location == instance_location) &&
+            iterator->first.evaluate_path.starts_with(effective_contains_base);
+      } else {
+        // For other cases, use the original logic
+        should_remove =
+            iterator->first.evaluate_path.starts_with_initial(evaluate_path);
+      }
+
+      if (should_remove) {
+        iterator = this->annotations_.erase(iterator);
+      } else {
+        iterator++;
+      }
+    }
+
+    // Add to blocklist to prevent future annotations for this instance under
+    // contains
+    if (is_under_contains) {
+      this->drop_annotations_.insert(
+          Location{instance_location, effective_contains_base, ""});
+    }
+  }
+
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
                   [&evaluate_path](const auto &entry) {
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
     return;
-  }
-
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
-    for (auto iterator = this->annotations_.begin();
-         iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
-        iterator = this->annotations_.erase(iterator);
-      } else {
-        iterator++;
-      }
-    }
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),

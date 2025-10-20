@@ -128,6 +128,7 @@ private:
   container_type output;
   std::map<sourcemeta::core::WeakPointer, bool> mask;
   std::map<Location, std::vector<sourcemeta::core::JSON>> annotations_;
+  std::set<Location> drop_annotations_;
 #if defined(_MSC_VER)
 #pragma warning(default : 4251)
 #endif
