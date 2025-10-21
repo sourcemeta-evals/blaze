@@ -36,6 +36,17 @@ auto ValidDefault::condition(
     return false;
   }
 
+  if (schema.defines("$ref")) {
+    const auto &dialect{location.dialect};
+    const bool is_draft7_or_older{
+        dialect == "http://json-schema.org/draft-07/schema#" ||
+        dialect == "http://json-schema.org/draft-06/schema#" ||
+        dialect == "http://json-schema.org/draft-04/schema#"};
+    if (is_draft7_or_older) {
+      return false;
+    }
+  }
+
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
                                     .value_or(location)
                                     .get()
