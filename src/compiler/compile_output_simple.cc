@@ -79,23 +79,61 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // Clean up annotations on Post failures
+  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+    // Check if we're under a contains mask
+    bool under_contains_mask = false;
+    for (const auto &entry : this->mask) {
+      if (!entry.second && evaluate_path.starts_with(entry.first)) {
+        under_contains_mask = true;
+        break;
+      }
+    }
+
+    for (auto iterator = this->annotations_.begin();
+         iterator != this->annotations_.end();) {
+      // Check if paths are equal (using bi-directional starts_with to handle
+      // base-resolved paths)
+      const bool path_equal =
+          iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+          evaluate_path.starts_with(iterator->first.evaluate_path);
+
+      // Remove annotations that are strict descendants of the failing path
+      // at the same instance location
+      const bool descendant_of_failure =
+          (iterator->first.instance_location == instance_location) &&
+          iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+          !path_equal;
+
+      // For failures under contains (mask with false), also remove sibling
+      // annotations at the same instance location
+      bool sibling_under_mask_same_instance = false;
+      if (!descendant_of_failure && !instance_location.empty() &&
+          under_contains_mask) {
+        for (const auto &entry : this->mask) {
+          if (!entry.second &&
+              iterator->first.instance_location == instance_location &&
+              iterator->first.evaluate_path.starts_with_initial(entry.first)) {
+            sibling_under_mask_same_instance = true;
+            break;
+          }
+        }
+      }
+
+      if (descendant_of_failure || sibling_under_mask_same_instance) {
+        iterator = this->annotations_.erase(iterator);
+      } else {
+        ++iterator;
+      }
+    }
+  }
+
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
                   [&evaluate_path](const auto &entry) {
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
     return;
-  }
-
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
-    for (auto iterator = this->annotations_.begin();
-         iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
-        iterator = this->annotations_.erase(iterator);
-      } else {
-        iterator++;
-      }
-    }
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
