@@ -9,6 +9,10 @@
 
 #include <sourcemeta/blaze/evaluator.h>
 
+namespace sourcemeta::core {
+class PointerPositionTracker;
+}
+
 namespace sourcemeta::blaze {
 
 /// @ingroup output
@@ -75,6 +79,12 @@ enum class StandardOutput {
 auto SOURCEMETA_BLAZE_OUTPUT_EXPORT
 standard(Evaluator &evaluator, const Template &schema,
          const sourcemeta::core::JSON &instance, const StandardOutput format)
+    -> sourcemeta::core::JSON;
+
+auto SOURCEMETA_BLAZE_OUTPUT_EXPORT
+standard(Evaluator &evaluator, const Template &schema,
+         const sourcemeta::core::JSON &instance, const StandardOutput format,
+         const sourcemeta::core::PointerPositionTracker &positions)
     -> sourcemeta::core::JSON;
 
 } // namespace sourcemeta::blaze
