@@ -79,23 +79,42 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // Clean up annotations for contains failures BEFORE checking the mask,
+  // so that annotations are removed even when errors are suppressed
+  if (type == EvaluationType::Post && !result && !this->annotations_.empty()) {
+    // Check if this failure is under a contains mask (mask value is false)
+    bool is_contains_failure = false;
+    sourcemeta::core::WeakPointer cleanup_prefix = evaluate_path;
+    for (const auto &entry : this->mask) {
+      if (evaluate_path.starts_with(entry.first) && !entry.second) {
+        cleanup_prefix = entry.first;
+        is_contains_failure = true;
+        break;
+      }
+    }
+
+    // Clean up annotations based on whether this is a contains failure
+    for (auto iterator = this->annotations_.begin();
+         iterator != this->annotations_.end();) {
+      const bool path_match = iterator->first.evaluate_path.starts_with_initial(
+          is_contains_failure ? cleanup_prefix : evaluate_path);
+      const bool instance_match =
+          !is_contains_failure ||
+          (iterator->first.instance_location == instance_location);
+      if (path_match && instance_match) {
+        iterator = this->annotations_.erase(iterator);
+      } else {
+        iterator++;
+      }
+    }
+  }
+
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
                   [&evaluate_path](const auto &entry) {
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
     return;
-  }
-
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
-    for (auto iterator = this->annotations_.begin();
-         iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
-        iterator = this->annotations_.erase(iterator);
-      } else {
-        iterator++;
-      }
-    }
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
