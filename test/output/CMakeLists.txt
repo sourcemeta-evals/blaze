@@ -4,6 +4,7 @@ sourcemeta_googletest(NAMESPACE sourcemeta PROJECT blaze NAME output
     output_simple_test.cc
     output_standard_flag_test.cc
     output_standard_basic_test.cc
+    output_standard_instance_positions_test.cc
     output_trace_test.cc)
 
 target_link_libraries(sourcemeta_blaze_output_unit
