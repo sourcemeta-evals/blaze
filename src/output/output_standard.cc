@@ -2,6 +2,7 @@
 #include <sourcemeta/blaze/output_standard.h>
 
 #include <cassert>    // assert
+#include <cstdint>    // std::uint64_t
 #include <functional> // std::ref
 
 namespace sourcemeta::blaze {
@@ -9,6 +10,14 @@ namespace sourcemeta::blaze {
 auto standard(Evaluator &evaluator, const Template &schema,
               const sourcemeta::core::JSON &instance,
               const StandardOutput format) -> sourcemeta::core::JSON {
+  return standard(evaluator, schema, instance, format, nullptr);
+}
+
+auto standard(Evaluator &evaluator, const Template &schema,
+              const sourcemeta::core::JSON &instance,
+              const StandardOutput format,
+              const sourcemeta::core::PointerPositionTracker *positions)
+    -> sourcemeta::core::JSON {
   // We avoid a callback for this specific case for performance reasons
   if (format == StandardOutput::Flag) {
     auto result{sourcemeta::core::JSON::make_object()};
@@ -34,6 +43,23 @@ auto standard(Evaluator &evaluator, const Template &schema,
             "instanceLocation",
             sourcemeta::core::to_json(annotation.first.instance_location));
         unit.assign("annotation", sourcemeta::core::to_json(annotation.second));
+        if (positions != nullptr) {
+          const auto pointer{
+              sourcemeta::core::to_pointer(annotation.first.instance_location)};
+          const auto position{positions->get(pointer)};
+          if (position.has_value()) {
+            auto position_array{sourcemeta::core::JSON::make_array()};
+            position_array.push_back(
+                sourcemeta::core::JSON{std::get<0>(position.value())});
+            position_array.push_back(
+                sourcemeta::core::JSON{std::get<1>(position.value())});
+            position_array.push_back(
+                sourcemeta::core::JSON{std::get<2>(position.value())});
+            position_array.push_back(
+                sourcemeta::core::JSON{std::get<3>(position.value())});
+            unit.assign("instancePosition", std::move(position_array));
+          }
+        }
         annotations.push_back(std::move(unit));
       }
 
@@ -55,6 +81,23 @@ auto standard(Evaluator &evaluator, const Template &schema,
         unit.assign("instanceLocation",
                     sourcemeta::core::to_json(entry.instance_location));
         unit.assign("error", sourcemeta::core::JSON{entry.message});
+        if (positions != nullptr) {
+          const auto pointer{
+              sourcemeta::core::to_pointer(entry.instance_location)};
+          const auto position{positions->get(pointer)};
+          if (position.has_value()) {
+            auto position_array{sourcemeta::core::JSON::make_array()};
+            position_array.push_back(
+                sourcemeta::core::JSON{std::get<0>(position.value())});
+            position_array.push_back(
+                sourcemeta::core::JSON{std::get<1>(position.value())});
+            position_array.push_back(
+                sourcemeta::core::JSON{std::get<2>(position.value())});
+            position_array.push_back(
+                sourcemeta::core::JSON{std::get<3>(position.value())});
+            unit.assign("instancePosition", std::move(position_array));
+          }
+        }
         errors.push_back(std::move(unit));
       }
 
