@@ -78,11 +78,19 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // Drop annotations for failing items based on both evaluate_path AND
+  // instance_location. This is critical for keywords like `contains` where
+  // annotations from subschemas (e.g., `title`) should only be retained for
+  // items that pass validation, not for items that fail.
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
-          iterator->first.instance_location == instance_location) {
+      const bool same_branch =
+          iterator->first.evaluate_path.starts_with_initial(evaluate_path);
+      const bool same_instance =
+          iterator->first.instance_location.starts_with(instance_location) ||
+          iterator->first.instance_location == instance_location;
+      if (same_branch && same_instance) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
