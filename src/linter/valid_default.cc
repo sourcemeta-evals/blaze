@@ -2,8 +2,17 @@
 #include <sourcemeta/blaze/linter.h>
 #include <sourcemeta/blaze/output.h>
 
-#include <functional> // std::ref, std::cref
-#include <sstream>    // std::ostringstream
+#include <functional>  // std::ref, std::cref
+#include <sstream>     // std::ostringstream
+#include <string_view> // std::string_view
+
+namespace {
+inline auto is_draft7_or_older(const std::string_view dialect) -> bool {
+  return dialect == "http://json-schema.org/draft-07/schema#" ||
+         dialect == "http://json-schema.org/draft-06/schema#" ||
+         dialect == "http://json-schema.org/draft-04/schema#";
+}
+} // namespace
 
 namespace sourcemeta::blaze {
 
@@ -37,13 +46,9 @@ auto ValidDefault::condition(
     return false;
   }
 
-  // We have to ignore siblings to `$ref`
-  if (vocabularies.contains("http://json-schema.org/draft-07/schema#") ||
-      vocabularies.contains("http://json-schema.org/draft-06/schema#") ||
-      vocabularies.contains("http://json-schema.org/draft-04/schema#")) {
-    if (schema.defines("$ref")) {
-      return false;
-    }
+  // In Draft 7 and older, $ref siblings are ignored per the specification
+  if (schema.defines("$ref") && is_draft7_or_older(location.dialect)) {
+    return false;
   }
 
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))

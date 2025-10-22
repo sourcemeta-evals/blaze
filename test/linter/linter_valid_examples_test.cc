@@ -680,11 +680,45 @@ TEST(Linter, valid_examples_15) {
       sourcemeta::blaze::default_schema_compiler);
 
   auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2019-09/schema",
+    "properties": {
+      "foo": { "$ref": "#/$defs/helper", "examples": [ 1 ] }
+    },
+    "$defs": {
+      "helper": { "type": "string" }
+    }
+  })JSON")};
+
+  const auto result = bundle.apply(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver, transformer_callback_error);
+
+  EXPECT_TRUE(result);
+
+  const auto expected{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2019-09/schema",
+    "properties": {
+      "foo": { "$ref": "#/$defs/helper" }
+    },
+    "$defs": {
+      "helper": { "type": "string" }
+    }
+  })JSON")};
+
+  EXPECT_EQ(schema, expected);
+}
+
+TEST(Linter, valid_examples_16) {
+  sourcemeta::core::SchemaTransformer bundle;
+  bundle.add<sourcemeta::blaze::ValidExamples>(
+      sourcemeta::blaze::default_schema_compiler);
+
+  auto schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
-      "foo": { "$ref": "#/definitions/helper", "examples": [ 1 ] }
+      "foo": { "$ref": "#/$defs/helper", "examples": [ 1 ] }
     },
-    "definitions": {
+    "$defs": {
       "helper": { "type": "string" }
     }
   })JSON")};
@@ -698,9 +732,9 @@ TEST(Linter, valid_examples_15) {
   const auto expected{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
-      "foo": { "$ref": "#/definitions/helper" }
+      "foo": { "$ref": "#/$defs/helper" }
     },
-    "definitions": {
+    "$defs": {
       "helper": { "type": "string" }
     }
   })JSON")};
