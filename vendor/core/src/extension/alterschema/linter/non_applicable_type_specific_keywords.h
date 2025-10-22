@@ -14,12 +14,9 @@ public:
             const sourcemeta::core::SchemaWalker &walker,
             const sourcemeta::core::SchemaResolver &) const
       -> sourcemeta::core::SchemaTransformRule::Result override {
-    if (!schema.is_object()) {
-      return false;
-    }
+    ONLY_CONTINUE_IF(schema.is_object());
 
     std::set<JSON::Type> current_types;
-
     if (contains_any(vocabularies,
                      {"https://json-schema.org/draft/2020-12/vocab/validation",
                       "https://json-schema.org/draft/2019-09/vocab/validation",
@@ -35,11 +32,16 @@ public:
                       "http://json-schema.org/draft-00/hyper-schema#"}) &&
         schema.defines("type")) {
       if (schema.at("type").is_string()) {
-        this->emplace_type(schema.at("type").to_string(), current_types);
+        parse_schema_type(
+            schema.at("type").to_string(),
+            [&current_types](const auto type) { current_types.emplace(type); });
       } else if (schema.at("type").is_array()) {
         for (const auto &entry : schema.at("type").as_array()) {
           if (entry.is_string()) {
-            this->emplace_type(entry.to_string(), current_types);
+            parse_schema_type(entry.to_string(),
+                              [&current_types](const auto type) {
+                                current_types.emplace(type);
+                              });
           }
         }
       }
@@ -71,11 +73,9 @@ public:
 
     // This means that the schema has no explicit type constraints,
     // so we cannot remove anything from it.
-    if (current_types.empty()) {
-      return false;
-    }
+    ONLY_CONTINUE_IF(!current_types.empty());
 
-    this->blacklist.clear();
+    std::vector<Pointer> positions;
     for (const auto &entry : schema.as_object()) {
       const auto metadata{walker(entry.first, vocabularies)};
 
@@ -90,47 +90,17 @@ public:
                                [&current_types](const auto keyword_type) {
                                  return current_types.contains(keyword_type);
                                })) {
-        this->blacklist.emplace_back(entry.first);
+        positions.push_back(Pointer{entry.first});
       }
     }
 
-    if (this->blacklist.empty()) {
-      return false;
-    }
-
-    // Print the offending keyword
-    std::ostringstream message;
-    for (const auto &entry : this->blacklist) {
-      message << "- " << entry << "\n";
-    }
-
-    return message.str();
+    ONLY_CONTINUE_IF(!positions.empty());
+    return APPLIES_TO_POINTERS(std::move(positions));
   }
 
-  auto transform(JSON &schema) const -> void override {
-    schema.erase_keys(this->blacklist.cbegin(), this->blacklist.cend());
-  }
-
-private:
-  mutable std::vector<JSON::String> blacklist;
-
-  template <typename T>
-  auto emplace_type(const JSON::String &type, T &container) const -> void {
-    if (type == "null") {
-      container.emplace(JSON::Type::Null);
-    } else if (type == "boolean") {
-      container.emplace(JSON::Type::Boolean);
-    } else if (type == "object") {
-      container.emplace(JSON::Type::Object);
-    } else if (type == "array") {
-      container.emplace(JSON::Type::Array);
-    } else if (type == "number") {
-      container.emplace(JSON::Type::Integer);
-      container.emplace(JSON::Type::Real);
-    } else if (type == "integer") {
-      container.emplace(JSON::Type::Integer);
-    } else if (type == "string") {
-      container.emplace(JSON::Type::String);
+  auto transform(JSON &schema, const Result &result) const -> void override {
+    for (const auto &location : result.locations) {
+      schema.erase(location.at(0).to_property());
     }
   }
 };
