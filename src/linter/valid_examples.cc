@@ -8,10 +8,19 @@
 #include <sourcemeta/core/jsonschema_transform.h>
 #include <sourcemeta/core/jsonschema_types.h>
 
-#include <cstddef>    // std::size_t
-#include <functional> // std::ref, std::cref
-#include <sstream>    // std::ostringstream
-#include <utility>    // std::move
+#include <cstddef>     // std::size_t
+#include <functional>  // std::ref, std::cref
+#include <sstream>     // std::ostringstream
+#include <string_view> // std::string_view
+#include <utility>     // std::move
+
+namespace {
+inline auto is_draft7_or_older(const std::string_view dialect) -> bool {
+  return dialect == "http://json-schema.org/draft-07/schema#" ||
+         dialect == "http://json-schema.org/draft-06/schema#" ||
+         dialect == "http://json-schema.org/draft-04/schema#";
+}
+} // namespace
 
 namespace sourcemeta::blaze {
 
@@ -41,6 +50,11 @@ auto ValidExamples::condition(
 
   if (!schema.is_object() || !schema.defines("examples") ||
       !schema.at("examples").is_array() || schema.at("examples").empty()) {
+    return false;
+  }
+
+  // In Draft 7 and older, $ref siblings are ignored per the specification
+  if (schema.defines("$ref") && is_draft7_or_older(location.dialect)) {
     return false;
   }
 
