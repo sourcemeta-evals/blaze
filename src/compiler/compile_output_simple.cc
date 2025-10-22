@@ -79,23 +79,37 @@ auto SimpleOutput::operator()(
     return;
   }
 
-  if (std::any_of(this->mask.cbegin(), this->mask.cend(),
-                  [&evaluate_path](const auto &entry) {
-                    return evaluate_path.starts_with(entry.first) &&
-                           !entry.second;
-                  })) {
-    return;
-  }
+  // Check if this failure should be masked for error emission
+  const bool masked_to_suppress_errors = std::any_of(
+      this->mask.cbegin(), this->mask.cend(),
+      [&evaluate_path](const auto &entry) {
+        return evaluate_path.starts_with(entry.first) && !entry.second;
+      });
 
+  // Drop annotations for failing items based on both evaluate_path AND
+  // instance_location. This is critical for keywords like `contains` where
+  // annotations from subschemas (e.g., `title`) should only be retained for
+  // items that pass validation, not for items that fail.
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+      const bool same_branch =
+          iterator->first.evaluate_path.starts_with_initial(evaluate_path);
+      const bool same_instance =
+          iterator->first.instance_location.starts_with(instance_location) ||
+          iterator->first.instance_location == instance_location;
+      if (same_branch && same_instance) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
       }
     }
+  }
+
+  // If this failure is masked for error suppression (e.g., under `contains`),
+  // return early to avoid emitting the error
+  if (masked_to_suppress_errors) {
+    return;
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
