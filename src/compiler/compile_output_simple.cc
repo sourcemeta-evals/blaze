@@ -79,23 +79,67 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // Drop annotations before checking if we should skip error reporting
+  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+    // Check if this failure is under a masked path (like contains)
+    // If so, we need to drop annotations at the same instance location
+    // that are also under the same masked path
+    for (const auto &mask_entry : this->mask) {
+      if (evaluate_path.starts_with(mask_entry.first) && !mask_entry.second) {
+        // This failure is under a masked path (like contains)
+        // Drop all annotations that are under the same masked path
+        // and at the exact same instance location
+        for (auto iterator = this->annotations_.begin();
+             iterator != this->annotations_.end();) {
+          // Check if annotation is under the masked path
+          const bool under_masked_path =
+              iterator->first.evaluate_path.starts_with_initial(
+                  mask_entry.first);
+
+          // Check if annotation is at the exact same instance location
+          // Convert to strings for equality comparison
+          const auto annotation_location_str =
+              sourcemeta::core::to_string(iterator->first.instance_location);
+          const auto failed_location_str =
+              sourcemeta::core::to_string(instance_location);
+          const bool at_same_location =
+              annotation_location_str == failed_location_str;
+
+          if (under_masked_path && at_same_location) {
+            iterator = this->annotations_.erase(iterator);
+          } else {
+            iterator++;
+          }
+        }
+        break;
+      }
+    }
+
+    // For non-masked failures, drop annotations that are direct children
+    if (std::none_of(this->mask.cbegin(), this->mask.cend(),
+                     [&evaluate_path](const auto &entry) {
+                       return evaluate_path.starts_with(entry.first) &&
+                              !entry.second;
+                     })) {
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+            iterator->first.instance_location.starts_with_initial(
+                instance_location)) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
+      }
+    }
+  }
+
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
                   [&evaluate_path](const auto &entry) {
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
     return;
-  }
-
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
-    for (auto iterator = this->annotations_.begin();
-         iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
-        iterator = this->annotations_.erase(iterator);
-      } else {
-        iterator++;
-      }
-    }
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
