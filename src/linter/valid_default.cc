@@ -36,6 +36,17 @@ auto ValidDefault::condition(
     return false;
   }
 
+  // In Draft 7 and older, siblings to $ref are ignored, so we should not
+  // validate default if $ref is present
+  if (schema.defines("$ref")) {
+    const auto &dialect{location.dialect};
+    if (dialect == "http://json-schema.org/draft-04/schema#" ||
+        dialect == "http://json-schema.org/draft-06/schema#" ||
+        dialect == "http://json-schema.org/draft-07/schema#") {
+      return false;
+    }
+  }
+
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
                                     .value_or(location)
                                     .get()
