@@ -79,11 +79,16 @@ auto SimpleOutput::operator()(
   }
 
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
-    // Check if we're in a contains context
+    // Check if we're in a contains context by finding a mask entry where:
+    // 1. The evaluate_path starts with the mask entry's path
+    // 2. The instance_location matches the mask entry's instance_location
+    // 3. The mask entry's last token is the "contains" keyword
     const auto contains_mask = std::ranges::find_if(
         this->mask, [&evaluate_path, &instance_location](const auto &entry) {
           return evaluate_path.starts_with(entry.first) &&
-                 entry.second == instance_location;
+                 entry.second == instance_location &&
+                 entry.first.back().is_property() &&
+                 entry.first.back().to_property() == "contains";
         });
 
     for (auto iterator = this->annotations_.begin();
