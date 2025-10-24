@@ -79,6 +79,29 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // Check if we're in a contains context
+  const bool in_contains = std::any_of(
+      this->mask.cbegin(), this->mask.cend(),
+      [&evaluate_path](const auto &entry) {
+        return evaluate_path.starts_with(entry.first) && !entry.second;
+      });
+
+  // Drop annotations for contains BEFORE the early return
+  // Only drop if instance_location is not empty (to avoid dropping root
+  // annotations)
+  if (type == EvaluationType::Post && in_contains &&
+      !this->annotations_.empty() && !instance_location.empty()) {
+    for (auto iterator = this->annotations_.begin();
+         iterator != this->annotations_.end();) {
+      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+          iterator->first.instance_location == instance_location) {
+        iterator = this->annotations_.erase(iterator);
+      } else {
+        iterator++;
+      }
+    }
+  }
+
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
                   [&evaluate_path](const auto &entry) {
                     return evaluate_path.starts_with(entry.first) &&
