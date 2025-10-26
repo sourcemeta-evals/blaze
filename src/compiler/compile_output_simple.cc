@@ -5,6 +5,7 @@
 #include <algorithm> // std::any_of, std::sort
 #include <cassert>   // assert
 #include <iterator>  // std::back_inserter
+#include <set>       // std::set
 #include <utility>   // std::move
 
 namespace sourcemeta::blaze {
@@ -72,6 +73,49 @@ auto SimpleOutput::operator()(
     }
   } else if (type == EvaluationType::Post &&
              this->mask.contains(evaluate_path)) {
+    // For `contains`, drop annotations from items that didn't match
+    const auto &keyword{evaluate_path.back().to_property()};
+    if (keyword == "contains") {
+      // Find the contains annotation at the root to get the list of passing
+      // indices
+      Location contains_location{sourcemeta::core::WeakPointer{},
+                                 effective_evaluate_path,
+                                 step.keyword_location};
+      const auto contains_match{this->annotations_.find(contains_location)};
+
+      if (contains_match != this->annotations_.cend() &&
+          !contains_match->second.empty()) {
+        // Build a set of passing instance locations from the matched indices
+        std::set<sourcemeta::core::WeakPointer> passing_locations;
+        for (const auto &index_value : contains_match->second) {
+          if (index_value.is_integer()) {
+            passing_locations.insert(sourcemeta::core::WeakPointer{}.concat(
+                {static_cast<std::size_t>(index_value.to_integer())}));
+          }
+        }
+
+        // Drop annotations for non-passing items within the contains scope
+        for (auto iterator = this->annotations_.begin();
+             iterator != this->annotations_.end();) {
+          // Check if this annotation is within the contains scope (child of
+          // /contains) and at a specific array item location (not root)
+          const bool is_contains_child =
+              iterator->first.evaluate_path.starts_with_initial(
+                  effective_evaluate_path) &&
+              iterator->first.evaluate_path != effective_evaluate_path;
+          const bool is_array_item = !iterator->first.instance_location.empty();
+          const bool is_passing =
+              passing_locations.contains(iterator->first.instance_location);
+
+          if (is_contains_child && is_array_item && !is_passing) {
+            iterator = this->annotations_.erase(iterator);
+          } else {
+            iterator++;
+          }
+        }
+      }
+    }
+
     this->mask.erase(evaluate_path);
   }
 
