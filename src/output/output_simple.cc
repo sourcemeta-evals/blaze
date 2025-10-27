@@ -78,11 +78,51 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // Drop annotations for failed validations
+  // For masked parents (like contains), we need to check both evaluate path
+  // and instance location to properly drop annotations for failed items
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
+    // Check if this failure is under a masked parent (e.g., contains)
+    sourcemeta::core::WeakPointer masked_parent_evaluate_path;
+    sourcemeta::core::WeakPointer masked_parent_instance_location;
+    bool has_masked_parent = false;
+    
+    for (const auto &entry : this->mask) {
+      if (evaluate_path.starts_with(entry.first)) {
+        masked_parent_evaluate_path = entry.first;
+        masked_parent_instance_location = entry.second;
+        has_masked_parent = true;
+        break;
+      }
+    }
+
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
-          iterator->first.instance_location == instance_location) {
+      bool should_drop = false;
+
+      if (has_masked_parent) {
+        // For masked parents (like contains), drop annotations that are:
+        // 1. STRICTLY under the masked parent evaluate path (not equal to it)
+        // 2. At a child instance location of the masked parent (for contains,
+        //    the parent is at root "", children are at /0, /1, /2, etc.)
+        // 3. At the current failing instance location
+        // This ensures we don't drop the annotation emitted by the masked
+        // parent itself, and only drop annotations for the specific failing item
+        should_drop =
+            iterator->first.evaluate_path.starts_with(masked_parent_evaluate_path) &&
+            iterator->first.evaluate_path.size() > masked_parent_evaluate_path.size() &&
+            iterator->first.instance_location.starts_with_initial(masked_parent_instance_location) &&
+            iterator->first.instance_location == instance_location;
+      } else {
+        // For non-masked failures, drop annotations that are:
+        // 1. Under the same or descendant evaluate path
+        // 2. At the exact same instance location
+        should_drop =
+            iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+            iterator->first.instance_location == instance_location;
+      }
+
+      if (should_drop) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
