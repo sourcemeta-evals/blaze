@@ -79,23 +79,61 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // Drop annotations for failed validations BEFORE checking the mask
+  // This ensures annotations are dropped even for masked failures (e.g.,
+  // contains)
+  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+    // Check if this failure is under a masked parent (e.g., contains)
+    // If so, drop all annotations under that parent for this instance location
+    sourcemeta::core::WeakPointer masked_parent;
+    bool has_masked_parent = false;
+    for (const auto &entry : this->mask) {
+      if (evaluate_path.starts_with(entry.first) && !entry.second) {
+        masked_parent = entry.first;
+        has_masked_parent = true;
+        break;
+      }
+    }
+
+    for (auto iterator = this->annotations_.begin();
+         iterator != this->annotations_.end();) {
+      bool should_drop = false;
+
+      if (has_masked_parent) {
+        // For masked parents (like contains), drop annotations that are:
+        // 1. STRICTLY under the masked parent evaluate path (not equal to it)
+        // 2. At the same or descendant instance location
+        // This ensures we don't drop the annotation emitted by the masked
+        // parent itself
+        should_drop =
+            iterator->first.evaluate_path.starts_with(masked_parent) &&
+            iterator->first.evaluate_path.size() > masked_parent.size() &&
+            iterator->first.instance_location.starts_with_initial(
+                instance_location);
+      } else {
+        // For non-masked failures, drop annotations that are:
+        // 1. Under the same or descendant evaluate path
+        // 2. At the same or descendant instance location
+        should_drop =
+            iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+            iterator->first.instance_location.starts_with_initial(
+                instance_location);
+      }
+
+      if (should_drop) {
+        iterator = this->annotations_.erase(iterator);
+      } else {
+        iterator++;
+      }
+    }
+  }
+
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
                   [&evaluate_path](const auto &entry) {
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
     return;
-  }
-
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
-    for (auto iterator = this->annotations_.begin();
-         iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
-        iterator = this->annotations_.erase(iterator);
-      } else {
-        iterator++;
-      }
-    }
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),

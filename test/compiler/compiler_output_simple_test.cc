@@ -915,3 +915,53 @@ TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
     at evaluate path "/properties/foo/unevaluatedProperties"
 )JSON");
 }
+
+TEST(Compiler_output_simple, annotations_contains_with_title) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "number",
+      "title": "Test" 
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("[ \"foo\", 42, true ]")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+  EXPECT_TRUE(result);
+
+  // The contains annotation should be present at the root level
+  EXPECT_ANNOTATION_ENTRY(output, "", "/contains", "#/contains", 1);
+  EXPECT_ANNOTATION_VALUE(output, "", "/contains", "#/contains", 0,
+                          sourcemeta::core::JSON{1});
+
+  // In the current implementation, title annotations may or may not be emitted
+  // for items within contains. The key test is that IF they are emitted,
+  // they should ONLY be present for items that matched, NOT for items that
+  // failed. We verify that annotations for failed items are NOT present.
+  const auto instance_location_0{sourcemeta::core::to_pointer("/0")};
+  const auto instance_location_2{sourcemeta::core::to_pointer("/2")};
+  const auto evaluate_path{sourcemeta::core::to_pointer("/contains/title")};
+
+  EXPECT_FALSE(output.annotations().contains(
+      {sourcemeta::core::to_weak_pointer(instance_location_0),
+       sourcemeta::core::to_weak_pointer(evaluate_path), "#/contains/title"}));
+
+  EXPECT_FALSE(output.annotations().contains(
+      {sourcemeta::core::to_weak_pointer(instance_location_2),
+       sourcemeta::core::to_weak_pointer(evaluate_path), "#/contains/title"}));
+
+  // The minimum annotation count should be 1 (for contains at root)
+  // If title annotations are emitted, there may be more
+  EXPECT_GE(output.annotations().size(), 1);
+}
