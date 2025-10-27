@@ -858,97 +858,6 @@ TEST(Output_simple, annotations_failure_1) {
   EXPECT_FALSE(result);
   EXPECT_ANNOTATION_COUNT(output, 0);
 }
-<<<<<<< HEAD:test/compiler/compiler_output_simple_test.cc
-
-TEST(Compiler_output_simple, fail_stacktrace) {
-  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
-    "$schema": "https://json-schema.org/draft/2019-09/schema",
-    "properties": {
-      "foo": { "type": "object", "unevaluatedProperties": false },
-      "bar": {
-        "additionalProperties": {
-          "if": {
-            "type": "object",
-            "required": [ "$ref" ]
-          }
-        }
-      }
-    }
-  })JSON")};
-
-  const auto schema_template{sourcemeta::blaze::compile(
-      schema, sourcemeta::core::schema_official_walker,
-      sourcemeta::core::schema_official_resolver,
-      sourcemeta::blaze::default_schema_compiler)};
-
-  const sourcemeta::core::JSON instance{sourcemeta::core::parse_json(R"JSON({
-    "foo": { "/baz": 1 },
-    "bar": { "qux": {} }
-  })JSON")};
-
-  sourcemeta::blaze::SimpleOutput output{instance};
-  sourcemeta::blaze::Evaluator evaluator;
-  const auto result{
-      evaluator.validate(schema_template, instance, std::ref(output))};
-  EXPECT_FALSE(result);
-
-  std::ostringstream message;
-  output.stacktrace(message);
-  EXPECT_EQ(
-      message.str(),
-      R"JSON(The object value was not expected to define the property "/baz"
-  at instance location "/foo/~1baz"
-  at evaluate path "/properties/foo/unevaluatedProperties"
-The object value was not expected to define unevaluated properties
-  at instance location "/foo"
-  at evaluate path "/properties/foo/unevaluatedProperties"
-)JSON");
-}
-
-TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
-  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
-    "$schema": "https://json-schema.org/draft/2019-09/schema",
-    "properties": {
-      "foo": { "type": "object", "unevaluatedProperties": false },
-      "bar": {
-        "additionalProperties": {
-          "if": {
-            "type": "object",
-            "required": [ "$ref" ]
-          }
-        }
-      }
-    }
-  })JSON")};
-
-  const auto schema_template{sourcemeta::blaze::compile(
-      schema, sourcemeta::core::schema_official_walker,
-      sourcemeta::core::schema_official_resolver,
-      sourcemeta::blaze::default_schema_compiler)};
-
-  const sourcemeta::core::JSON instance{sourcemeta::core::parse_json(R"JSON({
-    "foo": { "/baz": 1 },
-    "bar": { "qux": {} }
-  })JSON")};
-
-  sourcemeta::blaze::SimpleOutput output{instance};
-  sourcemeta::blaze::Evaluator evaluator;
-  const auto result{
-      evaluator.validate(schema_template, instance, std::ref(output))};
-  EXPECT_FALSE(result);
-
-  std::ostringstream message;
-  output.stacktrace(message, "  ");
-  EXPECT_EQ(
-      message.str(),
-      R"JSON(  The object value was not expected to define the property "/baz"
-    at instance location "/foo/~1baz"
-    at evaluate path "/properties/foo/unevaluatedProperties"
-  The object value was not expected to define unevaluated properties
-    at instance location "/foo"
-    at evaluate path "/properties/foo/unevaluatedProperties"
-)JSON");
-}
 
 TEST(Compiler_output_simple, annotations_contains_with_title) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
@@ -986,14 +895,20 @@ TEST(Compiler_output_simple, annotations_contains_with_title) {
   const auto instance_location_0{sourcemeta::core::to_pointer("/0")};
   const auto instance_location_2{sourcemeta::core::to_pointer("/2")};
   const auto evaluate_path{sourcemeta::core::to_pointer("/contains/title")};
+  const std::string schema_location{"#/contains/title"};
 
-  EXPECT_FALSE(output.annotations().contains(
-      {sourcemeta::core::to_weak_pointer(instance_location_0),
-       sourcemeta::core::to_weak_pointer(evaluate_path), "#/contains/title"}));
+  const sourcemeta::blaze::SimpleOutput::Location location_0{
+      sourcemeta::core::to_weak_pointer(instance_location_0),
+      sourcemeta::core::to_weak_pointer(evaluate_path),
+      std::cref(schema_location)};
 
-  EXPECT_FALSE(output.annotations().contains(
-      {sourcemeta::core::to_weak_pointer(instance_location_2),
-       sourcemeta::core::to_weak_pointer(evaluate_path), "#/contains/title"}));
+  const sourcemeta::blaze::SimpleOutput::Location location_2{
+      sourcemeta::core::to_weak_pointer(instance_location_2),
+      sourcemeta::core::to_weak_pointer(evaluate_path),
+      std::cref(schema_location)};
+
+  EXPECT_FALSE(output.annotations().contains(location_0));
+  EXPECT_FALSE(output.annotations().contains(location_2));
 
   // The minimum annotation count should be 1 (for contains at root)
   // If title annotations are emitted, there may be more

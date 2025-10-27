@@ -103,13 +103,16 @@ auto SimpleOutput::operator()(
       if (has_masked_parent) {
         // For masked parents (like contains), drop annotations that are:
         // 1. STRICTLY under the masked parent evaluate path (not equal to it)
-        // 2. At the same instance location as the masked parent
+        // 2. At a child instance location of the masked parent (for contains,
+        //    the parent is at root "", children are at /0, /1, /2, etc.)
+        // 3. At the current failing instance location
         // This ensures we don't drop the annotation emitted by the masked
-        // parent itself
+        // parent itself, and only drop annotations for the specific failing item
         should_drop =
             iterator->first.evaluate_path.starts_with(masked_parent_evaluate_path) &&
             iterator->first.evaluate_path.size() > masked_parent_evaluate_path.size() &&
-            iterator->first.instance_location == masked_parent_instance_location;
+            iterator->first.instance_location.starts_with_initial(masked_parent_instance_location) &&
+            iterator->first.instance_location == instance_location;
       } else {
         // For non-masked failures, drop annotations that are:
         // 1. Under the same or descendant evaluate path
