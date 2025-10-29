@@ -2,18 +2,22 @@
 
 #include <sourcemeta/blaze/compiler.h>
 #include <sourcemeta/blaze/evaluator.h>
+#include <sourcemeta/blaze/output.h>
 
 #include <sourcemeta/core/jsonpointer.h>
 #include <sourcemeta/core/jsonschema.h>
 
 #define EXPECT_OUTPUT(traces, index, expected_instance_location,               \
-                      expected_evaluate_path, expected_message)                \
+                      expected_evaluate_path, expected_schema_location,        \
+                      expected_message)                                        \
   EXPECT_TRUE(traces.size() > index);                                          \
   EXPECT_EQ(traces.at((index)).message, (expected_message));                   \
   EXPECT_EQ(sourcemeta::core::to_string(traces.at((index)).instance_location), \
             expected_instance_location);                                       \
   EXPECT_EQ(sourcemeta::core::to_string(traces.at((index)).evaluate_path),     \
-            expected_evaluate_path);
+            expected_evaluate_path);                                           \
+  EXPECT_EQ(traces.at((index)).schema_location.get(),                          \
+            (expected_schema_location));
 
 #define EXPECT_ANNOTATION_COUNT(output, expected_count)                        \
   EXPECT_EQ(output.annotations().size(), (expected_count));
@@ -26,15 +30,12 @@
         sourcemeta::core::to_pointer(expected_instance_location)};             \
     const auto evaluate_path{                                                  \
         sourcemeta::core::to_pointer(expected_evaluate_path)};                 \
-    EXPECT_TRUE(output.annotations().contains(                                 \
-        {sourcemeta::core::to_weak_pointer(instance_location),                 \
-         sourcemeta::core::to_weak_pointer(evaluate_path),                     \
-         (expected_schema_location)}));                                        \
-    EXPECT_EQ(output.annotations()                                             \
-                  .at({sourcemeta::core::to_weak_pointer(instance_location),   \
-                       sourcemeta::core::to_weak_pointer(evaluate_path),       \
-                       (expected_schema_location)})                            \
-                  .size(),                                                     \
+    const std::string schema_location{expected_schema_location};               \
+    const sourcemeta::blaze::SimpleOutput::Location location{                  \
+        sourcemeta::core::to_weak_pointer(instance_location),                  \
+        sourcemeta::core::to_weak_pointer(evaluate_path), schema_location};    \
+    EXPECT_TRUE(output.annotations().contains(location));                      \
+    EXPECT_EQ(output.annotations().at(location).size(),                        \
               (expected_entry_count));                                         \
   }
 
@@ -46,15 +47,15 @@
         sourcemeta::core::to_pointer(expected_instance_location)};             \
     const auto evaluate_path{                                                  \
         sourcemeta::core::to_pointer(expected_evaluate_path)};                 \
-    EXPECT_EQ(output.annotations()                                             \
-                  .at({sourcemeta::core::to_weak_pointer(instance_location),   \
-                       sourcemeta::core::to_weak_pointer(evaluate_path),       \
-                       (expected_schema_location)})                            \
-                  .at(expected_entry_index),                                   \
+    const std::string schema_location{expected_schema_location};               \
+    const sourcemeta::blaze::SimpleOutput::Location location{                  \
+        sourcemeta::core::to_weak_pointer(instance_location),                  \
+        sourcemeta::core::to_weak_pointer(evaluate_path), schema_location};    \
+    EXPECT_EQ(output.annotations().at(location).at(expected_entry_index),      \
               (expected_value));                                               \
   }
 
-TEST(Compiler_output_simple, success_string_1) {
+TEST(Output_simple, success_string_1) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "string"
@@ -80,7 +81,7 @@ TEST(Compiler_output_simple, success_string_1) {
   EXPECT_ANNOTATION_COUNT(output, 0);
 }
 
-TEST(Compiler_output_simple, fail_meaningless_if_1) {
+TEST(Output_simple, fail_meaningless_if_1) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2019-09/schema",
     "properties": {
@@ -119,15 +120,17 @@ TEST(Compiler_output_simple, fail_meaningless_if_1) {
 
   EXPECT_OUTPUT(
       traces, 0, "/foo/~1baz", "/properties/foo/unevaluatedProperties",
+      "#/properties/foo/unevaluatedProperties",
       "The object value was not expected to define the property \"/baz\"");
   EXPECT_OUTPUT(
       traces, 1, "/foo", "/properties/foo/unevaluatedProperties",
+      "#/properties/foo/unevaluatedProperties",
       "The object value was not expected to define unevaluated properties");
 
   EXPECT_ANNOTATION_COUNT(output, 0);
 }
 
-TEST(Compiler_output_simple, success_dynamic_anchor_1) {
+TEST(Output_simple, success_dynamic_anchor_1) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$dynamicRef": "#foo",
@@ -159,7 +162,7 @@ TEST(Compiler_output_simple, success_dynamic_anchor_1) {
   EXPECT_ANNOTATION_COUNT(output, 0);
 }
 
-TEST(Compiler_output_simple, success_oneof_1) {
+TEST(Output_simple, success_oneof_1) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "oneOf": [
@@ -188,7 +191,7 @@ TEST(Compiler_output_simple, success_oneof_1) {
   EXPECT_ANNOTATION_COUNT(output, 0);
 }
 
-TEST(Compiler_output_simple, fail_string) {
+TEST(Output_simple, fail_string) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "string"
@@ -212,13 +215,13 @@ TEST(Compiler_output_simple, fail_string) {
 
   EXPECT_EQ(traces.size(), 1);
   EXPECT_OUTPUT(
-      traces, 0, "", "/type",
+      traces, 0, "", "/type", "#/type",
       "The value was expected to be of type string but it was of type integer");
 
   EXPECT_ANNOTATION_COUNT(output, 0);
 }
 
-TEST(Compiler_output_simple, fail_string_over_ref) {
+TEST(Output_simple, fail_string_over_ref) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$ref": "#/$defs/string",
@@ -247,12 +250,12 @@ TEST(Compiler_output_simple, fail_string_over_ref) {
 
   EXPECT_EQ(traces.size(), 1);
   EXPECT_OUTPUT(
-      traces, 0, "", "/$ref/type",
+      traces, 0, "", "/$ref/type", "#/$defs/string/type",
       "The value was expected to be of type string but it was of type integer");
   EXPECT_ANNOTATION_COUNT(output, 0);
 }
 
-TEST(Compiler_output_simple, fail_string_with_matching_base) {
+TEST(Output_simple, fail_string_with_matching_base) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$ref": "#/$defs/string",
@@ -283,12 +286,12 @@ TEST(Compiler_output_simple, fail_string_with_matching_base) {
 
   EXPECT_EQ(traces.size(), 1);
   EXPECT_OUTPUT(
-      traces, 0, "", "/type",
+      traces, 0, "", "/type", "#/$defs/string/type",
       "The value was expected to be of type string but it was of type integer");
   EXPECT_ANNOTATION_COUNT(output, 0);
 }
 
-TEST(Compiler_output_simple, fail_string_with_non_matching_base) {
+TEST(Output_simple, fail_string_with_non_matching_base) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$ref": "#/$defs/string",
@@ -318,12 +321,12 @@ TEST(Compiler_output_simple, fail_string_with_non_matching_base) {
 
   EXPECT_EQ(traces.size(), 1);
   EXPECT_OUTPUT(
-      traces, 0, "", "/$ref/type",
+      traces, 0, "", "/$ref/type", "#/$defs/string/type",
       "The value was expected to be of type string but it was of type integer");
   EXPECT_ANNOTATION_COUNT(output, 0);
 }
 
-TEST(Compiler_output_simple, fail_oneof_1) {
+TEST(Output_simple, fail_oneof_1) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "oneOf": [
@@ -349,13 +352,13 @@ TEST(Compiler_output_simple, fail_oneof_1) {
                                                              output.cend()};
 
   EXPECT_EQ(traces.size(), 1);
-  EXPECT_OUTPUT(traces, 0, "", "/oneOf",
+  EXPECT_OUTPUT(traces, 0, "", "/oneOf", "#/oneOf",
                 "The string value was expected to validate against one and "
                 "only one of the 2 given subschemas");
   EXPECT_ANNOTATION_COUNT(output, 0);
 }
 
-TEST(Compiler_output_simple, fail_not_1) {
+TEST(Output_simple, fail_not_1) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "not": {
@@ -380,13 +383,13 @@ TEST(Compiler_output_simple, fail_not_1) {
                                                              output.cend()};
 
   EXPECT_EQ(traces.size(), 1);
-  EXPECT_OUTPUT(traces, 0, "", "/not",
+  EXPECT_OUTPUT(traces, 0, "", "/not", "#/not",
                 "The string value was expected to not validate against the "
                 "given subschema, but it did");
   EXPECT_ANNOTATION_COUNT(output, 0);
 }
 
-TEST(Compiler_output_simple, fail_not_not_1) {
+TEST(Output_simple, fail_not_not_1) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "not": {
@@ -413,13 +416,13 @@ TEST(Compiler_output_simple, fail_not_not_1) {
                                                              output.cend()};
 
   EXPECT_EQ(traces.size(), 1);
-  EXPECT_OUTPUT(traces, 0, "", "/not",
+  EXPECT_OUTPUT(traces, 0, "", "/not", "#/not",
                 "The integer value was expected to not validate against the "
                 "given subschema, but it did");
   EXPECT_ANNOTATION_COUNT(output, 0);
 }
 
-TEST(Compiler_output_simple, fail_anyof_1) {
+TEST(Output_simple, fail_anyof_1) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "allOf": [
@@ -453,12 +456,12 @@ TEST(Compiler_output_simple, fail_anyof_1) {
 
   EXPECT_EQ(traces.size(), 1);
   EXPECT_OUTPUT(
-      traces, 0, "", "/allOf/1/type",
+      traces, 0, "", "/allOf/1/type", "#/allOf/1/type",
       "The value was expected to be of type integer but it was of type object");
   EXPECT_ANNOTATION_COUNT(output, 0);
 }
 
-TEST(Compiler_output_simple, fail_anyof_2) {
+TEST(Output_simple, fail_anyof_2) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "anyOf": [
@@ -486,13 +489,13 @@ TEST(Compiler_output_simple, fail_anyof_2) {
                                                              output.cend()};
 
   EXPECT_EQ(traces.size(), 1);
-  EXPECT_OUTPUT(traces, 0, "", "/anyOf",
+  EXPECT_OUTPUT(traces, 0, "", "/anyOf", "#/anyOf",
                 "The object value was expected to validate against at least "
                 "one of the 2 given subschemas");
   EXPECT_ANNOTATION_COUNT(output, 0);
 }
 
-TEST(Compiler_output_simple, annotations_success_1) {
+TEST(Output_simple, annotations_success_1) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "My Schema",
@@ -559,7 +562,7 @@ TEST(Compiler_output_simple, annotations_success_1) {
                           sourcemeta::core::JSON{true});
 }
 
-TEST(Compiler_output_simple, annotations_success_2) {
+TEST(Output_simple, annotations_success_2) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "anyOf": [
@@ -594,7 +597,7 @@ TEST(Compiler_output_simple, annotations_success_2) {
                           sourcemeta::core::JSON{"Third branch"});
 }
 
-TEST(Compiler_output_simple, annotations_success_3) {
+TEST(Output_simple, annotations_success_3) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "not": {
@@ -620,7 +623,7 @@ TEST(Compiler_output_simple, annotations_success_3) {
   EXPECT_ANNOTATION_COUNT(output, 0);
 }
 
-TEST(Compiler_output_simple, annotations_success_4) {
+TEST(Output_simple, annotations_success_4) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "contains": { "type": "boolean" }
@@ -650,7 +653,7 @@ TEST(Compiler_output_simple, annotations_success_4) {
                           sourcemeta::core::JSON{2});
 }
 
-TEST(Compiler_output_simple, annotations_success_5) {
+TEST(Output_simple, annotations_success_5) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "contains": { "type": "boolean" }
@@ -680,7 +683,7 @@ TEST(Compiler_output_simple, annotations_success_5) {
                           sourcemeta::core::JSON{2});
 }
 
-TEST(Compiler_output_simple, annotations_success_6) {
+TEST(Output_simple, annotations_success_6) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "contains": { "type": "boolean" }
@@ -710,7 +713,7 @@ TEST(Compiler_output_simple, annotations_success_6) {
                           sourcemeta::core::JSON{1});
 }
 
-TEST(Compiler_output_simple, annotations_success_7) {
+TEST(Output_simple, annotations_success_7) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "contains": { "type": "boolean" }
@@ -738,7 +741,7 @@ TEST(Compiler_output_simple, annotations_success_7) {
                           sourcemeta::core::JSON{0});
 }
 
-TEST(Compiler_output_simple, annotations_success_8) {
+TEST(Output_simple, annotations_success_8) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "unevaluatedItems": true
@@ -767,7 +770,7 @@ TEST(Compiler_output_simple, annotations_success_8) {
                           0, sourcemeta::core::JSON{true});
 }
 
-TEST(Compiler_output_simple, annotations_success_9) {
+TEST(Output_simple, annotations_success_9) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "contains": { "type": "boolean" },
@@ -803,7 +806,37 @@ TEST(Compiler_output_simple, annotations_success_9) {
                           0, sourcemeta::core::JSON{true});
 }
 
-TEST(Compiler_output_simple, annotations_failure_1) {
+TEST(Output_simple, annotations_success_10) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { "type": "number", "title": "Test" }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("[ \"foo\", 42, true ]")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+  EXPECT_TRUE(result);
+
+  EXPECT_ANNOTATION_COUNT(output, 2);
+
+  EXPECT_ANNOTATION_ENTRY(output, "", "/contains", "#/contains", 1);
+  EXPECT_ANNOTATION_ENTRY(output, "/1", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/1", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Test"});
+}
+
+TEST(Output_simple, annotations_failure_1) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "Foo",
@@ -824,96 +857,6 @@ TEST(Compiler_output_simple, annotations_failure_1) {
       evaluator.validate(schema_template, instance, std::ref(output))};
   EXPECT_FALSE(result);
   EXPECT_ANNOTATION_COUNT(output, 0);
-}
-
-TEST(Compiler_output_simple, fail_stacktrace) {
-  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
-    "$schema": "https://json-schema.org/draft/2019-09/schema",
-    "properties": {
-      "foo": { "type": "object", "unevaluatedProperties": false },
-      "bar": {
-        "additionalProperties": {
-          "if": {
-            "type": "object",
-            "required": [ "$ref" ]
-          }
-        }
-      }
-    }
-  })JSON")};
-
-  const auto schema_template{sourcemeta::blaze::compile(
-      schema, sourcemeta::core::schema_official_walker,
-      sourcemeta::core::schema_official_resolver,
-      sourcemeta::blaze::default_schema_compiler)};
-
-  const sourcemeta::core::JSON instance{sourcemeta::core::parse_json(R"JSON({
-    "foo": { "/baz": 1 },
-    "bar": { "qux": {} }
-  })JSON")};
-
-  sourcemeta::blaze::SimpleOutput output{instance};
-  sourcemeta::blaze::Evaluator evaluator;
-  const auto result{
-      evaluator.validate(schema_template, instance, std::ref(output))};
-  EXPECT_FALSE(result);
-
-  std::ostringstream message;
-  output.stacktrace(message);
-  EXPECT_EQ(
-      message.str(),
-      R"JSON(The object value was not expected to define the property "/baz"
-  at instance location "/foo/~1baz"
-  at evaluate path "/properties/foo/unevaluatedProperties"
-The object value was not expected to define unevaluated properties
-  at instance location "/foo"
-  at evaluate path "/properties/foo/unevaluatedProperties"
-)JSON");
-}
-
-TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
-  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
-    "$schema": "https://json-schema.org/draft/2019-09/schema",
-    "properties": {
-      "foo": { "type": "object", "unevaluatedProperties": false },
-      "bar": {
-        "additionalProperties": {
-          "if": {
-            "type": "object",
-            "required": [ "$ref" ]
-          }
-        }
-      }
-    }
-  })JSON")};
-
-  const auto schema_template{sourcemeta::blaze::compile(
-      schema, sourcemeta::core::schema_official_walker,
-      sourcemeta::core::schema_official_resolver,
-      sourcemeta::blaze::default_schema_compiler)};
-
-  const sourcemeta::core::JSON instance{sourcemeta::core::parse_json(R"JSON({
-    "foo": { "/baz": 1 },
-    "bar": { "qux": {} }
-  })JSON")};
-
-  sourcemeta::blaze::SimpleOutput output{instance};
-  sourcemeta::blaze::Evaluator evaluator;
-  const auto result{
-      evaluator.validate(schema_template, instance, std::ref(output))};
-  EXPECT_FALSE(result);
-
-  std::ostringstream message;
-  output.stacktrace(message, "  ");
-  EXPECT_EQ(
-      message.str(),
-      R"JSON(  The object value was not expected to define the property "/baz"
-    at instance location "/foo/~1baz"
-    at evaluate path "/properties/foo/unevaluatedProperties"
-  The object value was not expected to define unevaluated properties
-    at instance location "/foo"
-    at evaluate path "/properties/foo/unevaluatedProperties"
-)JSON");
 }
 
 TEST(Compiler_output_simple, annotations_contains_drops_failed_items) {
