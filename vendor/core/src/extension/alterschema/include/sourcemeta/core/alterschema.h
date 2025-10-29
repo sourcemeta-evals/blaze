@@ -16,43 +16,27 @@
 
 #include <sourcemeta/core/jsonschema.h>
 
-namespace sourcemeta::core {
+#include <cstdint> // std::uint8_t
 
-// TODO: Revise the category names to make incompatibilities more obvious
+namespace sourcemeta::core {
 
 /// @ingroup alterschema
 /// The category of a built-in transformation rule
-enum class AlterSchemaCategory {
-  /// Rules that detect clear anti-patterns that should not be happening on the
-  /// first place
-  AntiPattern,
-
+enum class AlterSchemaMode : std::uint8_t {
   /// Rules that simplify the given schema for both human readability and
   /// performance
-  Simplify,
+  Readability,
 
-  /// Rules that take advantage of syntax sugar to improve human readability of
-  /// a schema. As its name implies, this category is incompatible with
-  /// `Desugar`.
-  SyntaxSugar,
+  /// Rules that simplify the given schema for both human readability and
+  /// performance while also including opinionated rules that enforce tighter
+  /// conventions to help with
+  /// correctness
+  ReadabilityStrict,
 
-  /// Rules that simplify keywords that are syntax sugar to other keywords,
-  /// potentially decreasing human readability in favor of explicitness
-  /// As its name implies, this category is incompatible with `SyntaxSugar`.
-  Desugar,
-
-  /// Rules that remove schema redundancies that do not contribute to the
-  /// schema.
-  /// This category is incompatible with `Implicit`
-  Redundant,
-
-  /// Rules that surface implicit constraints. This category is incompatible
-  /// with `Redundant`
-  Implicit,
-
-  /// Rules that remove keywords that are superfluous and take no effect on the
-  /// given schema
-  Superfluous
+  /// Rules that surface implicit constraints and simplifies keywords that
+  /// are syntax sugar to other keywords, potentially decreasing human
+  /// readability in favor of explicitness
+  StaticAnalysis,
 };
 
 /// @ingroup alterschema
@@ -66,7 +50,7 @@ enum class AlterSchemaCategory {
 /// sourcemeta::core::SchemaTransformer bundle;
 ///
 /// sourcemeta::core::add(bundle,
-///   sourcemeta::core::AlterSchemaCategory::SyntaxSugar);
+///   sourcemeta::core::AlterSchemaMode::Readability);
 ///
 /// auto schema = sourcemeta::core::parse_json(R"JSON({
 ///   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -81,7 +65,7 @@ enum class AlterSchemaCategory {
 ///              sourcemeta::core::schema_official_resolver);
 /// ```
 SOURCEMETA_CORE_ALTERSCHEMA_EXPORT
-auto add(SchemaTransformer &bundle, const AlterSchemaCategory category) -> void;
+auto add(SchemaTransformer &bundle, const AlterSchemaMode mode) -> void;
 
 } // namespace sourcemeta::core
 

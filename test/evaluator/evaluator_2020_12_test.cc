@@ -23,14 +23,14 @@ TEST(Evaluator_2020_12, metaschema_hyper_1) {
       "https://json-schema.org/draft/2020-12/hyper-schema")};
   EXPECT_TRUE(metaschema.has_value());
   const auto instance{sourcemeta::core::parse_json(R"JSON({})JSON")};
-  EVALUATE_WITH_TRACE_FAST_SUCCESS(metaschema.value(), instance, 33);
+  EVALUATE_WITH_TRACE_FAST_SUCCESS(metaschema.value(), instance, 34);
 }
 
 TEST(Evaluator_2020_12, metaschema_hyper_self) {
   const auto metaschema{sourcemeta::core::schema_official_resolver(
       "https://json-schema.org/draft/2020-12/hyper-schema")};
   EXPECT_TRUE(metaschema.has_value());
-  EVALUATE_WITH_TRACE_FAST_SUCCESS(metaschema.value(), metaschema.value(), 112);
+  EVALUATE_WITH_TRACE_FAST_SUCCESS(metaschema.value(), metaschema.value(), 119);
 }
 
 TEST(Evaluator_2020_12, metaschema_hyper_self_exhaustive) {
@@ -38,7 +38,7 @@ TEST(Evaluator_2020_12, metaschema_hyper_self_exhaustive) {
       "https://json-schema.org/draft/2020-12/hyper-schema")};
   EXPECT_TRUE(metaschema.has_value());
   EVALUATE_WITH_TRACE_EXHAUSTIVE_SUCCESS(metaschema.value(), metaschema.value(),
-                                         202);
+                                         209);
 }
 
 TEST(Evaluator_2020_12, unknown_1_exhaustive) {
@@ -1440,6 +1440,105 @@ TEST(Evaluator_2020_12, dynamicRef_1) {
                                "The value was expected to be of type string");
 }
 
+TEST(Evaluator_2020_12, dynamicRef_2) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$dynamicRef": "https://example.com/target#meta",
+    "$defs": {
+      "target": {
+        "$id": "https://example.com/target",
+        "$dynamicAnchor": "meta",
+        "type": "boolean"
+      },
+      "other": {
+        "$id": "https://example.com/other",
+        "$dynamicAnchor": "meta",
+        "type": "number"
+      }
+    }
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{true};
+  EVALUATE_WITH_TRACE_FAST_SUCCESS(schema, instance, 4);
+
+  EVALUATE_TRACE_PRE(0, ControlMark, "", "https://example.com/other", "");
+  EVALUATE_TRACE_PRE(1, ControlMark, "", "https://example.com/target", "");
+  EVALUATE_TRACE_PRE(2, ControlDynamicAnchorJump, "/$dynamicRef",
+                     "#/$dynamicRef", "");
+  EVALUATE_TRACE_PRE(3, AssertionTypeStrict, "/$dynamicRef/type",
+                     "https://example.com/target#/type", "");
+
+  EVALUATE_TRACE_POST_SUCCESS(0, ControlMark, "", "https://example.com/other",
+                              "");
+  EVALUATE_TRACE_POST_SUCCESS(1, ControlMark, "", "https://example.com/target",
+                              "");
+  EVALUATE_TRACE_POST_SUCCESS(2, AssertionTypeStrict, "/$dynamicRef/type",
+                              "https://example.com/target#/type", "");
+  EVALUATE_TRACE_POST_SUCCESS(3, ControlDynamicAnchorJump, "/$dynamicRef",
+                              "#/$dynamicRef", "");
+
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The schema location was marked for future use");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 1,
+                               "The schema location was marked for future use");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 2,
+                               "The value was expected to be of type boolean");
+  EVALUATE_TRACE_POST_DESCRIBE(
+      instance, 3,
+      "The boolean value was expected to validate against the first subschema "
+      "in scope that declared the dynamic anchor \"meta\"");
+}
+
+TEST(Evaluator_2020_12, dynamicRef_3) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$dynamicRef": "https://example.com/target#meta",
+    "$defs": {
+      "target": {
+        "$id": "https://example.com/target",
+        "$dynamicAnchor": "meta",
+        "type": "boolean"
+      },
+      "other": {
+        "$id": "https://example.com/other",
+        "$dynamicAnchor": "meta",
+        "type": "number"
+      }
+    }
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{1};
+  EVALUATE_WITH_TRACE_FAST_FAILURE(schema, instance, 4);
+
+  EVALUATE_TRACE_PRE(0, ControlMark, "", "https://example.com/other", "");
+  EVALUATE_TRACE_PRE(1, ControlMark, "", "https://example.com/target", "");
+  EVALUATE_TRACE_PRE(2, ControlDynamicAnchorJump, "/$dynamicRef",
+                     "#/$dynamicRef", "");
+  EVALUATE_TRACE_PRE(3, AssertionTypeStrict, "/$dynamicRef/type",
+                     "https://example.com/target#/type", "");
+
+  EVALUATE_TRACE_POST_SUCCESS(0, ControlMark, "", "https://example.com/other",
+                              "");
+  EVALUATE_TRACE_POST_SUCCESS(1, ControlMark, "", "https://example.com/target",
+                              "");
+  EVALUATE_TRACE_POST_FAILURE(2, AssertionTypeStrict, "/$dynamicRef/type",
+                              "https://example.com/target#/type", "");
+  EVALUATE_TRACE_POST_FAILURE(3, ControlDynamicAnchorJump, "/$dynamicRef",
+                              "#/$dynamicRef", "");
+
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The schema location was marked for future use");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 1,
+                               "The schema location was marked for future use");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 2,
+                               "The value was expected to be of type boolean "
+                               "but it was of type integer");
+  EVALUATE_TRACE_POST_DESCRIBE(
+      instance, 3,
+      "The integer value was expected to validate against the first subschema "
+      "in scope that declared the dynamic anchor \"meta\"");
+}
+
 TEST(Evaluator_2020_12, definitions_1) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -2038,6 +2137,86 @@ TEST(Evaluator_2020_12, unevaluatedItems_5_exhaustive) {
       "expected to validate against this subschema");
 }
 
+TEST(Evaluator_2020_12, unevaluatedItems_6) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { "type": "string" },
+    "minContains": 0,
+    "unevaluatedItems": false
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("[\"foo\"]")};
+
+  EVALUATE_WITH_TRACE_FAST_SUCCESS(schema, instance, 3);
+
+  EVALUATE_TRACE_PRE(0, LoopContains, "/contains", "#/contains", "");
+  EVALUATE_TRACE_PRE(1, AssertionTypeStrict, "/contains/type",
+                     "#/contains/type", "/0");
+  EVALUATE_TRACE_PRE(2, LoopItemsUnevaluated, "/unevaluatedItems",
+                     "#/unevaluatedItems", "");
+
+  EVALUATE_TRACE_POST_SUCCESS(0, AssertionTypeStrict, "/contains/type",
+                              "#/contains/type", "/0");
+  EVALUATE_TRACE_POST_SUCCESS(1, LoopContains, "/contains", "#/contains", "");
+  EVALUATE_TRACE_POST_SUCCESS(2, LoopItemsUnevaluated, "/unevaluatedItems",
+                              "#/unevaluatedItems", "");
+
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The value was expected to be of type string");
+  EVALUATE_TRACE_POST_DESCRIBE(
+      instance, 1,
+      "The array value was expected to contain at least 0 items that validate "
+      "against the given subschema");
+  EVALUATE_TRACE_POST_DESCRIBE(
+      instance, 2,
+      "The array items not covered by other array keywords, if any, were "
+      "expected to validate against this subschema");
+}
+
+TEST(Evaluator_2020_12, unevaluatedItems_6_exhaustive) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { "type": "string" },
+    "minContains": 0,
+    "unevaluatedItems": false
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("[\"foo\"]")};
+
+  EVALUATE_WITH_TRACE_EXHAUSTIVE_SUCCESS(schema, instance, 4);
+
+  EVALUATE_TRACE_PRE(0, LoopContains, "/contains", "#/contains", "");
+  EVALUATE_TRACE_PRE(1, AssertionTypeStrict, "/contains/type",
+                     "#/contains/type", "/0");
+  EVALUATE_TRACE_PRE_ANNOTATION(2, "/contains", "#/contains", "");
+  EVALUATE_TRACE_PRE(3, LoopItemsUnevaluated, "/unevaluatedItems",
+                     "#/unevaluatedItems", "");
+
+  EVALUATE_TRACE_POST_SUCCESS(0, AssertionTypeStrict, "/contains/type",
+                              "#/contains/type", "/0");
+  EVALUATE_TRACE_POST_ANNOTATION(1, "/contains", "#/contains", "", 0);
+  EVALUATE_TRACE_POST_SUCCESS(2, LoopContains, "/contains", "#/contains", "");
+  EVALUATE_TRACE_POST_SUCCESS(3, LoopItemsUnevaluated, "/unevaluatedItems",
+                              "#/unevaluatedItems", "");
+
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The value was expected to be of type string");
+  EVALUATE_TRACE_POST_DESCRIBE(
+      instance, 1,
+      "The item at index 0 of the array value successfully validated against "
+      "the containment check subschema");
+  EVALUATE_TRACE_POST_DESCRIBE(
+      instance, 2,
+      "The array value was expected to contain at least 0 items that validate "
+      "against the given subschema");
+  EVALUATE_TRACE_POST_DESCRIBE(
+      instance, 3,
+      "The array items not covered by other array keywords, if any, were "
+      "expected to validate against this subschema");
+}
+
 TEST(Evaluator_2020_12, unevaluatedProperties_1) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -2203,4 +2382,33 @@ TEST(Evaluator_2020_12, propertyNames_1_exhaustive) {
   EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
                                "The object property \"foo\" was expected to "
                                "validate against the given subschema");
+}
+
+TEST(Evaluator_2020_12, description) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "Foo Bar"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{1};
+
+  EVALUATE_WITH_TRACE_FAST_SUCCESS(schema, instance, 0);
+}
+
+TEST(Evaluator_2020_12, description_exhaustive) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "Foo Bar"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{1};
+
+  EVALUATE_WITH_TRACE_EXHAUSTIVE_SUCCESS(schema, instance, 1);
+
+  EVALUATE_TRACE_PRE_ANNOTATION(0, "/description", "#/description", "");
+  EVALUATE_TRACE_POST_ANNOTATION(0, "/description", "#/description", "",
+                                 "Foo Bar");
+
+  EVALUATE_TRACE_POST_DESCRIBE(
+      instance, 0, "The description of the instance was \"Foo Bar\"");
 }

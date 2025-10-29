@@ -19,7 +19,16 @@ namespace sourcemeta::blaze {
 
 /// @ingroup evaluator
 /// @brief Represents a compiler step empty value
-struct ValueNone {};
+struct ValueNone {
+  auto to_json() const -> sourcemeta::core::JSON {
+    return sourcemeta::core::JSON{nullptr};
+  }
+
+  static auto from_json(const sourcemeta::core::JSON &)
+      -> std::optional<ValueNone> {
+    return ValueNone{};
+  }
+};
 
 /// @ingroup evaluator
 /// Represents a compiler step JSON value
@@ -38,8 +47,7 @@ using ValueString = sourcemeta::core::JSON::String;
 /// @ingroup evaluator
 /// Represents a compiler step object property value
 using ValueProperty =
-    std::pair<ValueString,
-              sourcemeta::core::JSON::Object::Container::hash_type>;
+    std::pair<ValueString, sourcemeta::core::JSON::Object::hash_type>;
 
 /// @ingroup evaluator
 /// Represents a compiler step string values
@@ -62,7 +70,31 @@ using ValueType = sourcemeta::core::JSON::Type;
 /// original string and the regular expression as standard regular expressions
 /// do not keep a copy of their original value (which we need for serialization
 /// purposes)
-using ValueRegex = std::pair<sourcemeta::core::Regex<ValueString>, std::string>;
+struct ValueRegex {
+  using second_type = ValueString;
+  using first_type = sourcemeta::core::Regex<second_type>;
+  const first_type first;
+  const second_type second;
+
+  auto to_json() const -> sourcemeta::core::JSON {
+    return sourcemeta::core::to_json(this->second);
+  }
+
+  static auto from_json(const sourcemeta::core::JSON &value)
+      -> std::optional<ValueRegex> {
+    if (!value.is_string()) {
+      return std::nullopt;
+    }
+
+    auto string{value.to_string()};
+    auto regex{sourcemeta::core::to_regex(string)};
+    if (!regex.has_value()) {
+      return std::nullopt;
+    }
+
+    return ValueRegex{std::move(regex).value(), std::move(string)};
+  }
+};
 
 /// @ingroup evaluator
 /// Represents a compiler step JSON unsigned integer value
@@ -78,23 +110,20 @@ using ValueRange = std::tuple<std::size_t, std::optional<std::size_t>, bool>;
 /// Represents a compiler step boolean value
 using ValueBoolean = bool;
 
-// TODO: Don't use FlatMap directly, as it is an internal module of Core
 /// @ingroup evaluator
 /// Represents a compiler step string to index map
-using ValueNamedIndexes =
-    sourcemeta::core::FlatMap<ValueString, ValueUnsignedInteger,
-                              sourcemeta::core::PropertyHashJSON<ValueString>>;
+using ValueNamedIndexes = sourcemeta::core::JSONObject<
+    ValueString, ValueUnsignedInteger,
+    sourcemeta::core::PropertyHashJSON<ValueString>>;
 
 /// @ingroup evaluator
 /// Represents a compiler step string logical type
 enum class ValueStringType : std::uint8_t { URI };
 
-// TODO: Don't use FlatMap directly, as it is an internal module of Core
 /// @ingroup evaluator
 /// Represents an compiler step that maps strings to strings
-using ValueStringMap =
-    sourcemeta::core::FlatMap<ValueString, ValueStrings,
-                              sourcemeta::core::PropertyHashJSON<ValueString>>;
+using ValueStringMap = sourcemeta::core::JSONObject<
+    ValueString, ValueStrings, sourcemeta::core::PropertyHashJSON<ValueString>>;
 
 /// @ingroup evaluator
 /// Represents a compiler step value that consist of object property filters
@@ -116,9 +145,8 @@ using ValueTypedProperties = std::pair<ValueType, ValueStringSet>;
 
 /// @ingroup evaluator
 /// Represents a compiler step types property hashes value
-using ValueStringHashes =
-    std::pair<std::vector<ValueStringSet::hash_type>,
-              std::vector<std::pair<std::size_t, std::size_t>>>;
+using ValueStringHashes = std::pair<std::vector<ValueStringSet::hash_type>,
+                                    std::vector<ValueIndexPair>>;
 
 /// @ingroup evaluator
 /// Represents a compiler step types property hashes value
