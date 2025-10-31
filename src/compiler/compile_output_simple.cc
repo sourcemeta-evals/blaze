@@ -72,6 +72,46 @@ auto SimpleOutput::operator()(
     }
   } else if (type == EvaluationType::Post &&
              this->mask.contains(evaluate_path)) {
+    // When contains finishes, drop annotations for failed items
+    const auto &keyword{evaluate_path.back().to_property()};
+    if (keyword == "contains" && !this->annotations_.empty()) {
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        // Check if this annotation is under the contains evaluate path
+        if (!iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+          iterator++;
+          continue;
+        }
+
+        // Check if this annotation's instance location had a failure
+        bool should_drop = false;
+        for (const auto &[failure_eval_path, failure_inst_loc] :
+             this->contains_failures) {
+          if (failure_eval_path.starts_with(evaluate_path) &&
+              iterator->first.instance_location.starts_with(failure_inst_loc)) {
+            should_drop = true;
+            break;
+          }
+        }
+
+        if (should_drop) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
+      }
+
+      // Clean up failure tracking for this contains
+      for (auto it = this->contains_failures.begin();
+           it != this->contains_failures.end();) {
+        if (it->first.starts_with(evaluate_path)) {
+          it = this->contains_failures.erase(it);
+        } else {
+          ++it;
+        }
+      }
+    }
+
     this->mask.erase(evaluate_path);
   }
 
@@ -79,11 +119,16 @@ auto SimpleOutput::operator()(
     return;
   }
 
-  if (std::any_of(this->mask.cbegin(), this->mask.cend(),
-                  [&evaluate_path](const auto &entry) {
-                    return evaluate_path.starts_with(entry.first) &&
-                           !entry.second;
-                  })) {
+  // Check if we're in a contains context (mask entry with false value)
+  const bool in_contains_context = std::any_of(
+      this->mask.cbegin(), this->mask.cend(),
+      [&evaluate_path](const auto &entry) {
+        return evaluate_path.starts_with(entry.first) && !entry.second;
+      });
+
+  if (in_contains_context) {
+    // Track this failure for contains so we can drop annotations later
+    this->contains_failures.emplace(evaluate_path, instance_location);
     return;
   }
 
