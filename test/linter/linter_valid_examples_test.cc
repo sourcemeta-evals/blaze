@@ -615,3 +615,37 @@ TEST(Linter, valid_examples_13) {
 
   EXPECT_EQ(schema, expected);
 }
+
+TEST(Linter, valid_examples_14_ref_sibling_draft7) {
+  sourcemeta::core::SchemaTransformer bundle;
+  bundle.add<sourcemeta::blaze::ValidExamples>(
+      sourcemeta::blaze::default_schema_compiler);
+
+  auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "properties": {
+      "foo": { "$ref": "#/definitions/helper", "examples": [ 1 ] }
+    },
+    "definitions": {
+      "helper": { "type": "string" }
+    }
+  })JSON")};
+
+  const auto result = bundle.apply(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver, transformer_callback_error);
+
+  EXPECT_TRUE(result);
+
+  const auto expected{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "properties": {
+      "foo": { "$ref": "#/definitions/helper", "examples": [ 1 ] }
+    },
+    "definitions": {
+      "helper": { "type": "string" }
+    }
+  })JSON")};
+
+  EXPECT_EQ(schema, expected);
+}

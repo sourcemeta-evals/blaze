@@ -44,6 +44,21 @@ auto ValidExamples::condition(
     return false;
   }
 
+  // In Draft 7 and older, siblings to $ref are ignored by implementations
+  // So we should not lint examples if it's a sibling to $ref
+  if (schema.defines("$ref")) {
+    const bool is_draft_2019_09_or_later =
+        vocabularies.contains(
+            "https://json-schema.org/draft/2020-12/vocab/meta-data") ||
+        vocabularies.contains(
+            "https://json-schema.org/draft/2019-09/vocab/meta-data");
+
+    // In Draft 7 and older, ignore examples when $ref is present
+    if (!is_draft_2019_09_or_later) {
+      return false;
+    }
+  }
+
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
                                     .value_or(location)
                                     .get()
