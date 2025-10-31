@@ -79,18 +79,42 @@ auto SimpleOutput::operator()(
     return;
   }
 
-  if (std::any_of(this->mask.cbegin(), this->mask.cend(),
-                  [&evaluate_path](const auto &entry) {
-                    return evaluate_path.starts_with(entry.first) &&
-                           !entry.second;
-                  })) {
+  // Check if we're in a masked context with mask=false (contains)
+  const auto masked_contains = std::find_if(
+      this->mask.cbegin(), this->mask.cend(),
+      [&evaluate_path](const auto &entry) {
+        return evaluate_path.starts_with(entry.first) && !entry.second;
+      });
+
+  if (masked_contains != this->mask.cend()) {
+    // For contains, drop annotations for the specific failed item
+    // using the contains path as the base
+    if (type == EvaluationType::Post && !this->annotations_.empty()) {
+      const auto &contains_path = masked_contains->first;
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        // Drop annotations where:
+        // 1. evaluate_path starts with contains path (e.g., /contains/title
+        // starts with /contains)
+        // 2. instance_location matches exactly (e.g., /0 == /0, not /0 starts
+        // with /0)
+        if (iterator->first.evaluate_path.starts_with_initial(contains_path) &&
+            iterator->first.instance_location == instance_location) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
+      }
+    }
     return;
   }
 
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+          iterator->first.instance_location.starts_with_initial(
+              instance_location)) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
