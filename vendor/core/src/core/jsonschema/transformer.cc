@@ -1,25 +1,12 @@
 #include <sourcemeta/core/jsonschema.h>
 #include <sourcemeta/core/uri.h>
 
-#include <cassert>   // assert
-#include <set>       // std::set
-#include <sstream>   // std::ostringstream
-#include <stdexcept> // std::runtime_error
-#include <utility>   // std::move, std::pair
+#include <cassert> // assert
+#include <set>     // std::set
+#include <sstream> // std::ostringstream
+#include <utility> // std::move, std::pair
 
 namespace {
-
-auto is_true(const sourcemeta::core::SchemaTransformRule::Result &result)
-    -> bool {
-  switch (result.index()) {
-    case 0:
-      assert(std::holds_alternative<bool>(result));
-      return *std::get_if<bool>(&result);
-    default:
-      assert(std::holds_alternative<std::string>(result));
-      return true;
-  }
-}
 
 auto calculate_health_percentage(const std::size_t subschemas,
                                  const std::size_t failed_subschemas)
@@ -51,15 +38,15 @@ auto SchemaTransformRule::message() const -> const std::string & {
   return this->message_;
 }
 
-auto SchemaTransformRule::transform(JSON &) const -> void {
+auto SchemaTransformRule::transform(JSON &, const Result &) const -> void {
   throw SchemaAbortError("This rule cannot be automatically transformed");
 }
 
 auto SchemaTransformRule::rereference(const std::string &reference,
                                       const Pointer &origin, const Pointer &,
                                       const Pointer &) const -> Pointer {
-  throw SchemaReferenceError(reference, origin,
-                             "The reference broke after transformation");
+  throw SchemaBrokenReferenceError(reference, origin,
+                                   "The reference broke after transformation");
 }
 
 auto SchemaTransformRule::apply(JSON &schema, const JSON &root,
@@ -71,20 +58,21 @@ auto SchemaTransformRule::apply(JSON &schema, const JSON &root,
     -> std::pair<bool, Result> {
   auto outcome{this->condition(schema, root, vocabularies, frame, location,
                                walker, resolver)};
-  if (!is_true(outcome)) {
+  if (!outcome.applies) {
     return {true, std::move(outcome)};
   }
 
   try {
-    this->transform(schema);
+    this->transform(schema, outcome);
   } catch (const SchemaAbortError &) {
     return {false, std::move(outcome)};
   }
 
   // The condition must always be false after applying the
   // transformation in order to avoid infinite loops
-  if (is_true(this->condition(schema, root, vocabularies, frame, location,
-                              walker, resolver))) {
+  if (this->condition(schema, root, vocabularies, frame, location, walker,
+                      resolver)
+          .applies) {
     // TODO: Throw a better custom error that also highlights the schema
     // location
     std::ostringstream error;
@@ -113,7 +101,17 @@ auto SchemaTransformer::check(
     const std::optional<JSON::String> &default_id) const
     -> std::pair<bool, std::uint8_t> {
   SchemaFrame frame{SchemaFrame::Mode::Locations};
-  frame.analyse(schema, walker, resolver, default_dialect, default_id);
+
+  // If we use the default id when there is already one, framing will duplicate
+  // the locations leading to duplicate check reports
+  if (sourcemeta::core::identify(schema, resolver,
+                                 SchemaIdentificationStrategy::Strict,
+                                 default_dialect)
+          .has_value()) {
+    frame.analyse(schema, walker, resolver, default_dialect);
+  } else {
+    frame.analyse(schema, walker, resolver, default_dialect, default_id);
+  }
 
   bool result{true};
   std::size_t subschema_count{0};
@@ -133,21 +131,9 @@ auto SchemaTransformer::check(
     for (const auto &[name, rule] : this->rules) {
       const auto outcome{rule->check(current, schema, current_vocabularies,
                                      walker, resolver, frame, entry.second)};
-      switch (outcome.index()) {
-        case 0:
-          assert(std::holds_alternative<bool>(outcome));
-          if (*std::get_if<bool>(&outcome)) {
-            subresult = false;
-            callback(entry.second.pointer, name, rule->message(), "");
-          }
-
-          break;
-        default:
-          assert(std::holds_alternative<std::string>(outcome));
-          subresult = false;
-          callback(entry.second.pointer, name, rule->message(),
-                   *std::get_if<std::string>(&outcome));
-          break;
+      if (outcome.applies) {
+        subresult = false;
+        callback(entry.second.pointer, name, rule->message(), outcome);
       }
     }
 
@@ -191,13 +177,11 @@ auto SchemaTransformer::apply(
                                          entry.second)};
         // This means the rule is fixable
         if (subresult.first) {
-          applied = is_true(subresult.second) || applied;
+          applied = subresult.second.applies || applied;
         } else {
           result = false;
           callback(entry.second.pointer, name, rule->message(),
-                   subresult.second.index() == 0
-                       ? ""
-                       : *std::get_if<std::string>(&subresult.second));
+                   subresult.second);
         }
 
         if (!applied) {
@@ -206,11 +190,8 @@ auto SchemaTransformer::apply(
 
         std::pair<const JSON *, const JSON::String *> mark{&current, &name};
         if (processed_rules.contains(mark)) {
-          // TODO: Throw a better custom error that also highlights the schema
-          // location
-          std::ostringstream error;
-          error << "Rules must only be processed once: " << name;
-          throw std::runtime_error(error.str());
+          throw SchemaTransformRuleProcessedTwiceError(name,
+                                                       entry.second.pointer);
         }
 
         // Identify and try to address broken references, if any
