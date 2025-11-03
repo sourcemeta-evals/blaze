@@ -117,6 +117,15 @@ public:
                   const std::string &indentation = "") const -> void;
 
 private:
+  struct MaskKey {
+    auto operator<(const MaskKey &other) const noexcept -> bool {
+      return std::tie(this->evaluate_path, this->instance_location) <
+             std::tie(other.evaluate_path, other.instance_location);
+    }
+
+    const sourcemeta::core::WeakPointer evaluate_path;
+    const sourcemeta::core::WeakPointer instance_location;
+  };
 // Exporting symbols that depends on the standard C++ library is considered
 // safe.
 // https://learn.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-2-c4275?view=msvc-170&redirectedfrom=MSDN
@@ -126,7 +135,7 @@ private:
   const sourcemeta::core::JSON &instance_;
   const sourcemeta::core::WeakPointer base_;
   container_type output;
-  std::map<sourcemeta::core::WeakPointer, bool> mask;
+  std::map<MaskKey, bool> mask;
   std::map<Location, std::vector<sourcemeta::core::JSON>> annotations_;
 #if defined(_MSC_VER)
 #pragma warning(default : 4251)

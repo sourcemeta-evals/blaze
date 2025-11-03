@@ -66,31 +66,29 @@ auto SimpleOutput::operator()(
     // To ease the output
     if (keyword == "anyOf" || keyword == "oneOf" || keyword == "not" ||
         keyword == "if") {
-      this->mask.emplace(evaluate_path, true);
+      this->mask.emplace(MaskKey{evaluate_path, instance_location}, true);
     } else if (keyword == "contains") {
-      this->mask.emplace(evaluate_path, false);
+      this->mask.emplace(MaskKey{evaluate_path, instance_location}, false);
     }
-  } else if (type == EvaluationType::Post &&
-             this->mask.contains(evaluate_path)) {
-    this->mask.erase(evaluate_path);
+  } else if (type == EvaluationType::Post) {
+    const MaskKey key{evaluate_path, instance_location};
+    if (this->mask.contains(key)) {
+      this->mask.erase(key);
+    }
   }
 
   if (result) {
     return;
   }
 
-  if (std::any_of(this->mask.cbegin(), this->mask.cend(),
-                  [&evaluate_path](const auto &entry) {
-                    return evaluate_path.starts_with(entry.first) &&
-                           !entry.second;
-                  })) {
-    return;
-  }
-
+  // Clean up annotations for failed evaluations BEFORE checking masks
+  // This ensures annotations are dropped even for masked failures (like
+  // contains)
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+          iterator->first.instance_location == instance_location) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
@@ -99,9 +97,22 @@ auto SimpleOutput::operator()(
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
-                  [&evaluate_path](const auto &entry) {
-                    return evaluate_path.starts_with(entry.first);
+                  [&evaluate_path, &instance_location](const auto &entry) {
+                    return evaluate_path.starts_with(
+                               entry.first.evaluate_path) &&
+                           instance_location.starts_with(
+                               entry.first.instance_location) &&
+                           !entry.second;
                   })) {
+    return;
+  }
+
+  if (std::any_of(
+          this->mask.cbegin(), this->mask.cend(),
+          [&evaluate_path, &instance_location](const auto &entry) {
+            return evaluate_path.starts_with(entry.first.evaluate_path) &&
+                   instance_location.starts_with(entry.first.instance_location);
+          })) {
     return;
   }
 
