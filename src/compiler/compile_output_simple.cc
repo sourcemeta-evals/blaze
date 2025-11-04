@@ -72,11 +72,56 @@ auto SimpleOutput::operator()(
     }
   } else if (type == EvaluationType::Post &&
              this->mask.contains(evaluate_path)) {
+    // When exiting contains, clean up annotations for failed items
+    const auto &keyword{evaluate_path.back().to_property()};
+    if (keyword == "contains" && !this->annotations_.empty()) {
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        bool should_drop = false;
+        for (const auto &mask_entry : this->contains_mask) {
+          if (iterator->first.evaluate_path.starts_with_initial(
+                  mask_entry.evaluate_path) &&
+              iterator->first.instance_location ==
+                  mask_entry.instance_location) {
+            should_drop = true;
+            break;
+          }
+        }
+
+        if (should_drop) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
+      }
+      // Clear the contains_mask for this contains evaluation
+      for (auto it = this->contains_mask.begin();
+           it != this->contains_mask.end();) {
+        if (it->evaluate_path.starts_with_initial(evaluate_path)) {
+          it = this->contains_mask.erase(it);
+        } else {
+          ++it;
+        }
+      }
+    }
     this->mask.erase(evaluate_path);
   }
 
   if (result) {
     return;
+  }
+
+  // Track failures within contains by both evaluate path and instance location
+  // This is needed because contains evaluates multiple items, and we need to
+  // drop annotations only for items that failed, not for items that succeeded
+  if (std::any_of(this->mask.cbegin(), this->mask.cend(),
+                  [&evaluate_path](const auto &entry) {
+                    return evaluate_path.starts_with(entry.first) &&
+                           !entry.second;
+                  })) {
+    // We're inside a contains evaluation and something failed
+    // Track the combination of evaluate path and instance location
+    this->contains_mask.insert({evaluate_path, instance_location});
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
@@ -90,10 +135,28 @@ auto SimpleOutput::operator()(
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
+      // Check if this annotation should be dropped based on evaluate path
       if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
         iterator = this->annotations_.erase(iterator);
       } else {
-        iterator++;
+        // Check if this annotation is within a contains that failed at this
+        // specific instance location
+        bool should_drop = false;
+        for (const auto &mask_entry : this->contains_mask) {
+          if (iterator->first.evaluate_path.starts_with_initial(
+                  mask_entry.evaluate_path) &&
+              iterator->first.instance_location ==
+                  mask_entry.instance_location) {
+            should_drop = true;
+            break;
+          }
+        }
+
+        if (should_drop) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
       }
     }
   }

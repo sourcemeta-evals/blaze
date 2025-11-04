@@ -915,3 +915,62 @@ TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
     at evaluate path "/properties/foo/unevaluatedProperties"
 )JSON");
 }
+
+TEST(Compiler_output_simple, contains_drops_annotations_for_failed_items) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "number",
+      "title": "Test" 
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON([ "foo", 42, true ])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+
+  EXPECT_TRUE(result); // Overall validation should pass (42 matches)
+
+  // Check annotations - should only have:
+  // 1. The contains annotation at instance location "" (the array itself)
+  // 2. The title annotation at instance location "/1" (the matching item)
+  // Should NOT have title annotations at "/0" or "/2" (non-matching items)
+
+  // Count annotations at each location
+  int title_at_0 = 0;
+  int title_at_1 = 0;
+  int title_at_2 = 0;
+
+  for (const auto &[location, values] : output.annotations()) {
+    const auto instance_loc_str =
+        sourcemeta::core::to_string(location.instance_location);
+    const auto eval_path_str =
+        sourcemeta::core::to_string(location.evaluate_path);
+
+    if (eval_path_str.find("/contains/title") != std::string::npos) {
+      if (instance_loc_str == "/0")
+        title_at_0 += values.size();
+      if (instance_loc_str == "/1")
+        title_at_1 += values.size();
+      if (instance_loc_str == "/2")
+        title_at_2 += values.size();
+    }
+  }
+
+  EXPECT_EQ(title_at_0, 0)
+      << "Should not have title annotation at /0 (failed item)";
+  EXPECT_EQ(title_at_1, 1)
+      << "Should have title annotation at /1 (matched item)";
+  EXPECT_EQ(title_at_2, 0)
+      << "Should not have title annotation at /2 (failed item)";
+}
