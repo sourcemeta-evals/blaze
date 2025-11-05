@@ -53,7 +53,7 @@ auto SimpleOutput::operator()(
         // To avoid emitting the exact same annotation more than once
         // This is right now mostly because of `unevaluatedItems`
       } else if (match->second.back() != annotation) {
-        match->second.push_back(annotation);
+        this->annotations_[std::move(location)].push_back(annotation);
       }
     }
 
@@ -72,7 +72,58 @@ auto SimpleOutput::operator()(
     }
   } else if (type == EvaluationType::Post &&
              this->mask.contains(evaluate_path)) {
+    // When contains finishes, clean up annotations for items that didn't match
+    // The contains annotation tells us which items matched
+    const auto &keyword{evaluate_path.back().to_property()};
+    if (keyword == "contains" && result) {
+      // Find the contains annotation to see which items matched
+      std::set<std::size_t> matched_indices;
+      for (const auto &ann_entry : this->annotations_) {
+        if (ann_entry.first.evaluate_path == evaluate_path &&
+            ann_entry.first.instance_location.empty()) {
+          // This is the contains annotation at the root level
+          for (const auto &value : ann_entry.second) {
+            if (value.is_integer()) {
+              matched_indices.insert(
+                  static_cast<std::size_t>(value.to_integer()));
+            }
+          }
+        }
+      }
+
+      // Remove annotations for items that didn't match
+      for (auto it = this->annotations_.begin();
+           it != this->annotations_.end();) {
+        if (it->first.evaluate_path.starts_with_initial(evaluate_path) &&
+            !it->first.instance_location.empty()) {
+          // This is an annotation under the contains path at a specific item
+          // location Check if this item matched
+          if (!it->first.instance_location.empty() &&
+              it->first.instance_location.back().is_index()) {
+            std::size_t item_index =
+                it->first.instance_location.back().to_index();
+            if (matched_indices.find(item_index) == matched_indices.end()) {
+              // This item didn't match, remove its annotations
+              it = this->annotations_.erase(it);
+              continue;
+            }
+          }
+        }
+        ++it;
+      }
+    }
+
     this->mask.erase(evaluate_path);
+
+    // Clean up contains_failed_ entries for this contains block
+    for (auto it = this->contains_failed_.begin();
+         it != this->contains_failed_.end();) {
+      if (it->first == evaluate_path) {
+        it = this->contains_failed_.erase(it);
+      } else {
+        ++it;
+      }
+    }
   }
 
   if (result) {
@@ -88,12 +139,43 @@ auto SimpleOutput::operator()(
   }
 
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
-    for (auto iterator = this->annotations_.begin();
-         iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
-        iterator = this->annotations_.erase(iterator);
-      } else {
-        iterator++;
+    // Check if we're inside a 'contains' keyword by looking at the mask
+    bool inside_contains = false;
+    sourcemeta::core::WeakPointer contains_path;
+    for (const auto &mask_entry : this->mask) {
+      if (!mask_entry.second && evaluate_path.starts_with(mask_entry.first)) {
+        inside_contains = true;
+        contains_path = mask_entry.first;
+        break;
+      }
+    }
+
+    if (inside_contains) {
+      // Record this as a failed contains item
+      this->contains_failed_.emplace(contains_path, instance_location);
+
+      // Clean up any annotations already collected for this item
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        if (iterator->first.evaluate_path.starts_with_initial(contains_path) &&
+            iterator->first.instance_location.starts_with_initial(
+                instance_location)) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
+      }
+    } else {
+      // For other keywords, use the original logic
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+            iterator->first.instance_location.starts_with_initial(
+                instance_location)) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
       }
     }
   }

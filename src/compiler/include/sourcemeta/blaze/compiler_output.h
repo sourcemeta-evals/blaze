@@ -128,6 +128,10 @@ private:
   container_type output;
   std::map<sourcemeta::core::WeakPointer, bool> mask;
   std::map<Location, std::vector<sourcemeta::core::JSON>> annotations_;
+  // Track failed items in contains blocks to prevent late annotation additions
+  std::set<
+      std::pair<sourcemeta::core::WeakPointer, sourcemeta::core::WeakPointer>>
+      contains_failed_;
 #if defined(_MSC_VER)
 #pragma warning(default : 4251)
 #endif
