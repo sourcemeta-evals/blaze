@@ -79,23 +79,57 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // Clean up annotations for failures BEFORE the mask check
+  // The mask check below will cause an early return for failures inside
+  // masked contexts like `contains`, so we need to clean up annotations first
+  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+    // Check if we're inside a masked context (like contains)
+    bool inside_masked_context = false;
+    sourcemeta::core::WeakPointer masked_parent;
+
+    for (const auto &entry : this->mask) {
+      if (evaluate_path.starts_with(entry.first) && !entry.second) {
+        inside_masked_context = true;
+        masked_parent = entry.first;
+        break;
+      }
+    }
+
+    for (auto iterator = this->annotations_.begin();
+         iterator != this->annotations_.end();) {
+      bool should_remove = false;
+
+      if (inside_masked_context) {
+        // For masked contexts like `contains`, we need to check both:
+        // 1. The annotation is under the masked parent (e.g., /contains)
+        // 2. The annotation has the same instance location as the failure
+        // This ensures when item /0 fails, we only remove annotations for /0,
+        // not for other items like /1 or /2
+        should_remove =
+            iterator->first.evaluate_path.starts_with_initial(masked_parent) &&
+            iterator->first.instance_location == instance_location;
+      } else {
+        // For non-masked contexts, use the original logic
+        should_remove =
+            iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+            iterator->first.instance_location.starts_with_initial(
+                instance_location);
+      }
+
+      if (should_remove) {
+        iterator = this->annotations_.erase(iterator);
+      } else {
+        iterator++;
+      }
+    }
+  }
+
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
                   [&evaluate_path](const auto &entry) {
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
     return;
-  }
-
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
-    for (auto iterator = this->annotations_.begin();
-         iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
-        iterator = this->annotations_.erase(iterator);
-      } else {
-        iterator++;
-      }
-    }
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
