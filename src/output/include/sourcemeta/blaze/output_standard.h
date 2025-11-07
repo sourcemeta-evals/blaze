@@ -77,6 +77,17 @@ standard(Evaluator &evaluator, const Template &schema,
          const sourcemeta::core::JSON &instance, const StandardOutput format)
     -> sourcemeta::core::JSON;
 
+/// @ingroup output
+/// Perform JSON Schema evaluation using Standard Output formats with instance
+/// position information. This overload accepts a PointerPositionTracker to
+/// augment error and annotation units with an `instancePosition` array property
+/// containing `[lineStart, columnStart, lineEnd, columnEnd]`.
+auto SOURCEMETA_BLAZE_OUTPUT_EXPORT
+standard(Evaluator &evaluator, const Template &schema,
+         const sourcemeta::core::JSON &instance, const StandardOutput format,
+         const sourcemeta::core::PointerPositionTracker &tracker)
+    -> sourcemeta::core::JSON;
+
 } // namespace sourcemeta::blaze
 
 #endif
