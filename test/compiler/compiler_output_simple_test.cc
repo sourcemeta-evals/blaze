@@ -915,3 +915,43 @@ TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
     at evaluate path "/properties/foo/unevaluatedProperties"
 )JSON");
 }
+
+TEST(Compiler_output_simple, annotations_contains_drops_failed_items) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": {
+      "type": "number",
+      "title": "Test"
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON([ "foo", 42, true ])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+  EXPECT_TRUE(result);
+
+  // Only the annotation for the matching item (index 1) should be retained
+  // Annotations for failed items (indices 0 and 2) should be dropped
+  EXPECT_ANNOTATION_COUNT(output, 2);
+
+  // The 'contains' keyword itself should have an annotation
+  EXPECT_ANNOTATION_ENTRY(output, "", "/contains", "#/contains", 1);
+  EXPECT_ANNOTATION_VALUE(output, "", "/contains", "#/contains", 0,
+                          sourcemeta::core::JSON{1});
+
+  // Only the 'title' annotation for the matching item should be present
+  EXPECT_ANNOTATION_ENTRY(output, "/1", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/1", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Test"});
+}

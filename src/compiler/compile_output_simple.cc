@@ -79,23 +79,53 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // Drop annotations for failed items BEFORE the early return for masking
+  if (type == EvaluationType::Post && !result && !this->annotations_.empty()) {
+    auto effective_evaluate_path{evaluate_path.resolve_from(this->base_)};
+
+    // Check if this failure is under a 'contains' mask
+    const auto mask_entry = std::find_if(
+        this->mask.cbegin(), this->mask.cend(),
+        [&evaluate_path](const auto &entry) {
+          return evaluate_path.starts_with(entry.first) && !entry.second;
+        });
+
+    for (auto iterator = this->annotations_.begin();
+         iterator != this->annotations_.end();) {
+      // For keywords like 'contains', we need to check both evaluate_path
+      // and instance_location to properly drop annotations from failed items
+      const bool should_drop = [&]() {
+        if (mask_entry != this->mask.cend()) {
+          // For 'contains', when any child instruction fails for a specific
+          // instance location, drop all annotations under the 'contains'
+          // evaluate path for that instance location
+          auto effective_mask_path{mask_entry->first.resolve_from(this->base_)};
+          // Only drop annotations that are at the exact failing instance
+          // location and under the contains evaluate path
+          return iterator->first.evaluate_path.starts_with_initial(
+                     effective_mask_path) &&
+                 iterator->first.instance_location == instance_location;
+        }
+
+        // For other cases, drop based on evaluate path only
+        return iterator->first.evaluate_path.starts_with_initial(
+            effective_evaluate_path);
+      }();
+
+      if (should_drop) {
+        iterator = this->annotations_.erase(iterator);
+      } else {
+        iterator++;
+      }
+    }
+  }
+
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
                   [&evaluate_path](const auto &entry) {
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
     return;
-  }
-
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
-    for (auto iterator = this->annotations_.begin();
-         iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
-        iterator = this->annotations_.erase(iterator);
-      } else {
-        iterator++;
-      }
-    }
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
