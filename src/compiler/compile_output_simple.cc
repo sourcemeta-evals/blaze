@@ -66,31 +66,86 @@ auto SimpleOutput::operator()(
     // To ease the output
     if (keyword == "anyOf" || keyword == "oneOf" || keyword == "not" ||
         keyword == "if") {
-      this->mask.emplace(evaluate_path, true);
+      this->mask.emplace(MaskLocation{evaluate_path, instance_location}, true);
     } else if (keyword == "contains") {
-      this->mask.emplace(evaluate_path, false);
+      this->mask.emplace(MaskLocation{evaluate_path, instance_location}, false);
     }
-  } else if (type == EvaluationType::Post &&
-             this->mask.contains(evaluate_path)) {
-    this->mask.erase(evaluate_path);
+  } else if (type == EvaluationType::Post) {
+    const MaskLocation mask_key{evaluate_path, instance_location};
+    if (this->mask.contains(mask_key)) {
+      this->mask.erase(mask_key);
+    }
   }
 
   if (result) {
     return;
   }
 
-  if (std::any_of(this->mask.cbegin(), this->mask.cend(),
-                  [&evaluate_path](const auto &entry) {
-                    return evaluate_path.starts_with(entry.first) &&
-                           !entry.second;
-                  })) {
-    return;
+  // Clean up annotations on failure BEFORE suppressing masked errors
+  // Only run cleanup when under a 'contains' mask to avoid wiping unrelated
+  // annotations
+  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+    // Check if we're under a contains mask
+    bool under_contains_mask = false;
+    for (const auto &mask_entry : this->mask) {
+      const bool instance_in_mask =
+          mask_entry.first.instance_location.empty() ||
+          instance_location.starts_with(mask_entry.first.instance_location);
+      if (!mask_entry.second &&
+          evaluate_path.starts_with(mask_entry.first.evaluate_path) &&
+          instance_in_mask) {
+        under_contains_mask = true;
+        break;
+      }
+    }
+
+    if (under_contains_mask) {
+      // Only run masked cleanup for failed items in contains
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        bool should_erase = false;
+
+        for (const auto &mask_entry : this->mask) {
+          const bool instance_in_mask =
+              mask_entry.first.instance_location.empty() ||
+              instance_location.starts_with(mask_entry.first.instance_location);
+          if (!mask_entry.second &&
+              evaluate_path.starts_with(mask_entry.first.evaluate_path) &&
+              instance_in_mask &&
+              iterator->first.evaluate_path.starts_with(
+                  mask_entry.first.evaluate_path) &&
+              iterator->first.instance_location == instance_location) {
+            should_erase = true;
+            break;
+          }
+        }
+
+        if (should_erase) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
+      }
+    }
   }
 
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+  // Standard cleanup for non-masked failures
+  if (type == EvaluationType::Post && !this->annotations_.empty() &&
+      !std::any_of(
+          this->mask.cbegin(), this->mask.cend(),
+          [&evaluate_path, &instance_location](const auto &entry) {
+            const bool instance_in_mask =
+                entry.first.instance_location.empty() ||
+                instance_location.starts_with(entry.first.instance_location);
+            return !entry.second &&
+                   evaluate_path.starts_with(entry.first.evaluate_path) &&
+                   instance_in_mask;
+          })) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+          iterator->first.instance_location.starts_with_initial(
+              instance_location)) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
@@ -98,10 +153,25 @@ auto SimpleOutput::operator()(
     }
   }
 
+  // Suppress errors for masked contexts (like contains with false value)
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
-                  [&evaluate_path](const auto &entry) {
-                    return evaluate_path.starts_with(entry.first);
+                  [&evaluate_path, &instance_location](const auto &entry) {
+                    return evaluate_path.starts_with(
+                               entry.first.evaluate_path) &&
+                           instance_location.starts_with(
+                               entry.first.instance_location) &&
+                           !entry.second;
                   })) {
+    return;
+  }
+
+  // Suppress all output for masked contexts
+  if (std::any_of(
+          this->mask.cbegin(), this->mask.cend(),
+          [&evaluate_path, &instance_location](const auto &entry) {
+            return evaluate_path.starts_with(entry.first.evaluate_path) &&
+                   instance_location.starts_with(entry.first.instance_location);
+          })) {
     return;
   }
 

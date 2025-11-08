@@ -123,10 +123,20 @@ private:
 #if defined(_MSC_VER)
 #pragma warning(disable : 4251)
 #endif
+  struct MaskLocation {
+    auto operator<(const MaskLocation &other) const noexcept -> bool {
+      return std::tie(this->evaluate_path, this->instance_location) <
+             std::tie(other.evaluate_path, other.instance_location);
+    }
+
+    const sourcemeta::core::WeakPointer evaluate_path;
+    const sourcemeta::core::WeakPointer instance_location;
+  };
+
   const sourcemeta::core::JSON &instance_;
   const sourcemeta::core::WeakPointer base_;
   container_type output;
-  std::map<sourcemeta::core::WeakPointer, bool> mask;
+  std::map<MaskLocation, bool> mask;
   std::map<Location, std::vector<sourcemeta::core::JSON>> annotations_;
 #if defined(_MSC_VER)
 #pragma warning(default : 4251)
