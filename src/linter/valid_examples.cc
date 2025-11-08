@@ -1,12 +1,9 @@
 #include <sourcemeta/blaze/compiler.h>
-#include <sourcemeta/blaze/compiler_output.h>
 #include <sourcemeta/blaze/evaluator.h>
 #include <sourcemeta/blaze/linter.h>
-#include <sourcemeta/core/json_value.h>
+#include <sourcemeta/blaze/output.h>
+
 #include <sourcemeta/core/jsonschema.h>
-#include <sourcemeta/core/jsonschema_frame.h>
-#include <sourcemeta/core/jsonschema_transform.h>
-#include <sourcemeta/core/jsonschema_types.h>
 
 #include <cstddef>    // std::size_t
 #include <functional> // std::ref, std::cref
@@ -44,24 +41,21 @@ auto ValidExamples::condition(
     return false;
   }
 
-  // In Draft 7 and older, siblings to $ref are ignored per spec
-  // So we should not lint examples if it's a sibling to $ref
-  const bool is_draft_7_or_older =
-      !vocabularies.contains(
-          "https://json-schema.org/draft/2020-12/vocab/meta-data") &&
-      !vocabularies.contains(
-          "https://json-schema.org/draft/2019-09/vocab/meta-data");
-
-  if (is_draft_7_or_older && schema.defines("$ref")) {
-    return false;
+  // We have to ignore siblings to `$ref`
+  if (vocabularies.contains("http://json-schema.org/draft-07/schema#") ||
+      vocabularies.contains("http://json-schema.org/draft-06/schema#") ||
+      vocabularies.contains("http://json-schema.org/draft-04/schema#")) {
+    if (schema.defines("$ref")) {
+      return false;
+    }
   }
-
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
                                     .value_or(location)
                                     .get()
                                     .base_dialect};
   std::optional<std::string> default_id{location.base};
-  if (sourcemeta::core::identify(root, root_base_dialect).has_value()) {
+  if (sourcemeta::core::identify(root, root_base_dialect).has_value() ||
+      default_id.value().empty()) {
     // We want to only set a default identifier if the root schema does not
     // have an explicit identifier. Otherwise, we can get into corner case
     // when wrapping the schema
@@ -84,8 +78,19 @@ auto ValidExamples::condition(
     if (!result) {
       std::ostringstream message;
       message << "Invalid example instance at index " << cursor << "\n";
-      output.stacktrace(message, "  ");
-      return message.str();
+      for (const auto &entry : output) {
+        message << "  " << entry.message << "\n";
+        message << "  "
+                << "  at instance location \"";
+        sourcemeta::core::stringify(entry.instance_location, message);
+        message << "\"\n";
+        message << "  "
+                << "  at evaluate path \"";
+        sourcemeta::core::stringify(entry.evaluate_path, message);
+        message << "\"\n";
+      }
+
+      return {{{"examples", cursor}}, std::move(message).str()};
     }
 
     cursor += 1;
@@ -94,7 +99,9 @@ auto ValidExamples::condition(
   return false;
 }
 
-auto ValidExamples::transform(sourcemeta::core::JSON &schema) const -> void {
+auto ValidExamples::transform(
+    sourcemeta::core::JSON &schema,
+    const sourcemeta::core::SchemaTransformRule::Result &) const -> void {
   schema.erase("examples");
 }
 
