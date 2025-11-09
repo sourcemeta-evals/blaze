@@ -79,18 +79,40 @@ auto SimpleOutput::operator()(
     return;
   }
 
-  if (std::any_of(this->mask.cbegin(), this->mask.cend(),
-                  [&evaluate_path](const auto &entry) {
-                    return evaluate_path.starts_with(entry.first) &&
-                           !entry.second;
-                  })) {
-    return;
-  }
-
+  // Drop annotations for failed validations before checking the mask
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
+    // Check if we're in a contains context by looking for a contains mask
+    // that the current evaluate_path is within
+    sourcemeta::core::WeakPointer contains_path;
+    bool is_contains_context = false;
+    for (const auto &entry : this->mask) {
+      if (evaluate_path.starts_with(entry.first) && !entry.second) {
+        is_contains_context = true;
+        contains_path = entry.first;
+        break;
+      }
+    }
+
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+      bool should_erase = false;
+
+      if (is_contains_context) {
+        // For contains, we need to match both evaluate_path and
+        // instance_location because different array items can have different
+        // validation results. When a subschema within contains fails for a
+        // specific item, we drop annotations that were collected under the
+        // contains path for that specific instance location.
+        should_erase =
+            iterator->first.evaluate_path.starts_with_initial(contains_path) &&
+            iterator->first.instance_location == instance_location;
+      } else {
+        // For other contexts, match only by evaluate_path
+        should_erase =
+            iterator->first.evaluate_path.starts_with_initial(evaluate_path);
+      }
+
+      if (should_erase) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
