@@ -109,19 +109,21 @@ auto SimpleOutput::operator()(
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
       bool should_remove = false;
-      
+
       if (found_contains_mask) {
         // For contains failures, remove annotations under the contains path
         // for this exact instance location
-        should_remove = iterator->first.evaluate_path.starts_with(cleanup_prefix) &&
-                       iterator->first.instance_location == instance_location;
+        should_remove =
+            iterator->first.evaluate_path.starts_with(cleanup_prefix) &&
+            iterator->first.instance_location == instance_location;
       } else {
         // For other failures, use the original logic
-        should_remove = iterator->first.evaluate_path.starts_with_initial(
-                           effective_evaluate_path_for_cleanup) &&
-                       iterator->first.instance_location.starts_with(instance_location);
+        should_remove =
+            iterator->first.evaluate_path.starts_with_initial(
+                effective_evaluate_path_for_cleanup) &&
+            iterator->first.instance_location.starts_with(instance_location);
       }
-      
+
       if (should_remove) {
         iterator = this->annotations_.erase(iterator);
       } else {
