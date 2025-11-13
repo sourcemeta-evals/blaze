@@ -127,6 +127,9 @@ private:
   std::set<
       std::pair<sourcemeta::core::WeakPointer, sourcemeta::core::WeakPointer>>
       mask;
+  std::set<
+      std::pair<sourcemeta::core::WeakPointer, sourcemeta::core::WeakPointer>>
+      contains_failures;
   std::map<Location, std::vector<sourcemeta::core::JSON>> annotations_;
 #if defined(_MSC_VER)
 #pragma warning(default : 4251)

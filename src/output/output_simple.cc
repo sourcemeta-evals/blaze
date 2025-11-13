@@ -71,11 +71,66 @@ auto SimpleOutput::operator()(
     }
   } else if (type == EvaluationType::Post &&
              this->mask.contains({evaluate_path, instance_location})) {
+    const auto &keyword{evaluate_path.back().to_property()};
+
+    // For contains, drop annotations for failed items before cleaning up
+    if (keyword == "contains" && !this->annotations_.empty()) {
+      for (auto it = this->annotations_.begin();
+           it != this->annotations_.end();) {
+        bool should_drop = false;
+
+        // Check if this annotation is under a contains failure with matching
+        // instance location
+        for (const auto &failure : this->contains_failures) {
+          if (failure.first == evaluate_path &&
+              it->first.evaluate_path.starts_with_initial(evaluate_path) &&
+              it->first.instance_location.starts_with(failure.second)) {
+            should_drop = true;
+            break;
+          }
+        }
+
+        if (should_drop) {
+          it = this->annotations_.erase(it);
+        } else {
+          ++it;
+        }
+      }
+
+      // Clean up the failure tracking for this contains
+      for (auto it = this->contains_failures.begin();
+           it != this->contains_failures.end();) {
+        if (it->first == evaluate_path) {
+          it = this->contains_failures.erase(it);
+        } else {
+          ++it;
+        }
+      }
+    }
+
     this->mask.erase({evaluate_path, instance_location});
   }
 
   if (result) {
     return;
+  }
+
+  // Track failures for contains to know which instance locations failed
+  const auto contains_mask =
+      std::find_if(this->mask.cbegin(), this->mask.cend(),
+                   [&evaluate_path](const auto &entry) {
+                     return evaluate_path.starts_with(entry.first);
+                   });
+
+  if (contains_mask != this->mask.cend()) {
+    const auto &mask_keyword{contains_mask->first.back().to_property()};
+    // Only track failures for contains, not for anyOf/oneOf/not/if
+    if (mask_keyword == "contains") {
+      // We're inside a contains evaluation that is tracking failures
+      // Record this failure with both evaluate_path and instance_location
+      this->contains_failures.emplace(contains_mask->first, instance_location);
+      return;
+    }
   }
 
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
