@@ -1,5 +1,6 @@
 #include <sourcemeta/blaze/evaluator.h>
 #include <sourcemeta/blaze/linter.h>
+#include <sourcemeta/blaze/output.h>
 
 #include <functional> // std::ref, std::cref
 #include <sstream>    // std::ostringstream
@@ -36,6 +37,7 @@ auto ValidDefault::condition(
     return false;
   }
 
+<<<<<<< HEAD
   // In Draft 7 and older, siblings to $ref are ignored by the specification
   if (schema.defines("$ref")) {
     const auto &dialect = location.dialect;
@@ -50,12 +52,25 @@ auto ValidDefault::condition(
     }
   }
 
+||||||| 1e5068b
+=======
+  // We have to ignore siblings to `$ref`
+  if (vocabularies.contains("http://json-schema.org/draft-07/schema#") ||
+      vocabularies.contains("http://json-schema.org/draft-06/schema#") ||
+      vocabularies.contains("http://json-schema.org/draft-04/schema#")) {
+    if (schema.defines("$ref")) {
+      return false;
+    }
+  }
+
+>>>>>>> origin/main
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
                                     .value_or(location)
                                     .get()
                                     .base_dialect};
   std::optional<std::string> default_id{location.base};
-  if (sourcemeta::core::identify(root, root_base_dialect).has_value()) {
+  if (sourcemeta::core::identify(root, root_base_dialect).has_value() ||
+      default_id.value().empty()) {
     // We want to only set a default identifier if the root schema does not
     // have an explicit identifier. Otherwise, we can get into corner case
     // when wrapping the schema
@@ -79,11 +94,22 @@ auto ValidDefault::condition(
   }
 
   std::ostringstream message;
-  output.stacktrace(message);
-  return message.str();
+  for (const auto &entry : output) {
+    message << entry.message << "\n";
+    message << "  at instance location \"";
+    sourcemeta::core::stringify(entry.instance_location, message);
+    message << "\"\n";
+    message << "  at evaluate path \"";
+    sourcemeta::core::stringify(entry.evaluate_path, message);
+    message << "\"\n";
+  }
+
+  return {{{"default"}}, std::move(message).str()};
 }
 
-auto ValidDefault::transform(sourcemeta::core::JSON &schema) const -> void {
+auto ValidDefault::transform(
+    sourcemeta::core::JSON &schema,
+    const sourcemeta::core::SchemaTransformRule::Result &) const -> void {
   schema.erase("default");
 }
 
