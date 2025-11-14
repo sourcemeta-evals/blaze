@@ -79,23 +79,67 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // For contains, when a subschema fails for a specific instance location,
+  // we need to drop all annotations for that instance location that were
+  // created within the contains subschema. This must happen BEFORE the
+  // early return for masked contains failures.
+  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+    // Check if we're in a contains context and find the contains path
+    sourcemeta::core::WeakPointer contains_path;
+    bool in_contains_context = false;
+    for (const auto &entry : this->mask) {
+      if (evaluate_path.starts_with(entry.first) && !entry.second) {
+        in_contains_context = true;
+        contains_path = entry.first;
+        break;
+      }
+    }
+
+    if (in_contains_context) {
+      // Drop annotations for this specific instance location within the
+      // contains subschema
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        // Check if annotation's evaluate path starts with contains path
+        if (iterator->first.evaluate_path.starts_with_initial(contains_path)) {
+          // Check if instance locations match exactly
+          if (iterator->first.instance_location.size() ==
+              instance_location.size()) {
+            bool locations_match = true;
+            for (std::size_t i = 0; i < instance_location.size(); i++) {
+              if (!(iterator->first.instance_location.at(i) ==
+                    instance_location.at(i))) {
+                locations_match = false;
+                break;
+              }
+            }
+            if (locations_match) {
+              iterator = this->annotations_.erase(iterator);
+              continue;
+            }
+          }
+        }
+        iterator++;
+      }
+    } else {
+      // For non-contains contexts, drop annotations based on evaluate path
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
+      }
+    }
+  }
+
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
                   [&evaluate_path](const auto &entry) {
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
     return;
-  }
-
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
-    for (auto iterator = this->annotations_.begin();
-         iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
-        iterator = this->annotations_.erase(iterator);
-      } else {
-        iterator++;
-      }
-    }
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),

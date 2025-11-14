@@ -915,3 +915,59 @@ TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
     at evaluate path "/properties/foo/unevaluatedProperties"
 )JSON");
 }
+
+TEST(Compiler_output_simple, contains_drops_annotations_for_failed_items) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": {
+      "type": "number",
+      "title": "Test"
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON(["foo", 42, true])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+
+  EXPECT_TRUE(result);
+  std::vector<sourcemeta::blaze::SimpleOutput::Entry> traces{output.cbegin(),
+                                                             output.cend()};
+  EXPECT_TRUE(traces.empty());
+
+  // The key test: annotations should only be present for the item that passed
+  // (index 1), not for the items that failed (indices 0 and 2)
+  // There will be 2 annotations: one for the root contains and one for the
+  // title of the passing item
+  EXPECT_ANNOTATION_COUNT(output, 2);
+
+  // Check that the root contains annotation is present
+  EXPECT_ANNOTATION_ENTRY(output, "", "/contains", "#/contains", 1);
+
+  // Check that the title annotation is present for the passing item (index 1)
+  EXPECT_ANNOTATION_ENTRY(output, "/1", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/1", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Test"});
+
+  // Verify that annotations for failed items (indices 0 and 2) are NOT present
+  const auto instance_location_0{sourcemeta::core::to_pointer("/0")};
+  const auto instance_location_2{sourcemeta::core::to_pointer("/2")};
+  const auto evaluate_path{sourcemeta::core::to_pointer("/contains/title")};
+
+  EXPECT_FALSE(output.annotations().contains(
+      {sourcemeta::core::to_weak_pointer(instance_location_0),
+       sourcemeta::core::to_weak_pointer(evaluate_path), "#/contains/title"}));
+  EXPECT_FALSE(output.annotations().contains(
+      {sourcemeta::core::to_weak_pointer(instance_location_2),
+       sourcemeta::core::to_weak_pointer(evaluate_path), "#/contains/title"}));
+}
