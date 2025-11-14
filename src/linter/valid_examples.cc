@@ -41,7 +41,6 @@ auto ValidExamples::condition(
     return false;
   }
 
-<<<<<<< HEAD
   // In Draft 7 and older, siblings to $ref are ignored by the specification
   if (schema.defines("$ref")) {
     const auto &dialect = location.dialect;
@@ -56,18 +55,6 @@ auto ValidExamples::condition(
     }
   }
 
-||||||| 1e5068b
-=======
-  // We have to ignore siblings to `$ref`
-  if (vocabularies.contains("http://json-schema.org/draft-07/schema#") ||
-      vocabularies.contains("http://json-schema.org/draft-06/schema#") ||
-      vocabularies.contains("http://json-schema.org/draft-04/schema#")) {
-    if (schema.defines("$ref")) {
-      return false;
-    }
-  }
-
->>>>>>> origin/main
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
                                     .value_or(location)
                                     .get()
