@@ -37,11 +37,16 @@ auto ValidDefault::condition(
     return false;
   }
 
-  // We have to ignore siblings to `$ref`
-  if (vocabularies.contains("http://json-schema.org/draft-07/schema#") ||
-      vocabularies.contains("http://json-schema.org/draft-06/schema#") ||
-      vocabularies.contains("http://json-schema.org/draft-04/schema#")) {
-    if (schema.defines("$ref")) {
+  // In Draft 7 and older, siblings to $ref are ignored by the specification
+  if (schema.defines("$ref")) {
+    const auto &dialect = location.dialect;
+    if (dialect == "http://json-schema.org/draft-07/schema#" ||
+        dialect == "http://json-schema.org/draft-06/schema#" ||
+        dialect == "http://json-schema.org/draft-04/schema#" ||
+        dialect == "http://json-schema.org/draft-03/schema#" ||
+        dialect == "http://json-schema.org/draft-02/schema#" ||
+        dialect == "http://json-schema.org/draft-01/schema#" ||
+        dialect == "http://json-schema.org/draft-00/schema#") {
       return false;
     }
   }
