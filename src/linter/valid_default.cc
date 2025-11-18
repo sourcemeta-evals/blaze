@@ -1,5 +1,6 @@
 #include <sourcemeta/blaze/evaluator.h>
 #include <sourcemeta/blaze/linter.h>
+#include <sourcemeta/blaze/output.h>
 
 #include <functional> // std::ref, std::cref
 #include <sstream>    // std::ostringstream
@@ -15,7 +16,7 @@ ValidDefault::ValidDefault(Compiler compiler)
 auto ValidDefault::condition(
     const sourcemeta::core::JSON &schema, const sourcemeta::core::JSON &root,
     const sourcemeta::core::Vocabularies &vocabularies,
-    const sourcemeta::core::SchemaFrame &,
+    const sourcemeta::core::SchemaFrame &frame,
     const sourcemeta::core::SchemaFrame::Location &location,
     const sourcemeta::core::SchemaWalker &walker,
     const sourcemeta::core::SchemaResolver &resolver) const
@@ -36,11 +37,34 @@ auto ValidDefault::condition(
     return false;
   }
 
+  // We have to ignore siblings to `$ref`
+  if (vocabularies.contains("http://json-schema.org/draft-07/schema#") ||
+      vocabularies.contains("http://json-schema.org/draft-06/schema#") ||
+      vocabularies.contains("http://json-schema.org/draft-04/schema#")) {
+    if (schema.defines("$ref")) {
+      return false;
+    }
+  }
+
+  const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
+                                    .value_or(location)
+                                    .get()
+                                    .base_dialect};
+  std::optional<std::string> default_id{location.base};
+  if (sourcemeta::core::identify(root, root_base_dialect).has_value() ||
+      default_id.value().empty()) {
+    // We want to only set a default identifier if the root schema does not
+    // have an explicit identifier. Otherwise, we can get into corner case
+    // when wrapping the schema
+    default_id = std::nullopt;
+  }
+
   const auto subschema{sourcemeta::core::wrap(root, location.pointer, resolver,
                                               location.dialect)};
   const auto schema_template{compile(subschema, walker, resolver,
                                      this->compiler_, Mode::FastValidation,
-                                     location.dialect)};
+                                     location.dialect, default_id)};
+
   const auto &instance{schema.at("default")};
   Evaluator evaluator;
   const std::string ref{"$ref"};
@@ -52,11 +76,22 @@ auto ValidDefault::condition(
   }
 
   std::ostringstream message;
-  output.stacktrace(message);
-  return message.str();
+  for (const auto &entry : output) {
+    message << entry.message << "\n";
+    message << "  at instance location \"";
+    sourcemeta::core::stringify(entry.instance_location, message);
+    message << "\"\n";
+    message << "  at evaluate path \"";
+    sourcemeta::core::stringify(entry.evaluate_path, message);
+    message << "\"\n";
+  }
+
+  return {{{"default"}}, std::move(message).str()};
 }
 
-auto ValidDefault::transform(sourcemeta::core::JSON &schema) const -> void {
+auto ValidDefault::transform(
+    sourcemeta::core::JSON &schema,
+    const sourcemeta::core::SchemaTransformRule::Result &) const -> void {
   schema.erase("default");
 }
 
