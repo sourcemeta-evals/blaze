@@ -915,3 +915,181 @@ TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
     at evaluate path "/properties/foo/unevaluatedProperties"
 )JSON");
 }
+
+TEST(Compiler_output_simple,
+     contains_annotations_should_drop_for_failed_items) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "number",
+      "title": "Test" 
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON([ "foo", 42, true ])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+  EXPECT_TRUE(result);
+
+  // The contains keyword should succeed (42 is a number)
+  // Annotations should be collected:
+  // 1. The "contains" annotation at instance location "" (the array itself)
+  // 2. The "title" annotation ONLY for /1 (the item that matched: 42)
+  //
+  // The "title" annotations for /0 ("foo") and /2 (true) should NOT be present
+  // because those items failed the contains subschema validation
+
+  // We should have annotations for:
+  // - "" with evaluate_path "/contains" (the contains annotation itself)
+  // - "/1" with evaluate_path "/contains/title" (title for the matching item)
+  EXPECT_ANNOTATION_COUNT(output, 2);
+
+  // Check that we have the contains annotation
+  EXPECT_ANNOTATION_ENTRY(output, "", "/contains", "#/contains", 1);
+  EXPECT_ANNOTATION_VALUE(output, "", "/contains", "#/contains", 0,
+                          sourcemeta::core::JSON{1});
+
+  // Check that we have the title annotation ONLY for /1 (the matching item)
+  EXPECT_ANNOTATION_ENTRY(output, "/1", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/1", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Test"});
+
+  // Verify that we DON'T have title annotations for /0 and /2
+  const auto instance_location_0{sourcemeta::core::to_pointer("/0")};
+  const auto instance_location_2{sourcemeta::core::to_pointer("/2")};
+  const auto evaluate_path_title{
+      sourcemeta::core::to_pointer("/contains/title")};
+
+  EXPECT_FALSE(output.annotations().contains(
+      {sourcemeta::core::to_weak_pointer(instance_location_0),
+       sourcemeta::core::to_weak_pointer(evaluate_path_title),
+       "#/contains/title"}));
+
+  EXPECT_FALSE(output.annotations().contains(
+      {sourcemeta::core::to_weak_pointer(instance_location_2),
+       sourcemeta::core::to_weak_pointer(evaluate_path_title),
+       "#/contains/title"}));
+}
+
+TEST(Compiler_output_simple, contains_annotations_nested_schema) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "title": "Name Field" }
+      },
+      "title": "Object Item"
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{sourcemeta::core::parse_json(R"JSON([
+        { "name": "test" },
+        "not an object",
+        { "name": "another" }
+      ])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+  EXPECT_TRUE(result);
+
+  // Should have annotations for the matching objects at /0 and /2
+  // but NOT for the non-matching item at /1
+  const auto instance_location_1{sourcemeta::core::to_pointer("/1")};
+  const auto evaluate_path_title{
+      sourcemeta::core::to_pointer("/contains/title")};
+
+  EXPECT_FALSE(output.annotations().contains(
+      {sourcemeta::core::to_weak_pointer(instance_location_1),
+       sourcemeta::core::to_weak_pointer(evaluate_path_title),
+       "#/contains/title"}));
+}
+
+TEST(Compiler_output_simple, contains_annotations_all_items_fail) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "number",
+      "title": "Test",
+      "minimum": 100
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON([ 1, 2, 3 ])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+  EXPECT_FALSE(result);
+
+  // No annotations should be present since all items failed
+  EXPECT_ANNOTATION_COUNT(output, 0);
+}
+
+TEST(Compiler_output_simple, contains_annotations_all_items_pass) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "number",
+      "title": "Test"
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON([ 1, 2, 3 ])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+  EXPECT_TRUE(result);
+
+  // Should have annotations for all items since they all passed
+  EXPECT_ANNOTATION_ENTRY(output, "/0", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/0", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Test"});
+
+  EXPECT_ANNOTATION_ENTRY(output, "/1", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/1", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Test"});
+
+  EXPECT_ANNOTATION_ENTRY(output, "/2", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/2", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Test"});
+}
