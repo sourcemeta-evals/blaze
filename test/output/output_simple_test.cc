@@ -887,7 +887,7 @@ TEST(Output_simple, contains_annotations_should_drop_for_failed_items) {
   // Annotations should be collected:
   // 1. The "contains" annotation at instance location "" (the array itself)
   // 2. The "title" annotation ONLY for /1 (the item that matched: 42)
-  // 
+  //
   // The "title" annotations for /0 ("foo") and /2 (true) should NOT be present
   // because those items failed the contains subschema validation
 
@@ -902,24 +902,32 @@ TEST(Output_simple, contains_annotations_should_drop_for_failed_items) {
                           sourcemeta::core::JSON{1});
 
   // Check that we have the title annotation ONLY for /1 (the matching item)
-  EXPECT_ANNOTATION_ENTRY(output, "/1", "/contains/title", "#/contains/title", 1);
-  EXPECT_ANNOTATION_VALUE(output, "/1", "/contains/title", "#/contains/title", 0,
-                          sourcemeta::core::JSON{"Test"});
+  EXPECT_ANNOTATION_ENTRY(output, "/1", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/1", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Test"});
 
   // Verify that we DON'T have title annotations for /0 and /2
   const auto instance_location_0{sourcemeta::core::to_pointer("/0")};
   const auto instance_location_2{sourcemeta::core::to_pointer("/2")};
-  const auto evaluate_path_title{sourcemeta::core::to_pointer("/contains/title")};
-  
-  EXPECT_FALSE(output.annotations().contains(
-      {sourcemeta::core::to_weak_pointer(instance_location_0),
-       sourcemeta::core::to_weak_pointer(evaluate_path_title),
-       "#/contains/title"}));
-  
-  EXPECT_FALSE(output.annotations().contains(
-      {sourcemeta::core::to_weak_pointer(instance_location_2),
-       sourcemeta::core::to_weak_pointer(evaluate_path_title),
-       "#/contains/title"}));
+  const auto evaluate_path_title{
+      sourcemeta::core::to_pointer("/contains/title")};
+  const std::string schema_location{"#/contains/title"};
+
+  const sourcemeta::blaze::SimpleOutput::Location location_0{
+      .instance_location =
+          sourcemeta::core::to_weak_pointer(instance_location_0),
+      .evaluate_path = sourcemeta::core::to_weak_pointer(evaluate_path_title),
+      .schema_location = schema_location};
+
+  const sourcemeta::blaze::SimpleOutput::Location location_2{
+      .instance_location =
+          sourcemeta::core::to_weak_pointer(instance_location_2),
+      .evaluate_path = sourcemeta::core::to_weak_pointer(evaluate_path_title),
+      .schema_location = schema_location};
+
+  EXPECT_FALSE(output.annotations().contains(location_0));
+  EXPECT_FALSE(output.annotations().contains(location_2));
 }
 
 TEST(Output_simple, contains_annotations_nested_schema) {
@@ -940,8 +948,7 @@ TEST(Output_simple, contains_annotations_nested_schema) {
       sourcemeta::blaze::default_schema_compiler,
       sourcemeta::blaze::Mode::Exhaustive)};
 
-  const sourcemeta::core::JSON instance{
-      sourcemeta::core::parse_json(R"JSON([
+  const sourcemeta::core::JSON instance{sourcemeta::core::parse_json(R"JSON([
         { "name": "test" },
         "not an object",
         { "name": "another" }
@@ -956,12 +963,17 @@ TEST(Output_simple, contains_annotations_nested_schema) {
   // Should have annotations for the matching objects at /0 and /2
   // but NOT for the non-matching item at /1
   const auto instance_location_1{sourcemeta::core::to_pointer("/1")};
-  const auto evaluate_path_title{sourcemeta::core::to_pointer("/contains/title")};
-  
-  EXPECT_FALSE(output.annotations().contains(
-      {sourcemeta::core::to_weak_pointer(instance_location_1),
-       sourcemeta::core::to_weak_pointer(evaluate_path_title),
-       "#/contains/title"}));
+  const auto evaluate_path_title{
+      sourcemeta::core::to_pointer("/contains/title")};
+  const std::string schema_location{"#/contains/title"};
+
+  const sourcemeta::blaze::SimpleOutput::Location location_1{
+      .instance_location =
+          sourcemeta::core::to_weak_pointer(instance_location_1),
+      .evaluate_path = sourcemeta::core::to_weak_pointer(evaluate_path_title),
+      .schema_location = schema_location};
+
+  EXPECT_FALSE(output.annotations().contains(location_1));
 }
 
 TEST(Output_simple, contains_annotations_all_items_fail) {
@@ -1018,15 +1030,18 @@ TEST(Output_simple, contains_annotations_all_items_pass) {
   EXPECT_TRUE(result);
 
   // Should have annotations for all items since they all passed
-  EXPECT_ANNOTATION_ENTRY(output, "/0", "/contains/title", "#/contains/title", 1);
-  EXPECT_ANNOTATION_VALUE(output, "/0", "/contains/title", "#/contains/title", 0,
-                          sourcemeta::core::JSON{"Test"});
-  
-  EXPECT_ANNOTATION_ENTRY(output, "/1", "/contains/title", "#/contains/title", 1);
-  EXPECT_ANNOTATION_VALUE(output, "/1", "/contains/title", "#/contains/title", 0,
-                          sourcemeta::core::JSON{"Test"});
-  
-  EXPECT_ANNOTATION_ENTRY(output, "/2", "/contains/title", "#/contains/title", 1);
-  EXPECT_ANNOTATION_VALUE(output, "/2", "/contains/title", "#/contains/title", 0,
-                          sourcemeta::core::JSON{"Test"});
+  EXPECT_ANNOTATION_ENTRY(output, "/0", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/0", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Test"});
+
+  EXPECT_ANNOTATION_ENTRY(output, "/1", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/1", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Test"});
+
+  EXPECT_ANNOTATION_ENTRY(output, "/2", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/2", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Test"});
 }

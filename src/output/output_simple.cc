@@ -74,31 +74,35 @@ auto SimpleOutput::operator()(
     // Clean up annotations for failed items in contains
     const auto &keyword{evaluate_path.back().to_property()};
     if (keyword == "contains" && !this->annotations_.empty()) {
-      // Remove annotations for instance locations that failed within this contains
+      // Remove annotations for instance locations that failed within this
+      // contains
       for (auto iterator = this->annotations_.begin();
            iterator != this->annotations_.end();) {
         bool should_drop = false;
-        
+
         // Check if this annotation is from a contains subschema that failed
         // for a specific instance location
         for (const auto &mask_entry : this->contains_mask) {
           if (mask_entry.evaluate_path == evaluate_path &&
-              iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
-              iterator->first.instance_location == mask_entry.instance_location) {
+              iterator->first.evaluate_path.starts_with_initial(
+                  evaluate_path) &&
+              iterator->first.instance_location ==
+                  mask_entry.instance_location) {
             should_drop = true;
             break;
           }
         }
-        
+
         if (should_drop) {
           iterator = this->annotations_.erase(iterator);
         } else {
           iterator++;
         }
       }
-      
+
       // Clean up the contains_mask entries for this contains path
-      for (auto it = this->contains_mask.begin(); it != this->contains_mask.end();) {
+      for (auto it = this->contains_mask.begin();
+           it != this->contains_mask.end();) {
         if (it->evaluate_path == evaluate_path) {
           it = this->contains_mask.erase(it);
         } else {
@@ -106,7 +110,7 @@ auto SimpleOutput::operator()(
         }
       }
     }
-    
+
     this->mask.erase({evaluate_path, instance_location});
   }
 
@@ -115,17 +119,18 @@ auto SimpleOutput::operator()(
   }
 
   // Check if we're inside a contains evaluation
-  const bool inside_contains = std::ranges::any_of(this->mask, [&evaluate_path](const auto &entry) {
-    return evaluate_path.starts_with(entry.first) && 
-           entry.first.back().is_property() &&
-           entry.first.back().to_property() == "contains";
-  });
+  const bool inside_contains =
+      std::ranges::any_of(this->mask, [&evaluate_path](const auto &entry) {
+        return evaluate_path.starts_with(entry.first) &&
+               entry.first.back().is_property() &&
+               entry.first.back().to_property() == "contains";
+      });
 
   if (inside_contains) {
     // Track this specific failure for contains
     // Find the contains evaluate path and track the instance location
     for (const auto &entry : this->mask) {
-      if (evaluate_path.starts_with(entry.first) && 
+      if (evaluate_path.starts_with(entry.first) &&
           entry.first.back().is_property() &&
           entry.first.back().to_property() == "contains") {
         // This is a contains path, track the failure with the contains path
