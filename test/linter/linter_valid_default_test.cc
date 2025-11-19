@@ -573,3 +573,173 @@ TEST(Linter, valid_default_12) {
 
   EXPECT_EQ(schema, expected);
 }
+
+TEST(Linter, valid_default_13_draft7_ref_sibling_ignored) {
+  sourcemeta::core::SchemaTransformer bundle;
+  bundle.add<sourcemeta::blaze::ValidDefault>(
+      sourcemeta::blaze::default_schema_compiler);
+
+  auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "properties": {
+      "foo": { "$ref": "#/definitions/helper", "default": 1 }
+    },
+    "definitions": {
+      "helper": { "type": "string" }
+    }
+  })JSON")};
+
+  const auto result = bundle.apply(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver, transformer_callback_error);
+
+  EXPECT_TRUE(result);
+
+  const auto expected{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "properties": {
+      "foo": { "$ref": "#/definitions/helper", "default": 1 }
+    },
+    "definitions": {
+      "helper": { "type": "string" }
+    }
+  })JSON")};
+
+  EXPECT_EQ(schema, expected);
+}
+
+TEST(Linter, valid_default_14_draft6_ref_sibling_ignored) {
+  sourcemeta::core::SchemaTransformer bundle;
+  bundle.add<sourcemeta::blaze::ValidDefault>(
+      sourcemeta::blaze::default_schema_compiler);
+
+  auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "properties": {
+      "foo": { "$ref": "#/definitions/helper", "default": 1 }
+    },
+    "definitions": {
+      "helper": { "type": "string" }
+    }
+  })JSON")};
+
+  const auto result = bundle.apply(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver, transformer_callback_error);
+
+  EXPECT_TRUE(result);
+
+  const auto expected{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "properties": {
+      "foo": { "$ref": "#/definitions/helper", "default": 1 }
+    },
+    "definitions": {
+      "helper": { "type": "string" }
+    }
+  })JSON")};
+
+  EXPECT_EQ(schema, expected);
+}
+
+TEST(Linter, valid_default_15_draft4_ref_sibling_ignored) {
+  sourcemeta::core::SchemaTransformer bundle;
+  bundle.add<sourcemeta::blaze::ValidDefault>(
+      sourcemeta::blaze::default_schema_compiler);
+
+  auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "properties": {
+      "foo": { "$ref": "#/definitions/helper", "default": 1 }
+    },
+    "definitions": {
+      "helper": { "type": "string" }
+    }
+  })JSON")};
+
+  const auto result = bundle.apply(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver, transformer_callback_error);
+
+  EXPECT_TRUE(result);
+
+  const auto expected{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "properties": {
+      "foo": { "$ref": "#/definitions/helper", "default": 1 }
+    },
+    "definitions": {
+      "helper": { "type": "string" }
+    }
+  })JSON")};
+
+  EXPECT_EQ(schema, expected);
+}
+
+TEST(Linter, valid_default_16_2019_09_ref_sibling_linted) {
+  sourcemeta::core::SchemaTransformer bundle;
+  bundle.add<sourcemeta::blaze::ValidDefault>(
+      sourcemeta::blaze::default_schema_compiler);
+
+  auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2019-09/schema",
+    "properties": {
+      "foo": { "$ref": "#/$defs/helper", "default": 1 }
+    },
+    "$defs": {
+      "helper": { "type": "string" }
+    }
+  })JSON")};
+
+  const auto result = bundle.apply(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver, transformer_callback_error);
+
+  EXPECT_TRUE(result);
+
+  const auto expected{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2019-09/schema",
+    "properties": {
+      "foo": { "$ref": "#/$defs/helper" }
+    },
+    "$defs": {
+      "helper": { "type": "string" }
+    }
+  })JSON")};
+
+  EXPECT_EQ(schema, expected);
+}
+
+TEST(Linter, valid_default_17_2020_12_ref_sibling_linted) {
+  sourcemeta::core::SchemaTransformer bundle;
+  bundle.add<sourcemeta::blaze::ValidDefault>(
+      sourcemeta::blaze::default_schema_compiler);
+
+  auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "foo": { "$ref": "#/$defs/helper", "default": 1 }
+    },
+    "$defs": {
+      "helper": { "type": "string" }
+    }
+  })JSON")};
+
+  const auto result = bundle.apply(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver, transformer_callback_error);
+
+  EXPECT_TRUE(result);
+
+  const auto expected{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "foo": { "$ref": "#/$defs/helper" }
+    },
+    "$defs": {
+      "helper": { "type": "string" }
+    }
+  })JSON")};
+
+  EXPECT_EQ(schema, expected);
+}
