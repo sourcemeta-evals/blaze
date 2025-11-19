@@ -69,9 +69,30 @@ auto SimpleOutput::operator()(
       this->mask.emplace(evaluate_path, true);
     } else if (keyword == "contains") {
       this->mask.emplace(evaluate_path, false);
+      // Clear the set of failed items for this new contains evaluation
+      this->contains_failed_items.clear();
     }
   } else if (type == EvaluationType::Post &&
              this->mask.contains(evaluate_path)) {
+    const auto &keyword{evaluate_path.back().to_property()};
+
+    // For contains, drop annotations for items that failed
+    if (keyword == "contains") {
+      for (auto ann_it = this->annotations_.begin();
+           ann_it != this->annotations_.end();) {
+        // Check if this annotation is for a failed item under the contains path
+        if (ann_it->first.evaluate_path.starts_with_initial(evaluate_path) &&
+            ann_it->first.instance_location != instance_location &&
+            this->contains_failed_items.contains(
+                ann_it->first.instance_location)) {
+          ann_it = this->annotations_.erase(ann_it);
+        } else {
+          ++ann_it;
+        }
+      }
+      this->contains_failed_items.clear();
+    }
+
     this->mask.erase(evaluate_path);
   }
 
@@ -84,6 +105,8 @@ auto SimpleOutput::operator()(
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
+    // Track this instance location as a failed item for contains
+    this->contains_failed_items.insert(instance_location);
     return;
   }
 

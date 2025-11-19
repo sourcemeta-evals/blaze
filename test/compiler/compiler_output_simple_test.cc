@@ -915,3 +915,70 @@ TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
     at evaluate path "/properties/foo/unevaluatedProperties"
 )JSON");
 }
+
+TEST(Compiler_output_simple, contains_drops_annotations_for_failed_items) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "number",
+      "title": "Test" 
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON([ "foo", 42, true ])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+
+  EXPECT_TRUE(result);
+
+  // The contains keyword should only retain annotations for items that passed
+  // In this case, only item at index 1 (42) is a number, so only it should have
+  // the title annotation. Items at index 0 ("foo") and 2 (true) should NOT have
+  // the title annotation because they failed the contains subschema.
+
+  // Check that we have the contains annotation (index of matching items)
+  EXPECT_ANNOTATION_ENTRY(output, "", "/contains", "#/contains", 1);
+  EXPECT_ANNOTATION_VALUE(output, "", "/contains", "#/contains", 0,
+                          sourcemeta::core::JSON{1});
+
+  // Check that only item /1 has the title annotation
+  // Items /0 and /2 should NOT have the title annotation
+  bool has_annotation_0 = false;
+  bool has_annotation_1 = false;
+  bool has_annotation_2 = false;
+
+  for (const auto &[location, values] : output.annotations()) {
+    if (sourcemeta::core::to_string(location.instance_location) == "/0" &&
+        sourcemeta::core::to_string(location.evaluate_path) ==
+            "/contains/title") {
+      has_annotation_0 = true;
+    }
+    if (sourcemeta::core::to_string(location.instance_location) == "/1" &&
+        sourcemeta::core::to_string(location.evaluate_path) ==
+            "/contains/title") {
+      has_annotation_1 = true;
+    }
+    if (sourcemeta::core::to_string(location.instance_location) == "/2" &&
+        sourcemeta::core::to_string(location.evaluate_path) ==
+            "/contains/title") {
+      has_annotation_2 = true;
+    }
+  }
+
+  EXPECT_FALSE(has_annotation_0)
+      << "Annotation for /0 should be dropped (failed contains)";
+  EXPECT_TRUE(has_annotation_1)
+      << "Annotation for /1 should be kept (passed contains)";
+  EXPECT_FALSE(has_annotation_2)
+      << "Annotation for /2 should be dropped (failed contains)";
+}
