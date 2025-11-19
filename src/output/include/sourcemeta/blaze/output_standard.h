@@ -6,6 +6,7 @@
 #endif
 
 #include <sourcemeta/core/json.h>
+#include <sourcemeta/core/jsonpointer.h>
 
 #include <sourcemeta/blaze/evaluator.h>
 
@@ -76,6 +77,55 @@ auto SOURCEMETA_BLAZE_OUTPUT_EXPORT
 standard(Evaluator &evaluator, const Template &schema,
          const sourcemeta::core::JSON &instance, const StandardOutput format)
     -> sourcemeta::core::JSON;
+
+/// @ingroup output
+/// Perform JSON Schema evaluation using Standard Output formats with instance
+/// position tracking. This overload augments error and annotation unit objects
+/// with an `instancePosition` array property containing `[lineStart,
+/// columnStart, lineEnd, columnEnd]` when position information is available.
+/// For example:
+///
+/// ```cpp
+/// #include <sourcemeta/blaze/compiler.h>
+/// #include <sourcemeta/blaze/evaluator.h>
+/// #include <sourcemeta/blaze/output.h>
+///
+/// #include <sourcemeta/core/json.h>
+/// #include <sourcemeta/core/jsonschema.h>
+///
+/// #include <cassert>
+/// #include <sstream>
+///
+/// const sourcemeta::core::JSON schema =
+///     sourcemeta::core::parse_json(R"JSON({
+///   "$schema": "https://json-schema.org/draft/2020-12/schema",
+///   "type": "string"
+/// })JSON");
+///
+/// const auto schema_template{sourcemeta::blaze::compile(
+///     schema, sourcemeta::core::schema_official_walker,
+///     sourcemeta::core::schema_official_resolver,
+///     sourcemeta::core::default_schema_compiler)};
+///
+/// std::istringstream stream{R"JSON({"foo": 1})JSON"};
+/// sourcemeta::core::PointerPositionTracker tracker;
+/// const auto instance{sourcemeta::core::parse_json(stream,
+/// std::ref(tracker))};
+///
+/// sourcemeta::blaze::Evaluator evaluator;
+///
+/// const auto result{sourcemeta::blaze::standard(
+///   evaluator, schema_template, instance, tracker,
+///   sourcemeta::blaze::StandardOutput::Basic)};
+///
+/// assert(result.is_object());
+/// assert(result.defines("valid"));
+/// ```
+auto SOURCEMETA_BLAZE_OUTPUT_EXPORT
+standard(Evaluator &evaluator, const Template &schema,
+         const sourcemeta::core::JSON &instance,
+         const sourcemeta::core::PointerPositionTracker &positions,
+         const StandardOutput format) -> sourcemeta::core::JSON;
 
 } // namespace sourcemeta::blaze
 
