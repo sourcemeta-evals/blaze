@@ -79,18 +79,29 @@ auto SimpleOutput::operator()(
     return;
   }
 
-  if (std::any_of(this->mask.cbegin(), this->mask.cend(),
-                  [&evaluate_path](const auto &entry) {
-                    return evaluate_path.starts_with(entry.first) &&
-                           !entry.second;
-                  })) {
-    return;
-  }
+  // Check if we're inside a contains context (mask with false)
+  const auto in_contains_context = std::any_of(
+      this->mask.cbegin(), this->mask.cend(),
+      [&evaluate_path](const auto &entry) {
+        return evaluate_path.starts_with(entry.first) && !entry.second;
+      });
 
+  // Drop annotations for failed evaluations
+  // This must happen before the early return for masked failures
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+      // In contains context, use parent path to drop all sibling annotations
+      // Use starts_with for instance_location to avoid dropping annotations
+      // at parent instance locations (e.g., don't drop "" when failing at "/0")
+      const bool should_drop =
+          iterator->first.instance_location.starts_with(instance_location) &&
+          (in_contains_context
+               ? iterator->first.evaluate_path.starts_with_initial(
+                     evaluate_path.initial())
+               : iterator->first.evaluate_path.starts_with_initial(
+                     evaluate_path));
+      if (should_drop) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
@@ -98,6 +109,7 @@ auto SimpleOutput::operator()(
     }
   }
 
+  // Return early if under a mask (suppress error output)
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
                   [&evaluate_path](const auto &entry) {
                     return evaluate_path.starts_with(entry.first);
