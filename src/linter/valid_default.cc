@@ -36,6 +36,16 @@ auto ValidDefault::condition(
     return false;
   }
 
+  // In Draft 7 and older, keywords that are siblings to $ref are ignored
+  // So we should not lint default if it's a sibling to $ref
+  if (schema.defines("$ref") &&
+      !vocabularies.contains(
+          "https://json-schema.org/draft/2020-12/vocab/meta-data") &&
+      !vocabularies.contains(
+          "https://json-schema.org/draft/2019-09/vocab/meta-data")) {
+    return false;
+  }
+
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
                                     .value_or(location)
                                     .get()
