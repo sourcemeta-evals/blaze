@@ -69,10 +69,45 @@ auto SimpleOutput::operator()(
       this->mask.emplace(evaluate_path, true);
     } else if (keyword == "contains") {
       this->mask.emplace(evaluate_path, false);
+      // Initialize the set of failed locations for this contains block
+      this->contains_failed_locations[evaluate_path] = {};
     }
   } else if (type == EvaluationType::Post &&
              this->mask.contains(evaluate_path)) {
     this->mask.erase(evaluate_path);
+
+    // If this is a contains block, drop annotations for failed instance
+    // locations
+    if (this->contains_failed_locations.contains(evaluate_path)) {
+      const auto &failed_locations =
+          this->contains_failed_locations[evaluate_path];
+
+      if (!failed_locations.empty() && !this->annotations_.empty()) {
+        std::vector<Location> to_erase;
+        for (const auto &annotation_entry : this->annotations_) {
+          // Check if this annotation is under the contains path and at a
+          // failed location
+          if (annotation_entry.first.evaluate_path.starts_with_initial(
+                  evaluate_path)) {
+            for (const auto &failed_location : failed_locations) {
+              const auto failed_weak =
+                  sourcemeta::core::to_weak_pointer(failed_location);
+              if (annotation_entry.first.instance_location.starts_with_initial(
+                      failed_weak)) {
+                to_erase.push_back(annotation_entry.first);
+                break;
+              }
+            }
+          }
+        }
+
+        for (const auto &location : to_erase) {
+          this->annotations_.erase(location);
+        }
+      }
+
+      this->contains_failed_locations.erase(evaluate_path);
+    }
   }
 
   if (result) {
@@ -87,10 +122,24 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // Track failed instance locations inside contains blocks
+  if (type == EvaluationType::Post) {
+    for (auto &entry : this->contains_failed_locations) {
+      if (evaluate_path.starts_with(entry.first)) {
+        // We're inside this contains block and validation failed
+        // Convert WeakPointer to Pointer to ensure the data persists
+        entry.second.insert(sourcemeta::core::to_pointer(instance_location));
+        break;
+      }
+    }
+  }
+
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+          iterator->first.instance_location.starts_with_initial(
+              instance_location)) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;

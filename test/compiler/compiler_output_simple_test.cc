@@ -915,3 +915,55 @@ TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
     at evaluate path "/properties/foo/unevaluatedProperties"
 )JSON");
 }
+
+TEST(Compiler_output_simple, contains_drops_annotations_for_failed_items) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": {
+      "type": "number",
+      "title": "Test"
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON([ "foo", 42, true ])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+
+  EXPECT_TRUE(result);
+
+  // The contains keyword should only emit annotations for items that matched
+  // In this case, only item at index 1 (42) matches "type": "number"
+  // Items at index 0 ("foo") and index 2 (true) do NOT match
+  // Therefore, we should only have 1 annotation for the title at /1
+
+  // Check that we have exactly 1 annotation for the title at /1
+  const auto instance_location_1 = sourcemeta::core::to_pointer("/1");
+  const auto evaluate_path = sourcemeta::core::to_pointer("/contains/title");
+
+  // This should exist (item 1 matched)
+  EXPECT_TRUE(output.annotations().contains(
+      {sourcemeta::core::to_weak_pointer(instance_location_1),
+       sourcemeta::core::to_weak_pointer(evaluate_path), "#/contains/title"}));
+
+  // These should NOT exist (items 0 and 2 did not match)
+  const auto instance_location_0 = sourcemeta::core::to_pointer("/0");
+  const auto instance_location_2 = sourcemeta::core::to_pointer("/2");
+
+  EXPECT_FALSE(output.annotations().contains(
+      {sourcemeta::core::to_weak_pointer(instance_location_0),
+       sourcemeta::core::to_weak_pointer(evaluate_path), "#/contains/title"}));
+
+  EXPECT_FALSE(output.annotations().contains(
+      {sourcemeta::core::to_weak_pointer(instance_location_2),
+       sourcemeta::core::to_weak_pointer(evaluate_path), "#/contains/title"}));
+}
