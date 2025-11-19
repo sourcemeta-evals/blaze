@@ -6,6 +6,7 @@
 #endif
 
 #include <sourcemeta/core/json.h>
+#include <sourcemeta/core/jsonpointer_position.h>
 
 #include <sourcemeta/blaze/evaluator.h>
 
@@ -76,6 +77,12 @@ auto SOURCEMETA_BLAZE_OUTPUT_EXPORT
 standard(Evaluator &evaluator, const Template &schema,
          const sourcemeta::core::JSON &instance, const StandardOutput format)
     -> sourcemeta::core::JSON;
+
+auto SOURCEMETA_BLAZE_OUTPUT_EXPORT
+standard(Evaluator &evaluator, const Template &schema,
+         const sourcemeta::core::JSON &instance,
+         const sourcemeta::core::PointerPositionTracker &tracker,
+         const StandardOutput format) -> sourcemeta::core::JSON;
 
 } // namespace sourcemeta::blaze
 
