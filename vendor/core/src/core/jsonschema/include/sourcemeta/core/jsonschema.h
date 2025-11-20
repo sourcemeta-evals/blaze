@@ -9,6 +9,7 @@
 #include <sourcemeta/core/jsonpointer.h>
 
 // NOLINTBEGIN(misc-include-cleaner)
+#include <sourcemeta/core/jsonschema_bundle.h>
 #include <sourcemeta/core/jsonschema_error.h>
 #include <sourcemeta/core/jsonschema_frame.h>
 #include <sourcemeta/core/jsonschema_resolver.h>
@@ -103,6 +104,22 @@ auto schema_keyword_priority(std::string_view keyword,
 /// ```
 SOURCEMETA_CORE_JSONSCHEMA_EXPORT
 auto is_schema(const JSON &schema) -> bool;
+
+/// @ingroup jsonschema
+///
+/// This function returns true if the given JSON instance is a schema
+/// semantically equivalent to the empty schema. For example:
+///
+/// ```cpp
+/// #include <sourcemeta/core/json.h>
+/// #include <sourcemeta/core/jsonschema.h>
+/// #include <cassert>
+///
+/// const sourcemeta::core::JSON document{true};
+/// assert(sourcemeta::core::is_empty_schema(document));
+/// ```
+SOURCEMETA_CORE_JSONSCHEMA_EXPORT
+auto is_empty_schema(const JSON &schema) -> bool;
 
 /// @ingroup jsonschema
 ///
@@ -371,242 +388,6 @@ auto schema_format_compare(const JSON::String &left, const JSON::String &right)
 
 /// @ingroup jsonschema
 ///
-/// Remove every identifer from a schema, rephrasing references (if any) as
-/// needed.
-///
-/// As a big caveat, unidentifying a schema with embedded schema
-/// resources will result in standalone instances of the `$schema` keyword,
-/// which will not be valid according to the specification (the `$schema`
-/// keyword must only occur within schema resources). We advise against using
-/// unidentified schema for anything other than serving non-compliant JSON
-/// Schema implementations that do not support identifier.
-///
-/// ```cpp
-/// #include <sourcemeta/core/json.h>
-/// #include <sourcemeta/core/jsonschema.h>
-/// #include <cassert>
-///
-/// sourcemeta::core::JSON schema =
-///   sourcemeta::core::parse_json(R"JSON({
-///   "$id": "https://www.example.com/schema",
-///   "$schema": "https://json-schema.org/draft/2020-12/schema",
-///   "$ref": "another",
-/// })JSON");
-///
-/// sourcemeta::core::unidentify(schema,
-///   sourcemeta::core::schema_official_walker,
-///   sourcemeta::core::schema_official_resolver);
-///
-/// const sourcemeta::core::JSON expected =
-///   sourcemeta::core::parse_json(R"JSON({
-///   "$schema": "https://json-schema.org/draft/2020-12/schema",
-///   "$ref": "https://www.example.com/another",
-/// })JSON");
-///
-/// assert(schema == expected);
-/// ```
-SOURCEMETA_CORE_JSONSCHEMA_EXPORT
-auto unidentify(
-    JSON &schema, const SchemaWalker &walker, const SchemaResolver &resolver,
-    const std::optional<std::string> &default_dialect = std::nullopt) -> void;
-
-/// @ingroup jsonschema
-///
-/// A reference visitor to try to turn every possible absolute reference in a
-/// schema into a relative one. For example:
-///
-/// ```cpp
-/// #include <sourcemeta/core/json.h>
-/// #include <sourcemeta/core/jsonschema.h>
-/// #include <cassert>
-///
-/// sourcemeta::core::JSON schema =
-///   sourcemeta::core::parse_json(R"JSON({
-///   "$id": "https://www.example.com/schema",
-///   "$schema": "https://json-schema.org/draft/2020-12/schema",
-///   "$ref": "https://www.example.com/another",
-/// })JSON");
-///
-/// sourcemeta::core::reference_visit(schema,
-///   sourcemeta::core::schema_official_walker,
-///   sourcemeta::core::schema_official_resolver,
-///   sourcemeta::core::reference_visitor_relativize);
-///
-/// const sourcemeta::core::JSON expected =
-///   sourcemeta::core::parse_json(R"JSON({
-///   "$id": "https://www.example.com/schema",
-///   "$schema": "https://json-schema.org/draft/2020-12/schema",
-///   "$ref": "another",
-/// })JSON");
-///
-/// assert(schema == expected);
-/// ```
-SOURCEMETA_CORE_JSONSCHEMA_EXPORT
-auto reference_visitor_relativize(JSON &subschema, const URI &base,
-                                  const JSON::String &vocabulary,
-                                  const JSON::String &keyword, URI &value)
-    -> void;
-
-/// @ingroup jsonschema
-///
-/// A utility function to loop over every reference in a schema, allowing
-/// modifications to their subschemas if desired. Note that the consumer is
-/// responsible for not making the schema invalid. For example:
-///
-/// ```cpp
-/// #include <sourcemeta/core/json.h>
-/// #include <sourcemeta/core/jsonschema.h>
-///
-/// sourcemeta::core::JSON schema =
-///   sourcemeta::core::parse_json(R"JSON({
-///   "$id": "https://www.example.com/schema",
-///   "$schema": "https://json-schema.org/draft/2020-12/schema",
-///   "$ref": "https://www.example.com/another",
-/// })JSON");
-///
-/// static auto visitor(JSON &subschema,
-///                     const URI &base,
-///                     const JSON::String &vocabulary,
-///                     const JSON::String &keyword,
-///                     URI &value) -> void {
-///   sourcemeta::core::prettify(subschema, std::cerr);
-///   std::cerr << "\n";
-///   std::cerr << base.recompose() << "\n";
-///   std::cerr << vocabulary << "\n";
-///   std::cerr << keyword << "\n";
-///   std::cerr << value.recompose() << "\n";
-/// }
-///
-/// sourcemeta::core::reference_visit(schema,
-///   sourcemeta::core::schema_official_walker,
-///   sourcemeta::core::schema_official_resolver,
-///   visitor);
-/// ```
-SOURCEMETA_CORE_JSONSCHEMA_EXPORT
-auto reference_visit(
-    JSON &schema, const SchemaWalker &walker, const SchemaResolver &resolver,
-    const SchemaVisitorReference &callback,
-    const std::optional<std::string> &default_dialect = std::nullopt,
-    const std::optional<std::string> &default_id = std::nullopt) -> void;
-
-// TODO: Optionally let users bundle the metaschema too
-
-/// @ingroup jsonschema
-///
-/// This function bundles a JSON Schema (starting from Draft 4) by embedding
-/// every remote reference into the top level schema resource, handling circular
-/// dependencies and more. This overload mutates the input schema.  For example:
-///
-/// ```cpp
-/// #include <sourcemeta/core/json.h>
-/// #include <sourcemeta/core/jsonschema.h>
-/// #include <cassert>
-///
-/// // A custom resolver that knows about an additional schema
-/// static auto test_resolver(std::string_view identifier)
-///     -> std::optional<sourcemeta::core::JSON> {
-///   if (identifier == "https://www.example.com/test") {
-///     return sourcemeta::core::parse_json(R"JSON({
-///       "$id": "https://www.example.com/test",
-///       "$schema": "https://json-schema.org/draft/2020-12/schema",
-///       "type": "string"
-///     })JSON");
-///   } else {
-///     return sourcemeta::core::schema_official_resolver(identifier);
-///   }
-/// }
-///
-/// sourcemeta::core::JSON document =
-///     sourcemeta::core::parse_json(R"JSON({
-///   "$schema": "https://json-schema.org/draft/2020-12/schema",
-///   "items": { "$ref": "https://www.example.com/test" }
-/// })JSON");
-///
-/// sourcemeta::core::bundle(document,
-///   sourcemeta::core::schema_official_walker, test_resolver);
-///
-/// const sourcemeta::core::JSON expected =
-///     sourcemeta::core::parse_json(R"JSON({
-///   "$schema": "https://json-schema.org/draft/2020-12/schema",
-///   "items": { "$ref": "https://www.example.com/test" },
-///   "$defs": {
-///     "https://www.example.com/test": {
-///       "$id": "https://www.example.com/test",
-///       "$schema": "https://json-schema.org/draft/2020-12/schema",
-///       "type": "string"
-///     }
-///   }
-/// })JSON");
-///
-/// assert(document == expected);
-/// ```
-SOURCEMETA_CORE_JSONSCHEMA_EXPORT
-auto bundle(JSON &schema, const SchemaWalker &walker,
-            const SchemaResolver &resolver,
-            const std::optional<std::string> &default_dialect = std::nullopt,
-            const std::optional<Pointer> &default_container = std::nullopt,
-            const SchemaFrame::Paths &paths = {empty_pointer}) -> void;
-
-/// @ingroup jsonschema
-///
-/// This function bundles a JSON Schema (starting from Draft 4) by embedding
-/// every remote reference into the top level schema resource, handling circular
-/// dependencies and more. This overload returns a new schema, without mutating
-/// the input schema. For example:
-///
-/// ```cpp
-/// #include <sourcemeta/core/json.h>
-/// #include <sourcemeta/core/jsonschema.h>
-/// #include <cassert>
-///
-/// // A custom resolver that knows about an additional schema
-/// static auto test_resolver(std::string_view identifier)
-///     -> std::optional<sourcemeta::core::JSON> {
-///   if (identifier == "https://www.example.com/test") {
-///     return sourcemeta::core::parse_json(R"JSON({
-///       "$id": "https://www.example.com/test",
-///       "$schema": "https://json-schema.org/draft/2020-12/schema",
-///       "type": "string"
-///     })JSON");
-///   } else {
-///     return sourcemeta::core::schema_official_resolver(identifier);
-///   }
-/// }
-///
-/// const sourcemeta::core::JSON document =
-///     sourcemeta::core::parse_json(R"JSON({
-///   "$schema": "https://json-schema.org/draft/2020-12/schema",
-///   "items": { "$ref": "https://www.example.com/test" }
-/// })JSON");
-///
-/// const sourcemeta::core::JSON result =
-///   sourcemeta::core::bundle(document,
-///     sourcemeta::core::schema_official_walker, test_resolver);
-///
-/// const sourcemeta::core::JSON expected =
-///     sourcemeta::core::parse_json(R"JSON({
-///   "$schema": "https://json-schema.org/draft/2020-12/schema",
-///   "items": { "$ref": "https://www.example.com/test" },
-///   "$defs": {
-///     "https://www.example.com/test": {
-///       "$id": "https://www.example.com/test",
-///       "$schema": "https://json-schema.org/draft/2020-12/schema",
-///       "type": "string"
-///     }
-///   }
-/// })JSON");
-///
-/// assert(result == expected);
-/// ```
-SOURCEMETA_CORE_JSONSCHEMA_EXPORT
-auto bundle(const JSON &schema, const SchemaWalker &walker,
-            const SchemaResolver &resolver,
-            const std::optional<std::string> &default_dialect = std::nullopt,
-            const std::optional<Pointer> &default_container = std::nullopt,
-            const SchemaFrame::Paths &paths = {empty_pointer}) -> JSON;
-
-/// @ingroup jsonschema
-///
 /// Given a schema identifier, this function creates a JSON Schema wrapper that
 /// references such schema. This is useful when trying to validate an instance
 /// against a specific subset of a schema, as the wrapper allows you to make use
@@ -656,6 +437,30 @@ auto wrap(const JSON &schema, const Pointer &pointer,
           const SchemaResolver &resolver,
           const std::optional<std::string> &default_dialect = std::nullopt)
     -> JSON;
+
+/// @ingroup jsonschema
+///
+/// Parse a JSON Schema `type` string into one or more native JSON type
+/// definition. For example:
+///
+/// ```cpp
+/// #include <sourcemeta/core/json.h>
+/// #include <sourcemeta/core/jsonschema.h>
+/// #include <cassert>
+/// #include <set>
+///
+/// std::set<sourcemeta::core::JSON::Type> types;
+/// sourcemeta::core::parse_schema_type("number",
+///   [&types](const auto type) { types.emplace(type); });
+///
+/// assert(types.size() == 2);
+/// assert(types.contains(sourcemeta::core::JSON::Type::Integer));
+/// assert(types.contains(sourcemeta::core::JSON::Type::Real));
+/// ```
+SOURCEMETA_CORE_JSONSCHEMA_EXPORT
+auto parse_schema_type(const JSON::String &type,
+                       const std::function<void(const JSON::Type)> &callback)
+    -> void;
 
 } // namespace sourcemeta::core
 
