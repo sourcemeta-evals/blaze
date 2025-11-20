@@ -79,23 +79,52 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+    // Check if we're inside a masked area with value false (like contains)
+    auto mask_it = std::find_if(
+        this->mask.cbegin(), this->mask.cend(),
+        [&evaluate_path](const auto &entry) {
+          return evaluate_path.starts_with(entry.first) && !entry.second;
+        });
+
+    // Determine the prefix to use for annotation removal
+    const auto &removal_prefix =
+        (mask_it != this->mask.cend()) ? mask_it->first : evaluate_path;
+
+    for (auto iterator = this->annotations_.begin();
+         iterator != this->annotations_.end();) {
+      // Special case: Don't remove the contains/anyOf/oneOf/etc annotation
+      // itself (at root instance with evaluate_path exactly matching the mask
+      // boundary)
+      const bool is_boundary_annotation =
+          mask_it != this->mask.cend() &&
+          iterator->first.instance_location.empty() &&
+          iterator->first.evaluate_path == removal_prefix;
+
+      // For contains, check exact instance location match
+      // Note: starts_with_initial only checks prefix minus last token, causing
+      // /1.starts_with_initial(/2) to be TRUE (both have empty initial part)
+      // For contains with items /0, /1, /2, we need exact equality
+      const bool instance_matches =
+          instance_location.empty()
+              ? iterator->first.instance_location.empty()
+              : (iterator->first.instance_location == instance_location);
+
+      if (iterator->first.evaluate_path.starts_with_initial(removal_prefix) &&
+          instance_matches && !is_boundary_annotation) {
+        iterator = this->annotations_.erase(iterator);
+      } else {
+        iterator++;
+      }
+    }
+  }
+
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
                   [&evaluate_path](const auto &entry) {
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
     return;
-  }
-
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
-    for (auto iterator = this->annotations_.begin();
-         iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
-        iterator = this->annotations_.erase(iterator);
-      } else {
-        iterator++;
-      }
-    }
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
