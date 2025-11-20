@@ -185,7 +185,9 @@ public:
   using Paths = std::set<Pointer>;
 
   /// Export the frame entries as JSON
-  [[nodiscard]] auto to_json() const -> JSON;
+  [[nodiscard]] auto to_json(
+      const std::optional<PointerPositionTracker> &tracker = std::nullopt) const
+      -> JSON;
 
   /// Analyse a schema or set of schemas from a given root. Passing
   /// multiple paths that have any overlap is undefined behaviour
@@ -224,6 +226,10 @@ public:
   /// Get the location associated with a given URI
   [[nodiscard]] auto traverse(const JSON::String &uri) const
       -> std::optional<std::reference_wrapper<const Location>>;
+
+  /// Turn an absolute pointer into a location URI
+  [[nodiscard]] auto uri(const Pointer &pointer) const
+      -> std::optional<std::reference_wrapper<const JSON::String>>;
 
   /// Try to dereference a reference location into its destination location
   [[nodiscard]] auto
