@@ -1,10 +1,12 @@
 #include <gtest/gtest.h>
 
+#include <functional>
 #include <sstream>
 
 #include <sourcemeta/blaze/compiler.h>
 #include <sourcemeta/blaze/evaluator.h>
 #include <sourcemeta/blaze/output.h>
+#include <sourcemeta/core/jsonpointer.h>
 
 TEST(Output_standard_basic, prettify_annotations) {
   const auto schema{sourcemeta::core::parse_json(R"JSON({
@@ -316,4 +318,167 @@ TEST(Output_standard_basic, failure_1) {
   })JSON")};
 
   EXPECT_EQ(result, expected);
+}
+
+TEST(Output_standard_basic, with_positions_annotations) {
+  const auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "foo": { "type": "string" }
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  std::istringstream stream{R"JSON({
+  "foo": "bar"
+})JSON"};
+
+  sourcemeta::core::PointerPositionTracker tracker;
+  const auto instance{sourcemeta::core::parse_json(stream, std::ref(tracker))};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{sourcemeta::blaze::standard(
+      evaluator, schema_template, instance,
+      sourcemeta::blaze::StandardOutput::Basic, tracker)};
+
+  EXPECT_TRUE(result.defines("valid"));
+  EXPECT_TRUE(result.at("valid").to_boolean());
+  EXPECT_TRUE(result.defines("annotations"));
+  EXPECT_EQ(result.at("annotations").size(), 1);
+
+  const auto &annotation{result.at("annotations").at(0)};
+  EXPECT_TRUE(annotation.defines("instancePosition"));
+  EXPECT_EQ(annotation.at("instancePosition").size(), 4);
+
+  // The root object starts at line 1, column 1 and ends at line 3, column 1
+  EXPECT_EQ(annotation.at("instancePosition").at(0).to_integer(), 1);
+  EXPECT_EQ(annotation.at("instancePosition").at(1).to_integer(), 1);
+  EXPECT_EQ(annotation.at("instancePosition").at(2).to_integer(), 3);
+  EXPECT_EQ(annotation.at("instancePosition").at(3).to_integer(), 1);
+}
+
+TEST(Output_standard_basic, with_positions_errors) {
+  const auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "foo": { "type": "string" }
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation)};
+
+  std::istringstream stream{R"JSON({
+  "foo": 1
+})JSON"};
+
+  sourcemeta::core::PointerPositionTracker tracker;
+  const auto instance{sourcemeta::core::parse_json(stream, std::ref(tracker))};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{sourcemeta::blaze::standard(
+      evaluator, schema_template, instance,
+      sourcemeta::blaze::StandardOutput::Basic, tracker)};
+
+  EXPECT_TRUE(result.defines("valid"));
+  EXPECT_FALSE(result.at("valid").to_boolean());
+  EXPECT_TRUE(result.defines("errors"));
+  EXPECT_EQ(result.at("errors").size(), 1);
+
+  const auto &error{result.at("errors").at(0)};
+  EXPECT_TRUE(error.defines("instancePosition"));
+  EXPECT_EQ(error.at("instancePosition").size(), 4);
+
+  // The value at /foo starts at line 2, column 3 and ends at line 2, column 10
+  EXPECT_EQ(error.at("instancePosition").at(0).to_integer(), 2);
+  EXPECT_EQ(error.at("instancePosition").at(1).to_integer(), 3);
+  EXPECT_EQ(error.at("instancePosition").at(2).to_integer(), 2);
+  EXPECT_EQ(error.at("instancePosition").at(3).to_integer(), 10);
+}
+
+TEST(Output_standard_basic, with_positions_flag_format) {
+  const auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "string"
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation)};
+
+  std::istringstream stream{R"JSON("hello")JSON"};
+
+  sourcemeta::core::PointerPositionTracker tracker;
+  const auto instance{sourcemeta::core::parse_json(stream, std::ref(tracker))};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{sourcemeta::blaze::standard(
+      evaluator, schema_template, instance,
+      sourcemeta::blaze::StandardOutput::Flag, tracker)};
+
+  // Flag format doesn't include positions, just valid status
+  const auto expected{sourcemeta::core::parse_json(R"JSON({
+    "valid": true
+  })JSON")};
+
+  EXPECT_EQ(result, expected);
+}
+
+TEST(Output_standard_basic, with_positions_nested_error) {
+  const auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "outer": {
+        "properties": {
+          "inner": { "type": "number" }
+        }
+      }
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation)};
+
+  std::istringstream stream{R"JSON({
+  "outer": {
+    "inner": "not a number"
+  }
+})JSON"};
+
+  sourcemeta::core::PointerPositionTracker tracker;
+  const auto instance{sourcemeta::core::parse_json(stream, std::ref(tracker))};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{sourcemeta::blaze::standard(
+      evaluator, schema_template, instance,
+      sourcemeta::blaze::StandardOutput::Basic, tracker)};
+
+  EXPECT_TRUE(result.defines("valid"));
+  EXPECT_FALSE(result.at("valid").to_boolean());
+  EXPECT_TRUE(result.defines("errors"));
+  EXPECT_EQ(result.at("errors").size(), 1);
+
+  const auto &error{result.at("errors").at(0)};
+  EXPECT_TRUE(error.defines("instancePosition"));
+  EXPECT_EQ(error.at("instancePosition").size(), 4);
+
+  // The value at /outer/inner starts at line 3, column 5 and ends at line 3,
+  // column 27
+  EXPECT_EQ(error.at("instancePosition").at(0).to_integer(), 3);
+  EXPECT_EQ(error.at("instancePosition").at(1).to_integer(), 5);
+  EXPECT_EQ(error.at("instancePosition").at(2).to_integer(), 3);
+  EXPECT_EQ(error.at("instancePosition").at(3).to_integer(), 27);
 }
