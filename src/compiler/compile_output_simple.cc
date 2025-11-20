@@ -44,6 +44,15 @@ auto SimpleOutput::operator()(
 
   if (is_annotation(step.type)) {
     if (type == EvaluationType::Post) {
+      // Check if this annotation is for an instance location that failed
+      // within a contains evaluation
+      for (const auto &failed : this->contains_failed_) {
+        if (evaluate_path.starts_with(failed.first) &&
+            instance_location.starts_with(failed.second)) {
+          return;
+        }
+      }
+
       Location location{instance_location, std::move(effective_evaluate_path),
                         step.keyword_location};
       const auto match{this->annotations_.find(location)};
@@ -72,10 +81,50 @@ auto SimpleOutput::operator()(
     }
   } else if (type == EvaluationType::Post &&
              this->mask.contains(evaluate_path)) {
+    // Clear failed instance locations for this contains path
+    for (auto it = this->contains_failed_.begin();
+         it != this->contains_failed_.end();) {
+      if (it->first == evaluate_path) {
+        it = this->contains_failed_.erase(it);
+      } else {
+        ++it;
+      }
+    }
     this->mask.erase(evaluate_path);
   }
 
   if (result) {
+    return;
+  }
+
+  // Track failed instance locations within contains evaluations
+  bool inside_contains = false;
+  for (const auto &entry : this->mask) {
+    if (!entry.second && evaluate_path.starts_with(entry.first)) {
+      this->contains_failed_.push_back({entry.first, instance_location});
+      inside_contains = true;
+
+      // Clean up annotations that were emitted for this failed item
+      // (annotations may have been emitted before the failure)
+      if (type == EvaluationType::Post && !this->annotations_.empty()) {
+        for (auto iterator = this->annotations_.begin();
+             iterator != this->annotations_.end();) {
+          // Delete annotations under this contains path for this exact instance
+          // location
+          if (iterator->first.evaluate_path.starts_with(entry.first) &&
+              iterator->first.instance_location == instance_location) {
+            iterator = this->annotations_.erase(iterator);
+          } else {
+            iterator++;
+          }
+        }
+      }
+    }
+  }
+
+  // Skip error output and general cleanup for failures inside contains
+  // (contains expects some items to fail)
+  if (inside_contains) {
     return;
   }
 
@@ -87,10 +136,13 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // Clean up annotations for failed evaluations
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+          iterator->first.instance_location.starts_with_initial(
+              instance_location)) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
