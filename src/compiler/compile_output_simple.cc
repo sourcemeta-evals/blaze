@@ -79,23 +79,46 @@ auto SimpleOutput::operator()(
     return;
   }
 
-  if (std::any_of(this->mask.cbegin(), this->mask.cend(),
-                  [&evaluate_path](const auto &entry) {
-                    return evaluate_path.starts_with(entry.first) &&
-                           !entry.second;
-                  })) {
-    return;
-  }
+  // Find if we are inside a contains; also identify the contains schema path
+  const auto contains_it = std::find_if(
+      this->mask.cbegin(), this->mask.cend(),
+      [&evaluate_path](const auto &entry) {
+        return evaluate_path.starts_with(entry.first) && !entry.second;
+      });
 
+  const bool inside_contains = contains_it != this->mask.cend();
+
+  // Drop annotations for failed evaluations
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+      bool should_drop;
+      if (inside_contains) {
+        // For contains, drop annotations that belong to this item's trace
+        // Match both the schema path (under contains) and the instance location
+        // Only drop if instance location is non-empty AND matches
+        should_drop = !instance_location.empty() &&
+                      iterator->first.evaluate_path.starts_with_initial(
+                          contains_it->first) &&
+                      iterator->first.instance_location == instance_location;
+      } else {
+        // Original behavior for non-contains keywords
+        should_drop =
+            iterator->first.evaluate_path.starts_with_initial(evaluate_path);
+      }
+
+      if (should_drop) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
       }
     }
+  }
+
+  // Suppress error reporting for contains (annotations already cleaned up
+  // above)
+  if (inside_contains) {
+    return;
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
