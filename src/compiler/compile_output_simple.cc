@@ -84,6 +84,35 @@ auto SimpleOutput::operator()(
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
+    // For contains (mask value false), clean up annotations from failed items
+    if (type == EvaluationType::Post && !this->annotations_.empty() &&
+        !instance_location.empty()) {
+      // Derive the path to the surrounding "contains" keyword
+      auto contains_path{evaluate_path};
+      while (!contains_path.empty() &&
+             contains_path.back().to_property() != "contains") {
+        contains_path.pop_back();
+      }
+
+      for (auto it = this->annotations_.begin();
+           it != this->annotations_.end();) {
+        const auto &loc = it->first;
+
+        // Drop annotations for this item that live under this contains
+        // But preserve annotations with empty instance_location (like the
+        // contains annotation itself)
+        // Use exact equality to only remove annotations at this specific
+        // location
+        if (!loc.instance_location.empty() &&
+            sourcemeta::core::to_string(loc.instance_location) ==
+                sourcemeta::core::to_string(instance_location) &&
+            loc.evaluate_path.starts_with_initial(contains_path)) {
+          it = this->annotations_.erase(it);
+        } else {
+          ++it;
+        }
+      }
+    }
     return;
   }
 
