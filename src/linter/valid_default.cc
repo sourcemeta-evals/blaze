@@ -36,6 +36,19 @@ auto ValidDefault::condition(
     return false;
   }
 
+  // In Draft 7 and older, siblings to $ref are ignored per the spec
+  if (schema.defines("$ref")) {
+    const bool is_draft_2020_12 = vocabularies.contains(
+        "https://json-schema.org/draft/2020-12/vocab/meta-data");
+    const bool is_draft_2019_09 = vocabularies.contains(
+        "https://json-schema.org/draft/2019-09/vocab/meta-data");
+
+    // Only validate default alongside $ref in 2019-09 and 2020-12
+    if (!is_draft_2020_12 && !is_draft_2019_09) {
+      return false;
+    }
+  }
+
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
                                     .value_or(location)
                                     .get()
