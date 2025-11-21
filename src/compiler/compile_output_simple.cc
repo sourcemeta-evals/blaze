@@ -79,23 +79,49 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // Drop annotations for failed items BEFORE the early return for contains
+  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+    // Check if we're in a contains context (mask entry with value false)
+    const auto contains_entry = std::find_if(
+        this->mask.cbegin(), this->mask.cend(),
+        [&evaluate_path](const auto &entry) {
+          return !entry.second && evaluate_path.starts_with(entry.first);
+        });
+
+    for (auto iterator = this->annotations_.begin();
+         iterator != this->annotations_.end();) {
+      bool should_drop = false;
+
+      if (contains_entry != this->mask.cend()) {
+        // In a contains context: drop annotations that are under the same
+        // contains path and have the same instance location
+        if (iterator->first.evaluate_path.starts_with(contains_entry->first) &&
+            iterator->first.instance_location == instance_location) {
+          should_drop = true;
+        }
+      } else {
+        // Not in a contains context: use original logic
+        if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+            iterator->first.instance_location.starts_with_initial(
+                instance_location)) {
+          should_drop = true;
+        }
+      }
+
+      if (should_drop) {
+        iterator = this->annotations_.erase(iterator);
+      } else {
+        iterator++;
+      }
+    }
+  }
+
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
                   [&evaluate_path](const auto &entry) {
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
     return;
-  }
-
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
-    for (auto iterator = this->annotations_.begin();
-         iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
-        iterator = this->annotations_.erase(iterator);
-      } else {
-        iterator++;
-      }
-    }
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
