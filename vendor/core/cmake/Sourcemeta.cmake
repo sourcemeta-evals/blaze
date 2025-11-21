@@ -10,13 +10,22 @@ include("${SOURCEMETA_UTILITIES_DIRECTORY}/commands/copy-file.cmake")
 include("${SOURCEMETA_UTILITIES_DIRECTORY}/targets/library.cmake")
 include("${SOURCEMETA_UTILITIES_DIRECTORY}/targets/executable.cmake")
 include("${SOURCEMETA_UTILITIES_DIRECTORY}/targets/clang-format.cmake")
-include("${SOURCEMETA_UTILITIES_DIRECTORY}/targets/clang-tidy.cmake")
 include("${SOURCEMETA_UTILITIES_DIRECTORY}/targets/shellcheck.cmake")
 include("${SOURCEMETA_UTILITIES_DIRECTORY}/targets/doxygen.cmake")
 include("${SOURCEMETA_UTILITIES_DIRECTORY}/targets/googletest.cmake")
 include("${SOURCEMETA_UTILITIES_DIRECTORY}/targets/googlebenchmark.cmake")
+include("${SOURCEMETA_UTILITIES_DIRECTORY}/clang-tidy.cmake")
 
 # To let downstream projects directly include this file
 if(NOT PROJECT_IS_TOP_LEVEL)
   set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" PARENT_SCOPE)
+endif()
+
+# For debugging purposes
+if(PROJECT_IS_TOP_LEVEL)
+  message(STATUS "CMAKE_VERSION: ${CMAKE_VERSION}")
+  message(STATUS "CMAKE_SYSTEM_NAME: ${CMAKE_SYSTEM_NAME}")
+  message(STATUS "CMAKE_SYSTEM_PROCESSOR: ${CMAKE_SYSTEM_PROCESSOR}")
+  message(STATUS "CMAKE_HOST_SYSTEM_NAME: ${CMAKE_HOST_SYSTEM_NAME}")
+  message(STATUS "CMAKE_HOST_SYSTEM_PROCESSOR: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 endif()
