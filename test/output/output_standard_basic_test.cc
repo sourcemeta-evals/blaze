@@ -6,6 +6,8 @@
 #include <sourcemeta/blaze/evaluator.h>
 #include <sourcemeta/blaze/output.h>
 
+#include <sourcemeta/core/jsonpointer.h>
+
 TEST(Output_standard_basic, prettify_annotations) {
   const auto schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -316,4 +318,178 @@ TEST(Output_standard_basic, failure_1) {
   })JSON")};
 
   EXPECT_EQ(result, expected);
+}
+
+TEST(Output_standard_basic, with_position_tracker_annotations) {
+  const auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "foo": { "type": "string" }
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const auto instance_string{R"JSON({
+  "foo": "bar"
+})JSON"};
+
+  sourcemeta::core::PointerPositionTracker tracker;
+  const auto instance{
+      sourcemeta::core::parse_json(instance_string, std::ref(tracker))};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{sourcemeta::blaze::standard(
+      evaluator, schema_template, instance,
+      sourcemeta::blaze::StandardOutput::Basic, tracker)};
+
+  EXPECT_TRUE(result.is_object());
+  EXPECT_TRUE(result.defines("valid"));
+  EXPECT_TRUE(result.at("valid").to_boolean());
+  EXPECT_TRUE(result.defines("annotations"));
+  EXPECT_TRUE(result.at("annotations").is_array());
+  EXPECT_EQ(result.at("annotations").size(), 1);
+
+  const auto &annotation{result.at("annotations").at(0)};
+  EXPECT_TRUE(annotation.defines("keywordLocation"));
+  EXPECT_TRUE(annotation.defines("absoluteKeywordLocation"));
+  EXPECT_TRUE(annotation.defines("instanceLocation"));
+  EXPECT_TRUE(annotation.defines("annotation"));
+
+  // The root object should have position information
+  EXPECT_TRUE(annotation.defines("instancePosition"));
+  EXPECT_TRUE(annotation.at("instancePosition").is_array());
+  EXPECT_EQ(annotation.at("instancePosition").size(), 4);
+}
+
+TEST(Output_standard_basic, with_position_tracker_errors) {
+  const auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "foo": { "type": "string" }
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation)};
+
+  const auto instance_string{R"JSON({
+  "foo": 1
+})JSON"};
+
+  sourcemeta::core::PointerPositionTracker tracker;
+  const auto instance{
+      sourcemeta::core::parse_json(instance_string, std::ref(tracker))};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{sourcemeta::blaze::standard(
+      evaluator, schema_template, instance,
+      sourcemeta::blaze::StandardOutput::Basic, tracker)};
+
+  EXPECT_TRUE(result.is_object());
+  EXPECT_TRUE(result.defines("valid"));
+  EXPECT_FALSE(result.at("valid").to_boolean());
+  EXPECT_TRUE(result.defines("errors"));
+  EXPECT_TRUE(result.at("errors").is_array());
+  EXPECT_EQ(result.at("errors").size(), 1);
+
+  const auto &error{result.at("errors").at(0)};
+  EXPECT_TRUE(error.defines("keywordLocation"));
+  EXPECT_TRUE(error.defines("absoluteKeywordLocation"));
+  EXPECT_TRUE(error.defines("instanceLocation"));
+  EXPECT_TRUE(error.defines("error"));
+
+  // The /foo property should have position information
+  EXPECT_TRUE(error.defines("instancePosition"));
+  EXPECT_TRUE(error.at("instancePosition").is_array());
+  EXPECT_EQ(error.at("instancePosition").size(), 4);
+}
+
+TEST(Output_standard_basic, with_position_tracker_flag_format) {
+  const auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "string"
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation)};
+
+  const auto instance_string{R"JSON("test")JSON"};
+
+  sourcemeta::core::PointerPositionTracker tracker;
+  const auto instance{
+      sourcemeta::core::parse_json(instance_string, std::ref(tracker))};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{sourcemeta::blaze::standard(
+      evaluator, schema_template, instance,
+      sourcemeta::blaze::StandardOutput::Flag, tracker)};
+
+  const auto expected{sourcemeta::core::parse_json(R"JSON({
+    "valid": true
+  })JSON")};
+
+  EXPECT_EQ(result, expected);
+}
+
+TEST(Output_standard_basic, with_position_tracker_nested_properties) {
+  const auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "nested": {
+        "properties": {
+          "value": { "type": "number" }
+        }
+      }
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation)};
+
+  const auto instance_string{R"JSON({
+  "nested": {
+    "value": "not a number"
+  }
+})JSON"};
+
+  sourcemeta::core::PointerPositionTracker tracker;
+  const auto instance{
+      sourcemeta::core::parse_json(instance_string, std::ref(tracker))};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{sourcemeta::blaze::standard(
+      evaluator, schema_template, instance,
+      sourcemeta::blaze::StandardOutput::Basic, tracker)};
+
+  EXPECT_TRUE(result.is_object());
+  EXPECT_TRUE(result.defines("valid"));
+  EXPECT_FALSE(result.at("valid").to_boolean());
+  EXPECT_TRUE(result.defines("errors"));
+  EXPECT_GT(result.at("errors").size(), 0);
+
+  // At least one error should have position information
+  bool found_position = false;
+  for (std::size_t i = 0; i < result.at("errors").size(); i++) {
+    const auto &error{result.at("errors").at(i)};
+    if (error.defines("instancePosition")) {
+      found_position = true;
+      EXPECT_TRUE(error.at("instancePosition").is_array());
+      EXPECT_EQ(error.at("instancePosition").size(), 4);
+    }
+  }
+  EXPECT_TRUE(found_position);
 }
