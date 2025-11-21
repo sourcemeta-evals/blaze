@@ -79,10 +79,42 @@ auto SimpleOutput::operator()(
   }
 
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
+    // Check if we're in a contains context by looking for a mask entry
+    // where the failure's evaluate path starts with the mask's evaluate path
+    // and the instance locations match
+    const auto contains_entry = std::find_if(
+        this->mask.cbegin(), this->mask.cend(),
+        [&evaluate_path, &instance_location](const auto &entry) {
+          // Check if this is a contains context by looking at the keyword
+          if (!entry.first.empty() && entry.first.back().is_property()) {
+            const auto &keyword = entry.first.back().to_property();
+            return keyword == "contains" &&
+                   evaluate_path.starts_with(entry.first) &&
+                   entry.second == instance_location;
+          }
+          return false;
+        });
+
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
-          iterator->first.instance_location == instance_location) {
+      bool should_drop = false;
+
+      if (contains_entry != this->mask.cend()) {
+        // In a contains context: drop annotations that are under the same
+        // contains path and have the same instance location
+        if (iterator->first.evaluate_path.starts_with(contains_entry->first) &&
+            iterator->first.instance_location == instance_location) {
+          should_drop = true;
+        }
+      } else {
+        // Not in a contains context: use the standard logic
+        if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+            iterator->first.instance_location == instance_location) {
+          should_drop = true;
+        }
+      }
+
+      if (should_drop) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
