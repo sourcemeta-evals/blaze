@@ -78,11 +78,15 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // Drop annotations for failing evaluation traces before checking masks
+  // This ensures annotations are dropped even for failures that will be masked
+  // In JSON Schema, a trace is uniquely identified by the combination of
+  // evaluate path and instance location
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
       if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
-          iterator->first.instance_location == instance_location) {
+          iterator->first.instance_location.starts_with(instance_location)) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
