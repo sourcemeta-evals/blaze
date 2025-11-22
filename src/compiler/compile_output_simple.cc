@@ -79,23 +79,67 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // Prune annotations for failing traces BEFORE checking mask-based early
+  // returns This ensures that when a subschema fails inside contains (e.g.,
+  // /contains/type at /0), we drop annotations from sibling keywords (e.g.,
+  // /contains/title at /0) before the mask suppresses error reporting
+  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+    for (auto iterator = this->annotations_.begin();
+         iterator != this->annotations_.end();) {
+      // For contains: when /contains/type fails at /0, we want to drop
+      // /contains/title at /0, but NOT /contains at "" or /contains/title at /1
+
+      bool should_drop = false;
+      bool under_contains_mask = false;
+
+      // Check if there's a masked parent (contains) that covers both the
+      // failure and the annotation
+      for (const auto &mask_entry : this->mask) {
+        if (!mask_entry.second && // Only for contains (not anyOf/oneOf/not/if)
+            evaluate_path.starts_with(mask_entry.first) &&
+            iterator->first.evaluate_path.starts_with_initial(
+                mask_entry.first)) {
+          // Both the failure and the annotation are under the same contains
+          // parent
+          under_contains_mask = true;
+
+          // Now check if they're at the EXACT SAME instance location
+          if (!instance_location.empty() &&
+              iterator->first.instance_location == instance_location) {
+            // The failure is at a specific item (e.g., /0), and the annotation
+            // is at the exact same location. Drop it.
+            should_drop = true;
+            break;
+          }
+        }
+      }
+
+      // If no contains mask applies, use the original logic (drop if annotation
+      // is under failed path and at the same instance location) IMPORTANT: Skip
+      // this if we're under a contains mask - we only want the
+      // contains-specific logic above
+      if (!under_contains_mask && !should_drop &&
+          iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+          iterator->first.instance_location.starts_with_initial(
+              instance_location)) {
+        should_drop = true;
+      }
+
+      if (should_drop) {
+        iterator = this->annotations_.erase(iterator);
+      } else {
+        iterator++;
+      }
+    }
+  }
+
+  // Now check mask-based early returns to suppress error reporting for contains
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
                   [&evaluate_path](const auto &entry) {
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
     return;
-  }
-
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
-    for (auto iterator = this->annotations_.begin();
-         iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
-        iterator = this->annotations_.erase(iterator);
-      } else {
-        iterator++;
-      }
-    }
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
