@@ -826,6 +826,63 @@ TEST(Compiler_output_simple, annotations_failure_1) {
   EXPECT_ANNOTATION_COUNT(output, 0);
 }
 
+TEST(Compiler_output_simple, contains_drops_failed_item_annotations) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": { 
+      "type": "number",
+      "title": "Test" 
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON([ "foo", 42, true ])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+  EXPECT_TRUE(result);
+
+  // Should have 2 annotation entries:
+  // 1. The contains annotation at root level (instance location "")
+  // 2. The title annotation for /1 only (the item that matched)
+  EXPECT_ANNOTATION_COUNT(output, 2);
+
+  // Check contains annotation at root
+  EXPECT_ANNOTATION_ENTRY(output, "", "/contains", "#/contains", 1);
+  EXPECT_ANNOTATION_VALUE(output, "", "/contains", "#/contains", 0,
+                          sourcemeta::core::JSON{1});
+
+  // Check title annotation only exists for /1 (the matching item)
+  EXPECT_ANNOTATION_ENTRY(output, "/1", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/1", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Test"});
+
+  // Verify that annotations for /0 and /2 do NOT exist
+  const auto instance_location_0{sourcemeta::core::to_pointer("/0")};
+  const auto instance_location_2{sourcemeta::core::to_pointer("/2")};
+  const auto evaluate_path_title{
+      sourcemeta::core::to_pointer("/contains/title")};
+  const std::string schema_location{"#/contains/title"};
+
+  EXPECT_FALSE(output.annotations().contains(
+      {sourcemeta::core::to_weak_pointer(instance_location_0),
+       sourcemeta::core::to_weak_pointer(evaluate_path_title),
+       schema_location}));
+  EXPECT_FALSE(output.annotations().contains(
+      {sourcemeta::core::to_weak_pointer(instance_location_2),
+       sourcemeta::core::to_weak_pointer(evaluate_path_title),
+       schema_location}));
+}
+
 TEST(Compiler_output_simple, fail_stacktrace) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2019-09/schema",

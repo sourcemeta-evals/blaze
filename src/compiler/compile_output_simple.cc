@@ -79,23 +79,44 @@ auto SimpleOutput::operator()(
     return;
   }
 
-  if (std::any_of(this->mask.cbegin(), this->mask.cend(),
-                  [&evaluate_path](const auto &entry) {
-                    return evaluate_path.starts_with(entry.first) &&
-                           !entry.second;
-                  })) {
-    return;
-  }
-
+  // Clean up annotations for failed evaluations
+  // When a validation fails, we remove annotations from the same scope
+  // (parent of evaluate_path) and instance_location
+  // This cleanup happens for ALL failures, including those inside masks
+  // The mask only controls whether we report the error, not whether we clean up
+  // annotations
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
+    // The scope is the parent of the current evaluate_path
+    auto scope_path = evaluate_path;
+    if (!scope_path.empty()) {
+      scope_path = scope_path.initial();
+    }
+
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+      const bool same_instance =
+          iterator->first.instance_location == instance_location;
+      const bool in_same_scope =
+          iterator->first.evaluate_path.starts_with(scope_path);
+
+      if (same_instance && in_same_scope) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
       }
     }
+  }
+
+  // Check if we're inside a contains evaluation (masked with false)
+  // Suppress error output for contains item failures
+  const bool inside_contains_mask = std::any_of(
+      this->mask.cbegin(), this->mask.cend(),
+      [&evaluate_path](const auto &entry) {
+        return evaluate_path.starts_with(entry.first) && !entry.second;
+      });
+
+  if (inside_contains_mask) {
+    return;
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
