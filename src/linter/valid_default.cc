@@ -37,7 +37,7 @@ auto ValidDefault::condition(
     return false;
   }
 
-  // We have to ignore siblings to `$ref`
+  // In Draft 7 and older, siblings to $ref MUST be ignored
   if (vocabularies.contains("http://json-schema.org/draft-07/schema#") ||
       vocabularies.contains("http://json-schema.org/draft-06/schema#") ||
       vocabularies.contains("http://json-schema.org/draft-04/schema#")) {

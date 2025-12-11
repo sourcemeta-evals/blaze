@@ -598,6 +598,7 @@ TEST(Linter, valid_default_12) {
   EXPECT_EQ(schema, expected);
 }
 
+// In Draft 7 and older, siblings to $ref MUST be ignored
 TEST(Linter, valid_default_13) {
   sourcemeta::core::SchemaTransformer bundle;
   bundle.add<sourcemeta::blaze::ValidDefault>(
@@ -632,6 +633,7 @@ TEST(Linter, valid_default_13) {
   EXPECT_EQ(schema, expected);
 }
 
+// In 2019-09 and 2020-12, $ref siblings are valid and should be linted
 TEST(Linter, valid_default_14) {
   sourcemeta::core::SchemaTransformer bundle;
   bundle.add<sourcemeta::blaze::ValidDefault>(
