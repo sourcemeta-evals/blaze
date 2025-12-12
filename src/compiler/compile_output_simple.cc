@@ -79,23 +79,44 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // Drop annotations for failed subschemas before checking if we should
+  // suppress error reporting. This is needed for `contains` where we don't
+  // report errors for failed items but still need to drop their annotations.
+  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+    // Find if we're inside a masked context (like `contains`) where we need
+    // to drop annotations based on the mask's evaluate path prefix
+    const sourcemeta::core::WeakPointer *mask_prefix{nullptr};
+    for (const auto &entry : this->mask) {
+      if (evaluate_path.starts_with(entry.first) && !entry.second) {
+        mask_prefix = &entry.first;
+        break;
+      }
+    }
+
+    for (auto iterator = this->annotations_.begin();
+         iterator != this->annotations_.end();) {
+      // A trace of evaluation is only uniquely identified by the combination
+      // of evaluate path and instance location. We must check both to correctly
+      // drop annotations for failed subschemas (e.g. in `contains`).
+      const bool path_match =
+          mask_prefix ? iterator->first.evaluate_path.starts_with(*mask_prefix)
+                      : iterator->first.evaluate_path.starts_with_initial(
+                            evaluate_path);
+      if (path_match &&
+          iterator->first.instance_location.starts_with(instance_location)) {
+        iterator = this->annotations_.erase(iterator);
+      } else {
+        iterator++;
+      }
+    }
+  }
+
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
                   [&evaluate_path](const auto &entry) {
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
     return;
-  }
-
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
-    for (auto iterator = this->annotations_.begin();
-         iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
-        iterator = this->annotations_.erase(iterator);
-      } else {
-        iterator++;
-      }
-    }
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
