@@ -6,6 +6,7 @@
 #endif
 
 #include <sourcemeta/core/json.h>
+#include <sourcemeta/core/jsonpointer.h>
 
 #include <sourcemeta/blaze/evaluator.h>
 
@@ -75,6 +76,58 @@ enum class StandardOutput {
 auto SOURCEMETA_BLAZE_OUTPUT_EXPORT
 standard(Evaluator &evaluator, const Template &schema,
          const sourcemeta::core::JSON &instance, const StandardOutput format)
+    -> sourcemeta::core::JSON;
+
+/// @ingroup output
+/// Perform JSON Schema evaluation using Standard Output formats with instance
+/// position information. This overload takes a PointerPositionTracker to
+/// augment error and annotation unit objects with an `instancePosition` array
+/// property containing `[ lineStart, columnStart, lineEnd, columnEnd ]`.
+///
+/// For example:
+///
+/// ```cpp
+/// #include <sourcemeta/blaze/compiler.h>
+/// #include <sourcemeta/blaze/evaluator.h>
+/// #include <sourcemeta/blaze/output.h>
+///
+/// #include <sourcemeta/core/json.h>
+/// #include <sourcemeta/core/jsonschema.h>
+/// #include <sourcemeta/core/jsonpointer.h>
+///
+/// #include <cassert>
+/// #include <sstream>
+///
+/// const sourcemeta::core::JSON schema =
+///     sourcemeta::core::parse_json(R"JSON({
+///   "$schema": "https://json-schema.org/draft/2020-12/schema",
+///   "type": "string"
+/// })JSON");
+///
+/// const auto schema_template{sourcemeta::blaze::compile(
+///     schema, sourcemeta::core::schema_official_walker,
+///     sourcemeta::core::schema_official_resolver,
+///     sourcemeta::core::default_schema_compiler)};
+///
+/// std::istringstream stream{R"JSON("foo bar")JSON"};
+/// sourcemeta::core::PointerPositionTracker tracker;
+/// const auto instance{sourcemeta::core::parse_json(stream,
+/// std::ref(tracker))};
+///
+/// sourcemeta::blaze::Evaluator evaluator;
+///
+/// const auto result{sourcemeta::blaze::standard(
+///   evaluator, schema_template, instance,
+///   sourcemeta::blaze::StandardOutput::Basic, tracker)};
+///
+/// assert(result.is_object());
+/// assert(result.defines("valid"));
+/// assert(result.at("valid").to_boolean());
+/// ```
+auto SOURCEMETA_BLAZE_OUTPUT_EXPORT
+standard(Evaluator &evaluator, const Template &schema,
+         const sourcemeta::core::JSON &instance, const StandardOutput format,
+         const sourcemeta::core::PointerPositionTracker &positions)
     -> sourcemeta::core::JSON;
 
 } // namespace sourcemeta::blaze

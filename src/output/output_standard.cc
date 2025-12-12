@@ -65,4 +65,90 @@ auto standard(Evaluator &evaluator, const Template &schema,
   }
 }
 
+static auto position_to_json(
+    const sourcemeta::core::PointerPositionTracker::Position &position)
+    -> sourcemeta::core::JSON {
+  auto result{sourcemeta::core::JSON::make_array()};
+  result.push_back(sourcemeta::core::JSON{std::get<0>(position)});
+  result.push_back(sourcemeta::core::JSON{std::get<1>(position)});
+  result.push_back(sourcemeta::core::JSON{std::get<2>(position)});
+  result.push_back(sourcemeta::core::JSON{std::get<3>(position)});
+  return result;
+}
+
+auto standard(Evaluator &evaluator, const Template &schema,
+              const sourcemeta::core::JSON &instance,
+              const StandardOutput format,
+              const sourcemeta::core::PointerPositionTracker &positions)
+    -> sourcemeta::core::JSON {
+  // We avoid a callback for this specific case for performance reasons
+  if (format == StandardOutput::Flag) {
+    auto result{sourcemeta::core::JSON::make_object()};
+    const auto valid{evaluator.validate(schema, instance)};
+    result.assign("valid", sourcemeta::core::JSON{valid});
+    return result;
+  } else {
+    assert(format == StandardOutput::Basic);
+    SimpleOutput output{instance};
+    const auto valid{evaluator.validate(schema, instance, std::ref(output))};
+
+    if (valid) {
+      auto result{sourcemeta::core::JSON::make_object()};
+      result.assign("valid", sourcemeta::core::JSON{valid});
+      auto annotations{sourcemeta::core::JSON::make_array()};
+      for (const auto &annotation : output.annotations()) {
+        auto unit{sourcemeta::core::JSON::make_object()};
+        unit.assign("keywordLocation",
+                    sourcemeta::core::to_json(annotation.first.evaluate_path));
+        unit.assign("absoluteKeywordLocation",
+                    sourcemeta::core::JSON{annotation.first.schema_location});
+        unit.assign(
+            "instanceLocation",
+            sourcemeta::core::to_json(annotation.first.instance_location));
+        unit.assign("annotation", sourcemeta::core::to_json(annotation.second));
+
+        const auto position{positions.get(
+            sourcemeta::core::to_pointer(annotation.first.instance_location))};
+        if (position.has_value()) {
+          unit.assign("instancePosition", position_to_json(position.value()));
+        }
+
+        annotations.push_back(std::move(unit));
+      }
+
+      if (!annotations.empty()) {
+        result.assign("annotations", std::move(annotations));
+      }
+
+      return result;
+    } else {
+      auto result{sourcemeta::core::JSON::make_object()};
+      result.assign("valid", sourcemeta::core::JSON{valid});
+      auto errors{sourcemeta::core::JSON::make_array()};
+      for (const auto &entry : output) {
+        auto unit{sourcemeta::core::JSON::make_object()};
+        unit.assign("keywordLocation",
+                    sourcemeta::core::to_json(entry.evaluate_path));
+        unit.assign("absoluteKeywordLocation",
+                    sourcemeta::core::JSON{entry.schema_location});
+        unit.assign("instanceLocation",
+                    sourcemeta::core::to_json(entry.instance_location));
+        unit.assign("error", sourcemeta::core::JSON{entry.message});
+
+        const auto position{positions.get(
+            sourcemeta::core::to_pointer(entry.instance_location))};
+        if (position.has_value()) {
+          unit.assign("instancePosition", position_to_json(position.value()));
+        }
+
+        errors.push_back(std::move(unit));
+      }
+
+      assert(!errors.empty());
+      result.assign("errors", std::move(errors));
+      return result;
+    }
+  }
+}
+
 } // namespace sourcemeta::blaze
