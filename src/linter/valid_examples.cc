@@ -41,7 +41,8 @@ auto ValidExamples::condition(
     return false;
   }
 
-  // We have to ignore siblings to `$ref`
+  // In Draft 7 and older, implementations MUST ignore keywords that are
+  // siblings to $ref, so we should not lint them
   if (vocabularies.contains("http://json-schema.org/draft-07/schema#") ||
       vocabularies.contains("http://json-schema.org/draft-06/schema#") ||
       vocabularies.contains("http://json-schema.org/draft-04/schema#")) {

@@ -598,6 +598,8 @@ TEST(Linter, valid_default_12) {
   EXPECT_EQ(schema, expected);
 }
 
+// In Draft 7 and older, implementations MUST ignore keywords that are
+// siblings to $ref, so we should not lint them
 TEST(Linter, valid_default_13) {
   sourcemeta::core::SchemaTransformer bundle;
   bundle.add<sourcemeta::blaze::ValidDefault>(
@@ -632,6 +634,7 @@ TEST(Linter, valid_default_13) {
   EXPECT_EQ(schema, expected);
 }
 
+// In 2020-12, $ref siblings are processed, so we should still lint them
 TEST(Linter, valid_default_14) {
   sourcemeta::core::SchemaTransformer bundle;
   bundle.add<sourcemeta::blaze::ValidDefault>(
