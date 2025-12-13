@@ -1,10 +1,13 @@
 #include <gtest/gtest.h>
 
+#include <functional>
 #include <sstream>
 
 #include <sourcemeta/blaze/compiler.h>
 #include <sourcemeta/blaze/evaluator.h>
 #include <sourcemeta/blaze/output.h>
+
+#include <sourcemeta/core/jsonpointer.h>
 
 TEST(Output_standard_basic, prettify_annotations) {
   const auto schema{sourcemeta::core::parse_json(R"JSON({
@@ -313,6 +316,132 @@ TEST(Output_standard_basic, failure_1) {
         "error": "The value was expected to be of type string but it was of type integer"
       }
     ]
+  })JSON")};
+
+  EXPECT_EQ(result, expected);
+}
+
+TEST(Output_standard_basic, with_positions_error) {
+  const auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "foo": { "type": "string" }
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation)};
+
+  std::istringstream instance_stream{R"JSON({
+  "foo": 1
+})JSON"};
+  sourcemeta::core::PointerPositionTracker tracker;
+  const auto instance{
+      sourcemeta::core::parse_json(instance_stream, std::ref(tracker))};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{sourcemeta::blaze::standard(
+      evaluator, schema_template, instance,
+      sourcemeta::blaze::StandardOutput::Basic, tracker)};
+
+  EXPECT_TRUE(result.is_object());
+  EXPECT_TRUE(result.defines("valid"));
+  EXPECT_FALSE(result.at("valid").to_boolean());
+  EXPECT_TRUE(result.defines("errors"));
+  EXPECT_TRUE(result.at("errors").is_array());
+  EXPECT_EQ(result.at("errors").size(), 1);
+
+  const auto &error{result.at("errors").at(0)};
+  EXPECT_TRUE(error.defines("instancePosition"));
+  EXPECT_TRUE(error.at("instancePosition").is_array());
+  EXPECT_EQ(error.at("instancePosition").size(), 4);
+
+  // The position should be for "/foo" which is the integer value 1
+  // Verify all position values are integers and reasonable
+  EXPECT_TRUE(error.at("instancePosition").at(0).is_integer());
+  EXPECT_TRUE(error.at("instancePosition").at(1).is_integer());
+  EXPECT_TRUE(error.at("instancePosition").at(2).is_integer());
+  EXPECT_TRUE(error.at("instancePosition").at(3).is_integer());
+  // Start line should be 2 (the line with "foo": 1)
+  EXPECT_EQ(error.at("instancePosition").at(0).to_integer(), 2);
+  // End line should also be 2
+  EXPECT_EQ(error.at("instancePosition").at(2).to_integer(), 2);
+}
+
+TEST(Output_standard_basic, with_positions_annotation) {
+  const auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "foo": { "type": "string" }
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  std::istringstream instance_stream{R"JSON({
+  "foo": "bar"
+})JSON"};
+  sourcemeta::core::PointerPositionTracker tracker;
+  const auto instance{
+      sourcemeta::core::parse_json(instance_stream, std::ref(tracker))};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{sourcemeta::blaze::standard(
+      evaluator, schema_template, instance,
+      sourcemeta::blaze::StandardOutput::Basic, tracker)};
+
+  EXPECT_TRUE(result.is_object());
+  EXPECT_TRUE(result.defines("valid"));
+  EXPECT_TRUE(result.at("valid").to_boolean());
+  EXPECT_TRUE(result.defines("annotations"));
+  EXPECT_TRUE(result.at("annotations").is_array());
+  EXPECT_EQ(result.at("annotations").size(), 1);
+
+  const auto &annotation{result.at("annotations").at(0)};
+  EXPECT_TRUE(annotation.defines("instancePosition"));
+  EXPECT_TRUE(annotation.at("instancePosition").is_array());
+  EXPECT_EQ(annotation.at("instancePosition").size(), 4);
+
+  // The position should be for "" (root) which is the entire object
+  // Line 1, column 1 (start of "{") to line 3, column 1 (end of "}")
+  EXPECT_EQ(annotation.at("instancePosition").at(0).to_integer(), 1);
+  EXPECT_EQ(annotation.at("instancePosition").at(1).to_integer(), 1);
+  EXPECT_EQ(annotation.at("instancePosition").at(2).to_integer(), 3);
+  EXPECT_EQ(annotation.at("instancePosition").at(3).to_integer(), 1);
+}
+
+TEST(Output_standard_basic, with_positions_flag_format) {
+  const auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "string"
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation)};
+
+  std::istringstream instance_stream{"\"foo\""};
+  sourcemeta::core::PointerPositionTracker tracker;
+  const auto instance{
+      sourcemeta::core::parse_json(instance_stream, std::ref(tracker))};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{sourcemeta::blaze::standard(
+      evaluator, schema_template, instance,
+      sourcemeta::blaze::StandardOutput::Flag, tracker)};
+
+  // Flag format should not include positions (just valid: true/false)
+  const auto expected{sourcemeta::core::parse_json(R"JSON({
+    "valid": true
   })JSON")};
 
   EXPECT_EQ(result, expected);
