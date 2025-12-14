@@ -37,7 +37,8 @@ auto ValidDefault::condition(
     return false;
   }
 
-  // We have to ignore siblings to `$ref`
+  // In Draft 7 and older, implementations MUST ignore any keyword that is a
+  // sibling to `$ref`, so we should not lint in those cases
   if (vocabularies.contains("http://json-schema.org/draft-07/schema#") ||
       vocabularies.contains("http://json-schema.org/draft-06/schema#") ||
       vocabularies.contains("http://json-schema.org/draft-04/schema#")) {
@@ -45,7 +46,6 @@ auto ValidDefault::condition(
       return false;
     }
   }
-
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
                                     .value_or(location)
                                     .get()
