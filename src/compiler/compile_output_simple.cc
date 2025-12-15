@@ -79,6 +79,29 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // For contains failures, erase annotations for the failing instance location
+  // under the contains path before returning early
+  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+    for (const auto &mask_entry : this->mask) {
+      if (evaluate_path.starts_with(mask_entry.first) && !mask_entry.second) {
+        // This is a failure under a contains path - erase annotations
+        // for this instance location under the contains evaluate path
+        for (auto iterator = this->annotations_.begin();
+             iterator != this->annotations_.end();) {
+          if (iterator->first.evaluate_path.starts_with_initial(
+                  mask_entry.first) &&
+              iterator->first.instance_location.starts_with(
+                  instance_location)) {
+            iterator = this->annotations_.erase(iterator);
+          } else {
+            iterator++;
+          }
+        }
+        break;
+      }
+    }
+  }
+
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
                   [&evaluate_path](const auto &entry) {
                     return evaluate_path.starts_with(entry.first) &&
@@ -90,7 +113,8 @@ auto SimpleOutput::operator()(
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+          iterator->first.instance_location.starts_with(instance_location)) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
