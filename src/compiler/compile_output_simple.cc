@@ -79,23 +79,45 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+    std::optional<std::string> contains_prefix;
+    for (const auto &mask_entry : this->mask) {
+      if (!mask_entry.second && evaluate_path.starts_with(mask_entry.first)) {
+        contains_prefix = sourcemeta::core::to_string(mask_entry.first);
+        break;
+      }
+    }
+
+    for (auto iterator = this->annotations_.begin();
+         iterator != this->annotations_.end();) {
+      const bool evaluate_path_match =
+          iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+          iterator->first.instance_location.starts_with(instance_location);
+
+      bool contains_instance_match = false;
+      if (contains_prefix.has_value()) {
+        const auto annotation_path =
+            sourcemeta::core::to_string(iterator->first.evaluate_path);
+        if (annotation_path.starts_with(contains_prefix.value()) &&
+            iterator->first.instance_location == instance_location) {
+          contains_instance_match = true;
+        }
+      }
+
+      if (evaluate_path_match || contains_instance_match) {
+        iterator = this->annotations_.erase(iterator);
+      } else {
+        iterator++;
+      }
+    }
+  }
+
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
                   [&evaluate_path](const auto &entry) {
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
     return;
-  }
-
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
-    for (auto iterator = this->annotations_.begin();
-         iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
-        iterator = this->annotations_.erase(iterator);
-      } else {
-        iterator++;
-      }
-    }
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
