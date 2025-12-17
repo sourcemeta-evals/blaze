@@ -79,23 +79,29 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  // Drop annotations for failed evaluations. We need to do this BEFORE
+  // the contains early return below, as annotations from failed contains
+  // items should be dropped. The check uses both evaluate_path and
+  // instance_location because in JSON Schema, a trace of evaluation is
+  // only uniquely identified by the combination of both.
+  if (type == EvaluationType::Post && !this->annotations_.empty()) {
+    for (auto iterator = this->annotations_.begin();
+         iterator != this->annotations_.end();) {
+      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+          iterator->first.instance_location.starts_with(instance_location)) {
+        iterator = this->annotations_.erase(iterator);
+      } else {
+        iterator++;
+      }
+    }
+  }
+
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
                   [&evaluate_path](const auto &entry) {
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
     return;
-  }
-
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
-    for (auto iterator = this->annotations_.begin();
-         iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
-        iterator = this->annotations_.erase(iterator);
-      } else {
-        iterator++;
-      }
-    }
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
