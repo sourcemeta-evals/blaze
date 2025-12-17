@@ -858,3 +858,147 @@ TEST(Output_simple, annotations_failure_1) {
   EXPECT_FALSE(result);
   EXPECT_ANNOTATION_COUNT(output, 0);
 }
+
+TEST(Output_simple, annotations_contains_drops_failed_items_1) {
+  // Test that annotations from items that fail against `contains` are dropped.
+  // In this case, only /1 (42) matches the contains schema, so only /1 should
+  // have the title annotation.
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": {
+      "type": "number",
+      "title": "Test"
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON([ "foo", 42, true ])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+  EXPECT_TRUE(result);
+
+  // Should have 2 annotations: contains index and title for /1 only
+  EXPECT_ANNOTATION_COUNT(output, 2);
+
+  // The contains annotation should report index 1 as matching
+  EXPECT_ANNOTATION_ENTRY(output, "", "/contains", "#/contains", 1);
+  EXPECT_ANNOTATION_VALUE(output, "", "/contains", "#/contains", 0,
+                          sourcemeta::core::JSON{1});
+
+  // Only /1 should have the title annotation (not /0 or /2)
+  EXPECT_ANNOTATION_ENTRY(output, "/1", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/1", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Test"});
+}
+
+TEST(Output_simple, annotations_contains_drops_failed_items_2) {
+  // Test with multiple matching items - only matching items should have
+  // annotations
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": {
+      "type": "number",
+      "title": "Number"
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON([ "foo", 42, "bar", 100 ])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+  EXPECT_TRUE(result);
+
+  // Should have 3 annotations: contains indices and title for /1 and /3
+  EXPECT_ANNOTATION_COUNT(output, 3);
+
+  // The contains annotation should report indices 1 and 3 as matching
+  EXPECT_ANNOTATION_ENTRY(output, "", "/contains", "#/contains", 2);
+  EXPECT_ANNOTATION_VALUE(output, "", "/contains", "#/contains", 0,
+                          sourcemeta::core::JSON{1});
+  EXPECT_ANNOTATION_VALUE(output, "", "/contains", "#/contains", 1,
+                          sourcemeta::core::JSON{3});
+
+  // Only /1 and /3 should have the title annotation
+  EXPECT_ANNOTATION_ENTRY(output, "/1", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/1", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Number"});
+
+  EXPECT_ANNOTATION_ENTRY(output, "/3", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/3", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Number"});
+}
+
+TEST(Output_simple, annotations_contains_all_items_match) {
+  // Test when all items match - all should have annotations
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": {
+      "type": "number",
+      "title": "Number"
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON([ 1, 2, 3 ])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+  EXPECT_TRUE(result);
+
+  // Should have 4 annotations: contains indices and title for all items
+  EXPECT_ANNOTATION_COUNT(output, 4);
+
+  // The contains annotation should report all indices as matching
+  EXPECT_ANNOTATION_ENTRY(output, "", "/contains", "#/contains", 3);
+  EXPECT_ANNOTATION_VALUE(output, "", "/contains", "#/contains", 0,
+                          sourcemeta::core::JSON{0});
+  EXPECT_ANNOTATION_VALUE(output, "", "/contains", "#/contains", 1,
+                          sourcemeta::core::JSON{1});
+  EXPECT_ANNOTATION_VALUE(output, "", "/contains", "#/contains", 2,
+                          sourcemeta::core::JSON{2});
+
+  // All items should have the title annotation
+  EXPECT_ANNOTATION_ENTRY(output, "/0", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/0", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Number"});
+
+  EXPECT_ANNOTATION_ENTRY(output, "/1", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/1", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Number"});
+
+  EXPECT_ANNOTATION_ENTRY(output, "/2", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/2", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Number"});
+}
