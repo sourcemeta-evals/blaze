@@ -79,23 +79,49 @@ auto SimpleOutput::operator()(
     return;
   }
 
-  if (std::any_of(this->mask.cbegin(), this->mask.cend(),
-                  [&evaluate_path](const auto &entry) {
-                    return evaluate_path.starts_with(entry.first) &&
-                           !entry.second;
-                  })) {
-    return;
-  }
+  // Find if we're inside a `contains` context (mask entry with false value)
+  const auto contains_entry{std::find_if(
+      this->mask.cbegin(), this->mask.cend(),
+      [&evaluate_path](const auto &entry) {
+        return evaluate_path.starts_with(entry.first) && !entry.second;
+      })};
+  const auto inside_contains{contains_entry != this->mask.cend()};
 
+  // Drop annotations for failed validations. This must happen before the
+  // early return for `contains` below, because we still need to drop
+  // annotations for failed items within `contains`.
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+      bool should_drop{false};
+
+      if (inside_contains) {
+        // When inside `contains`, drop annotations whose evaluate_path starts
+        // with the contains evaluate path AND whose instance_location matches
+        // the failing instance_location. This ensures we only drop annotations
+        // for the specific item that failed, not for all items.
+        should_drop =
+            iterator->first.evaluate_path.starts_with_initial(
+                contains_entry->first) &&
+            iterator->first.instance_location.starts_with(instance_location);
+      } else {
+        // Normal case: drop annotations whose evaluate_path starts with the
+        // failing evaluate_path
+        should_drop =
+            iterator->first.evaluate_path.starts_with_initial(evaluate_path);
+      }
+
+      if (should_drop) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
       }
     }
+  }
+
+  // Suppress error output for failures inside `contains`
+  if (inside_contains) {
+    return;
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
