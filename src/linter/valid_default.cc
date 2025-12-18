@@ -36,6 +36,17 @@ auto ValidDefault::condition(
     return false;
   }
 
+  // In Draft 7 and older, siblings to $ref are ignored by implementations,
+  // so we should not lint them
+  const bool is_pre_2019_09 =
+      !vocabularies.contains(
+          "https://json-schema.org/draft/2020-12/vocab/meta-data") &&
+      !vocabularies.contains(
+          "https://json-schema.org/draft/2019-09/vocab/meta-data");
+  if (is_pre_2019_09 && schema.defines("$ref")) {
+    return false;
+  }
+
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
                                     .value_or(location)
                                     .get()
