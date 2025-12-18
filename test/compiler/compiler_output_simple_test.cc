@@ -915,3 +915,49 @@ TEST(Compiler_output_simple, fail_stacktrace_with_indentation) {
     at evaluate path "/properties/foo/unevaluatedProperties"
 )JSON");
 }
+
+// Test that annotations inside `contains` subschema are only retained for
+// items that pass the `contains` subschema, not for items that fail.
+// See: https://github.com/sourcemeta/blaze/issues/XXX
+TEST(Compiler_output_simple, annotations_contains_drops_failed_items) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contains": {
+      "type": "number",
+      "title": "Test"
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  // Array with mixed types: "foo" (fails), 42 (passes), true (fails)
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON([ "foo", 42, true ])JSON")};
+
+  sourcemeta::blaze::SimpleOutput output{instance};
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{
+      evaluator.validate(schema_template, instance, std::ref(output))};
+  EXPECT_TRUE(result);
+
+  // Should have 2 annotations:
+  // 1. The `contains` annotation at "" with value 1 (the index that matched)
+  // 2. The `title` annotation at "/1" (only for the item that passed)
+  EXPECT_ANNOTATION_COUNT(output, 2);
+
+  // The contains annotation should indicate index 1 matched
+  EXPECT_ANNOTATION_ENTRY(output, "", "/contains", "#/contains", 1);
+  EXPECT_ANNOTATION_VALUE(output, "", "/contains", "#/contains", 0,
+                          sourcemeta::core::JSON{1});
+
+  // The title annotation should only be present for /1 (the item that passed)
+  // NOT for /0 or /2 (the items that failed)
+  EXPECT_ANNOTATION_ENTRY(output, "/1", "/contains/title", "#/contains/title",
+                          1);
+  EXPECT_ANNOTATION_VALUE(output, "/1", "/contains/title", "#/contains/title",
+                          0, sourcemeta::core::JSON{"Test"});
+}

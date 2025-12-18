@@ -79,11 +79,30 @@ auto SimpleOutput::operator()(
     return;
   }
 
-  if (std::any_of(this->mask.cbegin(), this->mask.cend(),
-                  [&evaluate_path](const auto &entry) {
-                    return evaluate_path.starts_with(entry.first) &&
-                           !entry.second;
-                  })) {
+  // Check if we're inside a `contains` (mask entry with value false)
+  const auto inside_contains{std::any_of(
+      this->mask.cbegin(), this->mask.cend(),
+      [&evaluate_path](const auto &entry) {
+        return evaluate_path.starts_with(entry.first) && !entry.second;
+      })};
+
+  // When inside `contains`, we need to erase annotations for failed items
+  // before returning early. A trace of evaluation is only uniquely identified
+  // by the combination of evaluate path AND instance location, so we must
+  // check both when erasing annotations for `contains` failures.
+  if (inside_contains) {
+    if (type == EvaluationType::Post && !this->annotations_.empty()) {
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+            iterator->first.instance_location.starts_with(instance_location)) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
+      }
+    }
+
     return;
   }
 
