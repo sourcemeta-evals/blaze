@@ -36,6 +36,14 @@ auto ValidDefault::condition(
     return false;
   }
 
+  if (schema.defines("$ref") &&
+      !vocabularies.contains(
+          "https://json-schema.org/draft/2020-12/vocab/meta-data") &&
+      !vocabularies.contains(
+          "https://json-schema.org/draft/2019-09/vocab/meta-data")) {
+    return false;
+  }
+
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
                                     .value_or(location)
                                     .get()
