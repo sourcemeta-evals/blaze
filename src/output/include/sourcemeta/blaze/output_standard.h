@@ -6,6 +6,7 @@
 #endif
 
 #include <sourcemeta/core/json.h>
+#include <sourcemeta/core/jsonpointer.h>
 
 #include <sourcemeta/blaze/evaluator.h>
 
@@ -75,6 +76,18 @@ enum class StandardOutput {
 auto SOURCEMETA_BLAZE_OUTPUT_EXPORT
 standard(Evaluator &evaluator, const Template &schema,
          const sourcemeta::core::JSON &instance, const StandardOutput format)
+    -> sourcemeta::core::JSON;
+
+/// @ingroup output
+/// Perform JSON Schema evaluation using Standard Output formats, augmenting
+/// error and annotation units with instance position information from a
+/// PointerPositionTracker. The position information is added as an
+/// `instancePosition` array property `[ lineStart, columnStart, lineEnd,
+/// columnEnd ]` to each unit.
+auto SOURCEMETA_BLAZE_OUTPUT_EXPORT
+standard(Evaluator &evaluator, const Template &schema,
+         const sourcemeta::core::JSON &instance, const StandardOutput format,
+         const sourcemeta::core::PointerPositionTracker &positions)
     -> sourcemeta::core::JSON;
 
 } // namespace sourcemeta::blaze
