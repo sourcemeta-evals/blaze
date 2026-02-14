@@ -79,23 +79,27 @@ auto SimpleOutput::operator()(
     return;
   }
 
-  if (std::any_of(this->mask.cbegin(), this->mask.cend(),
-                  [&evaluate_path](const auto &entry) {
-                    return evaluate_path.starts_with(entry.first) &&
-                           !entry.second;
-                  })) {
-    return;
-  }
+  const bool in_contains{std::any_of(
+      this->mask.cbegin(), this->mask.cend(),
+      [&evaluate_path](const auto &entry) {
+        return evaluate_path.starts_with(entry.first) && !entry.second;
+      })};
 
   if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+          (!in_contains ||
+           iterator->first.instance_location.starts_with(instance_location))) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
       }
     }
+  }
+
+  if (in_contains) {
+    return;
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
