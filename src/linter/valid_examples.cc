@@ -44,6 +44,12 @@ auto ValidExamples::condition(
     return false;
   }
 
+  if (schema.defines("$ref") &&
+      (vocabularies.contains("http://json-schema.org/draft-07/schema#") ||
+       vocabularies.contains("http://json-schema.org/draft-06/schema#"))) {
+    return false;
+  }
+
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
                                     .value_or(location)
                                     .get()
