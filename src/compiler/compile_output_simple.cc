@@ -84,6 +84,21 @@ auto SimpleOutput::operator()(
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
+    // For contains: still drop annotations for the specific instance location
+    // where the subschema failed, as annotations are only valid when the
+    // corresponding subschema succeeds for a given instance location
+    if (type == EvaluationType::Post && !this->annotations_.empty()) {
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+            iterator->first.instance_location == instance_location) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
+      }
+    }
+
     return;
   }
 
