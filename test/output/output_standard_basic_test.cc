@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <functional>
 #include <sstream>
 
 #include <sourcemeta/blaze/compiler.h>
@@ -280,7 +281,42 @@ TEST(Output_standard_basic, success_4) {
   EXPECT_EQ(result, expected);
 }
 
-TEST(Output_standard_basic, failure_1) {
+TEST(Output_standard_basic, instance_position_annotations) {
+  const auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "foo": { "type": "string" }
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  sourcemeta::core::PointerPositionTracker tracker;
+  std::istringstream stream{R"JSON({
+    "foo": "bar"
+  })JSON"};
+  const auto instance{sourcemeta::core::parse_json(stream, std::ref(tracker))};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{sourcemeta::blaze::standard(
+      evaluator, schema_template, instance,
+      sourcemeta::blaze::StandardOutput::Basic, tracker)};
+
+  ASSERT_TRUE(result.defines("annotations"));
+  ASSERT_EQ(result.at("annotations").size(), 1);
+  ASSERT_TRUE(result.at("annotations").at(0).defines("instancePosition"));
+
+  const auto expected_position{tracker.get(sourcemeta::core::Pointer{})};
+  ASSERT_TRUE(expected_position.has_value());
+  EXPECT_EQ(result.at("annotations").at(0).at("instancePosition"),
+            sourcemeta::core::to_json(*expected_position));
+}
+
+TEST(Output_standard_basic, instance_position_errors) {
   const auto schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
@@ -294,14 +330,16 @@ TEST(Output_standard_basic, failure_1) {
       sourcemeta::blaze::default_schema_compiler,
       sourcemeta::blaze::Mode::FastValidation)};
 
-  const auto instance{sourcemeta::core::parse_json(R"JSON({
+  sourcemeta::core::PointerPositionTracker tracker;
+  std::istringstream stream{R"JSON({
     "foo": 1
-  })JSON")};
+  })JSON"};
+  const auto instance{sourcemeta::core::parse_json(stream, std::ref(tracker))};
 
   sourcemeta::blaze::Evaluator evaluator;
-  const auto result{
-      sourcemeta::blaze::standard(evaluator, schema_template, instance,
-                                  sourcemeta::blaze::StandardOutput::Basic)};
+  const auto result{sourcemeta::blaze::standard(
+      evaluator, schema_template, instance,
+      sourcemeta::blaze::StandardOutput::Basic, tracker)};
 
   const auto expected{sourcemeta::core::parse_json(R"JSON({
     "valid": false,
@@ -315,5 +353,21 @@ TEST(Output_standard_basic, failure_1) {
     ]
   })JSON")};
 
-  EXPECT_EQ(result, expected);
+  EXPECT_EQ(result.at("valid"), expected.at("valid"));
+  ASSERT_TRUE(result.defines("errors"));
+  ASSERT_EQ(result.at("errors").size(), 1);
+  EXPECT_EQ(result.at("errors").at(0).at("keywordLocation"),
+            expected.at("errors").at(0).at("keywordLocation"));
+  EXPECT_EQ(result.at("errors").at(0).at("absoluteKeywordLocation"),
+            expected.at("errors").at(0).at("absoluteKeywordLocation"));
+  EXPECT_EQ(result.at("errors").at(0).at("instanceLocation"),
+            expected.at("errors").at(0).at("instanceLocation"));
+  EXPECT_EQ(result.at("errors").at(0).at("error"),
+            expected.at("errors").at(0).at("error"));
+
+  const auto expected_position{tracker.get(sourcemeta::core::Pointer{"foo"})};
+  ASSERT_TRUE(expected_position.has_value());
+  ASSERT_TRUE(result.at("errors").at(0).defines("instancePosition"));
+  EXPECT_EQ(result.at("errors").at(0).at("instancePosition"),
+            sourcemeta::core::to_json(*expected_position));
 }

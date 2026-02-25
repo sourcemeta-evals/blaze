@@ -4,20 +4,39 @@
 #include <cassert>    // assert
 #include <functional> // std::ref
 
-namespace sourcemeta::blaze {
+namespace {
 
-auto standard(Evaluator &evaluator, const Template &schema,
-              const sourcemeta::core::JSON &instance,
-              const StandardOutput format) -> sourcemeta::core::JSON {
+auto maybe_assign_instance_position(
+    sourcemeta::core::JSON &unit,
+    const sourcemeta::core::WeakPointer &instance_location,
+    const sourcemeta::core::PointerPositionTracker *const positions) -> void {
+  if (positions == nullptr) {
+    return;
+  }
+
+  const auto position{
+      positions->get(sourcemeta::core::to_pointer(instance_location))};
+  if (position.has_value()) {
+    unit.assign("instancePosition", sourcemeta::core::to_json(*position));
+  }
+}
+
+auto standard_impl(
+    sourcemeta::blaze::Evaluator &evaluator,
+    const sourcemeta::blaze::Template &schema,
+    const sourcemeta::core::JSON &instance,
+    const sourcemeta::blaze::StandardOutput format,
+    const sourcemeta::core::PointerPositionTracker *const positions)
+    -> sourcemeta::core::JSON {
   // We avoid a callback for this specific case for performance reasons
-  if (format == StandardOutput::Flag) {
+  if (format == sourcemeta::blaze::StandardOutput::Flag) {
     auto result{sourcemeta::core::JSON::make_object()};
     const auto valid{evaluator.validate(schema, instance)};
     result.assign("valid", sourcemeta::core::JSON{valid});
     return result;
   } else {
-    assert(format == StandardOutput::Basic);
-    SimpleOutput output{instance};
+    assert(format == sourcemeta::blaze::StandardOutput::Basic);
+    sourcemeta::blaze::SimpleOutput output{instance};
     const auto valid{evaluator.validate(schema, instance, std::ref(output))};
 
     if (valid) {
@@ -34,6 +53,8 @@ auto standard(Evaluator &evaluator, const Template &schema,
             "instanceLocation",
             sourcemeta::core::to_json(annotation.first.instance_location));
         unit.assign("annotation", sourcemeta::core::to_json(annotation.second));
+        maybe_assign_instance_position(unit, annotation.first.instance_location,
+                                       positions);
         annotations.push_back(std::move(unit));
       }
 
@@ -55,6 +76,8 @@ auto standard(Evaluator &evaluator, const Template &schema,
         unit.assign("instanceLocation",
                     sourcemeta::core::to_json(entry.instance_location));
         unit.assign("error", sourcemeta::core::JSON{entry.message});
+        maybe_assign_instance_position(unit, entry.instance_location,
+                                       positions);
         errors.push_back(std::move(unit));
       }
 
@@ -63,6 +86,24 @@ auto standard(Evaluator &evaluator, const Template &schema,
       return result;
     }
   }
+}
+
+} // namespace
+
+namespace sourcemeta::blaze {
+
+auto standard(Evaluator &evaluator, const Template &schema,
+              const sourcemeta::core::JSON &instance,
+              const StandardOutput format) -> sourcemeta::core::JSON {
+  return standard_impl(evaluator, schema, instance, format, nullptr);
+}
+
+auto standard(Evaluator &evaluator, const Template &schema,
+              const sourcemeta::core::JSON &instance,
+              const StandardOutput format,
+              const sourcemeta::core::PointerPositionTracker &positions)
+    -> sourcemeta::core::JSON {
+  return standard_impl(evaluator, schema, instance, format, &positions);
 }
 
 } // namespace sourcemeta::blaze
