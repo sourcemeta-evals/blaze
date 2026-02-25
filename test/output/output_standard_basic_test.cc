@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <functional>
 #include <sstream>
 
 #include <sourcemeta/blaze/compiler.h>
@@ -86,6 +87,78 @@ TEST(Output_standard_basic, prettify_errors) {
   sourcemeta::core::prettify(result, prettified);
 
   EXPECT_EQ(prettified.str(), expected);
+}
+
+TEST(Output_standard_basic, instance_position_annotations) {
+  const auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "foo": { "type": "string" }
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  sourcemeta::core::PointerPositionTracker tracker;
+  const auto instance{sourcemeta::core::parse_json(R"JSON({
+    "foo": "bar"
+  })JSON",
+                                                   std::ref(tracker))};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{sourcemeta::blaze::standard(
+      evaluator, schema_template, instance,
+      sourcemeta::blaze::StandardOutput::Basic, tracker)};
+
+  ASSERT_TRUE(result.defines("annotations"));
+  ASSERT_FALSE(result.at("annotations").empty());
+  ASSERT_TRUE(result.at("annotations").at(0).defines("instancePosition"));
+  ASSERT_TRUE(result.at("annotations").at(0).at("instancePosition").is_array());
+
+  const auto expected_position{tracker.get(sourcemeta::core::Pointer{})};
+  ASSERT_TRUE(expected_position.has_value());
+  EXPECT_EQ(result.at("annotations").at(0).at("instancePosition"),
+            sourcemeta::core::to_json(expected_position.value()));
+}
+
+TEST(Output_standard_basic, instance_position_errors) {
+  const auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "foo": { "type": "string" }
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation)};
+
+  sourcemeta::core::PointerPositionTracker tracker;
+  const auto instance{sourcemeta::core::parse_json(R"JSON({
+    "foo": 1
+  })JSON",
+                                                   std::ref(tracker))};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{sourcemeta::blaze::standard(
+      evaluator, schema_template, instance,
+      sourcemeta::blaze::StandardOutput::Basic, tracker)};
+
+  ASSERT_TRUE(result.defines("errors"));
+  ASSERT_FALSE(result.at("errors").empty());
+  ASSERT_TRUE(result.at("errors").at(0).defines("instancePosition"));
+  ASSERT_TRUE(result.at("errors").at(0).at("instancePosition").is_array());
+
+  const auto expected_position{tracker.get(sourcemeta::core::Pointer{"foo"})};
+  ASSERT_TRUE(expected_position.has_value());
+  EXPECT_EQ(result.at("errors").at(0).at("instancePosition"),
+            sourcemeta::core::to_json(expected_position.value()));
 }
 
 TEST(Output_standard_basic, success_1) {
