@@ -84,6 +84,25 @@ auto SimpleOutput::operator()(
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
+    if (type == EvaluationType::Post && !this->annotations_.empty()) {
+      for (auto iterator = this->annotations_.begin();
+           iterator != this->annotations_.end();) {
+        if (iterator->first.instance_location == instance_location &&
+            std::any_of(
+                this->mask.cbegin(), this->mask.cend(),
+                [&evaluate_path, &iterator](const auto &entry) {
+                  return !entry.second &&
+                         evaluate_path.starts_with(entry.first) &&
+                         iterator->first.evaluate_path.starts_with_initial(
+                             entry.first);
+                })) {
+          iterator = this->annotations_.erase(iterator);
+        } else {
+          iterator++;
+        }
+      }
+    }
+
     return;
   }
 
