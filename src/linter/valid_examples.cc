@@ -30,10 +30,13 @@ auto ValidExamples::condition(
     const sourcemeta::core::SchemaWalker &walker,
     const sourcemeta::core::SchemaResolver &resolver) const
     -> sourcemeta::core::SchemaTransformRule::Result {
-  if (!vocabularies.contains(
-          "https://json-schema.org/draft/2020-12/vocab/meta-data") &&
-      !vocabularies.contains(
-          "https://json-schema.org/draft/2019-09/vocab/meta-data") &&
+  const auto supports_ref_siblings{
+      vocabularies.contains(
+          "https://json-schema.org/draft/2020-12/vocab/meta-data") ||
+      vocabularies.contains(
+          "https://json-schema.org/draft/2019-09/vocab/meta-data")};
+
+  if (!supports_ref_siblings &&
       !vocabularies.contains("http://json-schema.org/draft-07/schema#") &&
       !vocabularies.contains("http://json-schema.org/draft-06/schema#")) {
     return false;
@@ -41,6 +44,10 @@ auto ValidExamples::condition(
 
   if (!schema.is_object() || !schema.defines("examples") ||
       !schema.at("examples").is_array() || schema.at("examples").empty()) {
+    return false;
+  }
+
+  if (!supports_ref_siblings && schema.defines("$ref")) {
     return false;
   }
 
