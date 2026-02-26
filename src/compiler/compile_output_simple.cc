@@ -60,6 +60,19 @@ auto SimpleOutput::operator()(
     return;
   }
 
+  const auto masked_failure{
+      !result && std::any_of(this->mask.cbegin(), this->mask.cend(),
+                             [&evaluate_path](const auto &entry) {
+                               return evaluate_path.starts_with(entry.first) &&
+                                      !entry.second;
+                             })};
+  const auto masked_failure_at_root{
+      masked_failure && std::any_of(this->mask.cbegin(), this->mask.cend(),
+                                    [&evaluate_path](const auto &entry) {
+                                      return evaluate_path == entry.first &&
+                                             !entry.second;
+                                    })};
+
   if (type == EvaluationType::Pre) {
     assert(result);
     const auto &keyword{evaluate_path.back().to_property()};
@@ -79,11 +92,21 @@ auto SimpleOutput::operator()(
     return;
   }
 
-  if (std::any_of(this->mask.cbegin(), this->mask.cend(),
-                  [&evaluate_path](const auto &entry) {
-                    return evaluate_path.starts_with(entry.first) &&
-                           !entry.second;
-                  })) {
+  if (type == EvaluationType::Post && !this->annotations_.empty() &&
+      masked_failure && !masked_failure_at_root) {
+    for (auto iterator = this->annotations_.begin();
+         iterator != this->annotations_.end();) {
+      if (iterator->first.evaluate_path.size() >= evaluate_path.size() &&
+          iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+          iterator->first.instance_location.starts_with(instance_location)) {
+        iterator = this->annotations_.erase(iterator);
+      } else {
+        iterator++;
+      }
+    }
+  }
+
+  if (masked_failure) {
     return;
   }
 
