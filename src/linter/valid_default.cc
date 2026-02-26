@@ -22,17 +22,26 @@ auto ValidDefault::condition(
     -> sourcemeta::core::SchemaTransformRule::Result {
   // Technically, the `default` keyword goes back to Draft 1, but Blaze
   // only supports Draft 4 and later
-  if (!vocabularies.contains(
-          "https://json-schema.org/draft/2020-12/vocab/meta-data") &&
-      !vocabularies.contains(
-          "https://json-schema.org/draft/2019-09/vocab/meta-data") &&
-      !vocabularies.contains("http://json-schema.org/draft-07/schema#") &&
-      !vocabularies.contains("http://json-schema.org/draft-06/schema#") &&
-      !vocabularies.contains("http://json-schema.org/draft-04/schema#")) {
+  const auto is_2020_12{vocabularies.contains(
+      "https://json-schema.org/draft/2020-12/vocab/meta-data")};
+  const auto is_2019_09{vocabularies.contains(
+      "https://json-schema.org/draft/2019-09/vocab/meta-data")};
+  const auto is_draft7{
+      vocabularies.contains("http://json-schema.org/draft-07/schema#")};
+  const auto is_draft6{
+      vocabularies.contains("http://json-schema.org/draft-06/schema#")};
+  const auto is_draft4{
+      vocabularies.contains("http://json-schema.org/draft-04/schema#")};
+
+  if (!is_2020_12 && !is_2019_09 && !is_draft7 && !is_draft6 && !is_draft4) {
     return false;
   }
 
   if (!schema.is_object() || !schema.defines("default")) {
+    return false;
+  }
+
+  if (schema.defines("$ref") && !is_2020_12 && !is_2019_09) {
     return false;
   }
 

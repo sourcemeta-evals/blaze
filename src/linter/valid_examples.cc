@@ -30,17 +30,25 @@ auto ValidExamples::condition(
     const sourcemeta::core::SchemaWalker &walker,
     const sourcemeta::core::SchemaResolver &resolver) const
     -> sourcemeta::core::SchemaTransformRule::Result {
-  if (!vocabularies.contains(
-          "https://json-schema.org/draft/2020-12/vocab/meta-data") &&
-      !vocabularies.contains(
-          "https://json-schema.org/draft/2019-09/vocab/meta-data") &&
-      !vocabularies.contains("http://json-schema.org/draft-07/schema#") &&
-      !vocabularies.contains("http://json-schema.org/draft-06/schema#")) {
+  const auto is_2020_12{vocabularies.contains(
+      "https://json-schema.org/draft/2020-12/vocab/meta-data")};
+  const auto is_2019_09{vocabularies.contains(
+      "https://json-schema.org/draft/2019-09/vocab/meta-data")};
+  const auto is_draft7{
+      vocabularies.contains("http://json-schema.org/draft-07/schema#")};
+  const auto is_draft6{
+      vocabularies.contains("http://json-schema.org/draft-06/schema#")};
+
+  if (!is_2020_12 && !is_2019_09 && !is_draft7 && !is_draft6) {
     return false;
   }
 
   if (!schema.is_object() || !schema.defines("examples") ||
       !schema.at("examples").is_array() || schema.at("examples").empty()) {
+    return false;
+  }
+
+  if (schema.defines("$ref") && !is_2020_12 && !is_2019_09) {
     return false;
   }
 
