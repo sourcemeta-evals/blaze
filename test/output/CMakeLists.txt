@@ -4,10 +4,13 @@ sourcemeta_googletest(NAMESPACE sourcemeta PROJECT blaze NAME output
     output_simple_test.cc
     output_standard_flag_test.cc
     output_standard_basic_test.cc
+    output_standard_position_test.cc
     output_trace_test.cc)
 
 target_link_libraries(sourcemeta_blaze_output_unit
   PRIVATE sourcemeta::core::json)
+target_link_libraries(sourcemeta_blaze_output_unit
+  PRIVATE sourcemeta::core::jsonpointer)
 target_link_libraries(sourcemeta_blaze_output_unit
   PRIVATE sourcemeta::core::jsonschema)
 target_link_libraries(sourcemeta_blaze_output_unit
