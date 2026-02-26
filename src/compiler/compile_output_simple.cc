@@ -84,6 +84,26 @@ auto SimpleOutput::operator()(
                     return evaluate_path.starts_with(entry.first) &&
                            !entry.second;
                   })) {
+    // Drop annotations for this specific instance location that were
+    // collected under the contains subschema that failed
+    if (type == EvaluationType::Post && !this->annotations_.empty()) {
+      for (const auto &mask_entry : this->mask) {
+        if (evaluate_path.starts_with(mask_entry.first) && !mask_entry.second) {
+          for (auto iterator = this->annotations_.begin();
+               iterator != this->annotations_.end();) {
+            if (iterator->first.evaluate_path.starts_with_initial(
+                    mask_entry.first) &&
+                iterator->first.instance_location.starts_with(
+                    instance_location)) {
+              iterator = this->annotations_.erase(iterator);
+            } else {
+              iterator++;
+            }
+          }
+        }
+      }
+    }
+
     return;
   }
 
