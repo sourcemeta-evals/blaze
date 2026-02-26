@@ -36,6 +36,15 @@ auto ValidDefault::condition(
     return false;
   }
 
+  const bool is_post_2019_09{
+      vocabularies.contains(
+          "https://json-schema.org/draft/2020-12/vocab/meta-data") ||
+      vocabularies.contains(
+          "https://json-schema.org/draft/2019-09/vocab/meta-data")};
+  if (schema.defines("$ref") && !is_post_2019_09) {
+    return false;
+  }
+
   const auto &root_base_dialect{frame.traverse(location.root.value_or(""))
                                     .value_or(location)
                                     .get()
