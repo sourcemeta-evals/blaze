@@ -79,23 +79,37 @@ auto SimpleOutput::operator()(
     return;
   }
 
-  if (std::any_of(this->mask.cbegin(), this->mask.cend(),
-                  [&evaluate_path](const auto &entry) {
-                    return evaluate_path.starts_with(entry.first) &&
-                           !entry.second;
-                  })) {
-    return;
-  }
+  const auto erase_annotations{[this, &evaluate_path, &instance_location]() {
+    if (this->annotations_.empty()) {
+      return;
+    }
 
-  if (type == EvaluationType::Post && !this->annotations_.empty()) {
     for (auto iterator = this->annotations_.begin();
          iterator != this->annotations_.end();) {
-      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path)) {
+      if (iterator->first.evaluate_path.starts_with_initial(evaluate_path) &&
+          iterator->first.instance_location.starts_with(instance_location)) {
         iterator = this->annotations_.erase(iterator);
       } else {
         iterator++;
       }
     }
+  }};
+
+  const auto masked_by_contains{std::any_of(
+      this->mask.cbegin(), this->mask.cend(),
+      [&evaluate_path](const auto &entry) {
+        return evaluate_path.starts_with(entry.first) && !entry.second;
+      })};
+  if (masked_by_contains) {
+    if (type == EvaluationType::Post) {
+      erase_annotations();
+    }
+
+    return;
+  }
+
+  if (type == EvaluationType::Post) {
+    erase_annotations();
   }
 
   if (std::any_of(this->mask.cbegin(), this->mask.cend(),
