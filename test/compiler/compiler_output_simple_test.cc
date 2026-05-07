@@ -875,7 +875,6 @@ The object value was not expected to define unevaluated properties
 
 TEST(Compiler_output_simple, contains_annotations_drop) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "contains": { "type": "number", "title": "Test" }
   })JSON")};
 
@@ -883,7 +882,8 @@ TEST(Compiler_output_simple, contains_annotations_drop) {
       schema, sourcemeta::core::schema_official_walker,
       sourcemeta::core::schema_official_resolver,
       sourcemeta::blaze::default_schema_compiler,
-      sourcemeta::blaze::Mode::Exhaustive)};
+      sourcemeta::blaze::Mode::Exhaustive,
+      "https://json-schema.org/draft/2020-12/schema")};
 
   const sourcemeta::core::JSON instance{
       sourcemeta::core::parse_json("[ \"foo\", 42, true ]")};

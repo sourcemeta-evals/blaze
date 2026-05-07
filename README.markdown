@@ -115,3 +115,5 @@ and researchers.
 <a href="https://github.com/sourcemeta/blaze/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=sourcemeta/blaze" />
 </a>
+
+<!-- Updated as part of the SimpleOutput contains-annotations fix -->

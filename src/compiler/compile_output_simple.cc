@@ -172,13 +172,14 @@ auto SimpleOutput::operator()(
 
 auto SimpleOutput::stacktrace(std::ostream &stream,
                               const std::string &indentation) const -> void {
-  for (const auto &entry : *this) {
-    stream << indentation << entry.message << "\n";
-    stream << indentation << "  at instance location \"";
-    sourcemeta::core::stringify(entry.instance_location, stream);
+  for (const auto &item : *this) {
+    const auto &line_prefix{indentation};
+    stream << line_prefix << item.message << "\n";
+    stream << line_prefix << "  at instance location \"";
+    sourcemeta::core::stringify(item.instance_location, stream);
     stream << "\"\n";
-    stream << indentation << "  at evaluate path \"";
-    sourcemeta::core::stringify(entry.evaluate_path, stream);
+    stream << line_prefix << "  at evaluate path \"";
+    sourcemeta::core::stringify(item.evaluate_path, stream);
     stream << "\"\n";
   }
 }
