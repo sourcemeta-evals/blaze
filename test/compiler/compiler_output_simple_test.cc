@@ -808,28 +808,48 @@ TEST(Compiler_output_simple, annotations_success_10) {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "contains": { "type": "number", "title": "Test" }
   })JSON")};
-
   const auto schema_template{sourcemeta::blaze::compile(
       schema, sourcemeta::core::schema_official_walker,
       sourcemeta::core::schema_official_resolver,
       sourcemeta::blaze::default_schema_compiler,
       sourcemeta::blaze::Mode::Exhaustive)};
-
-  const sourcemeta::core::JSON instance{sourcemeta::core::parse_json("[ 42 ]")};
-
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json("[ \"foo\", 42, true ]")};
   sourcemeta::blaze::SimpleOutput output{instance};
   sourcemeta::blaze::Evaluator evaluator;
   const auto result{
       evaluator.validate(schema_template, instance, std::ref(output))};
   EXPECT_TRUE(result);
-
-  EXPECT_ANNOTATION_COUNT(output, 2);
-
-  EXPECT_ANNOTATION_ENTRY(output, "", "/contains", "#/contains", 1);
-  EXPECT_ANNOTATION_ENTRY(output, "/0", "/contains/title", "#/contains/title",
-                          1);
-  EXPECT_ANNOTATION_VALUE(output, "/0", "/contains/title", "#/contains/title",
-                          0, sourcemeta::core::JSON{"Test"});
+  EXPECT_EQ(output.annotations().size(), 2);
+  const auto root_pointer{sourcemeta::core::to_pointer("")};
+  const auto contains_pointer{sourcemeta::core::to_pointer("/contains")};
+  EXPECT_TRUE(output.annotations().contains(
+      {sourcemeta::core::to_weak_pointer(root_pointer),
+       sourcemeta::core::to_weak_pointer(contains_pointer), "#/contains"}));
+  EXPECT_EQ(output.annotations()
+                .at({sourcemeta::core::to_weak_pointer(root_pointer),
+                     sourcemeta::core::to_weak_pointer(contains_pointer),
+                     "#/contains"})
+                .size(),
+            1);
+  const auto item_pointer{sourcemeta::core::to_pointer("/1")};
+  const auto title_pointer{sourcemeta::core::to_pointer("/contains/title")};
+  EXPECT_TRUE(output.annotations().contains(
+      {sourcemeta::core::to_weak_pointer(item_pointer),
+       sourcemeta::core::to_weak_pointer(title_pointer),
+       "#/contains/title"}));
+  EXPECT_EQ(output.annotations()
+                .at({sourcemeta::core::to_weak_pointer(item_pointer),
+                     sourcemeta::core::to_weak_pointer(title_pointer),
+                     "#/contains/title"})
+                .size(),
+            1);
+  EXPECT_EQ(output.annotations()
+                .at({sourcemeta::core::to_weak_pointer(item_pointer),
+                     sourcemeta::core::to_weak_pointer(title_pointer),
+                     "#/contains/title"})
+                .at(0),
+            sourcemeta::core::JSON{"Test"});
 }
 
 TEST(Compiler_output_simple, annotations_failure_1) {

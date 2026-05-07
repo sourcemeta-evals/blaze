@@ -19,6 +19,7 @@
 #include <string>      // std::string
 #include <string_view> // std::string_view
 #include <tuple>       // std::tie
+#include <utility>     // std::pair
 #include <vector>      // std::vector
 
 namespace sourcemeta::blaze {
