@@ -83,7 +83,63 @@ standard(Evaluator &evaluator, const Template &schema,
 /// @ingroup output
 ///
 /// An overload of the standard output function that includes line and column
-/// position information as an extension.
+/// position information as an extension. When a `PointerPositionTracker` is
+/// provided, error and annotation unit objects will include an
+/// `instancePosition` property containing an array with the format
+/// `[lineStart, columnStart, lineEnd, columnEnd]`.
+///
+/// For example:
+///
+/// ```cpp
+/// #include <sourcemeta/blaze/compiler.h>
+/// #include <sourcemeta/blaze/evaluator.h>
+/// #include <sourcemeta/blaze/output.h>
+///
+/// #include <sourcemeta/core/json.h>
+/// #include <sourcemeta/core/jsonschema.h>
+/// #include <sourcemeta/core/jsonpointer.h>
+///
+/// #include <functional>
+/// #include <iostream>
+///
+/// const sourcemeta::core::JSON schema =
+///     sourcemeta::core::parse_json(R"JSON({
+///   "$schema": "https://json-schema.org/draft/2020-12/schema",
+///   "type": "string"
+/// })JSON");
+///
+/// const auto schema_template{sourcemeta::blaze::compile(
+///     schema, sourcemeta::core::schema_official_walker,
+///     sourcemeta::core::schema_official_resolver,
+///     sourcemeta::core::default_schema_compiler)};
+///
+/// // Parse the instance with a position tracker to capture line/column info
+/// sourcemeta::core::PointerPositionTracker tracker;
+/// const auto instance{
+///     sourcemeta::core::parse_json(R"JSON({ "foo": 1 })JSON",
+///                                  std::ref(tracker))};
+///
+/// sourcemeta::blaze::Evaluator evaluator;
+/// const auto result{sourcemeta::blaze::standard(
+///     evaluator, schema_template, instance,
+///     sourcemeta::blaze::StandardOutput::Basic, tracker)};
+///
+/// // The result will contain an "instancePosition" property in each
+/// // error or annotation unit, e.g.:
+/// // {
+/// //   "valid": false,
+/// //   "errors": [{
+/// //     "keywordLocation": "/type",
+/// //     "absoluteKeywordLocation": "#/type",
+/// //     "instanceLocation": "",
+/// //     "instancePosition": [ 1, 1, 1, 14 ],
+/// //     "error": "..."
+/// //   }]
+/// // }
+///
+/// sourcemeta::core::prettify(result, std::cout);
+/// std::cout << "\n";
+/// ```
 auto SOURCEMETA_BLAZE_OUTPUT_EXPORT
 standard(Evaluator &evaluator, const Template &schema,
          const sourcemeta::core::JSON &instance, const StandardOutput format,
