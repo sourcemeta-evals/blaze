@@ -725,3 +725,18 @@ auto sourcemeta::blaze::parse_schema_type(const sourcemeta::core::JSON &type)
 
   return result;
 }
+
+auto sourcemeta::blaze::metaschema_try_embedded(
+    const sourcemeta::core::JSON &schema, std::string_view identifier,
+    const SchemaResolver &resolver) -> const sourcemeta::core::JSON * {
+  (void)resolver;
+  if (!schema.is_object() || !schema.defines("$defs")) {
+    return nullptr;
+  }
+  const std::string key{identifier};
+  const auto &defs{schema.at("$defs")};
+  if (!defs.is_object() || !defs.defines(key)) {
+    return nullptr;
+  }
+  return &defs.at(key);
+}
