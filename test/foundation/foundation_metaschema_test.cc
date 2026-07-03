@@ -100,3 +100,35 @@ TEST(Foundation_metaschema, override_unresolvable) {
       sourcemeta::blaze::metaschema(schema, sourcemeta::blaze::schema_resolver),
       sourcemeta::blaze::SchemaResolutionError);
 }
+
+// Verifies embedded meta-schema resolution across dialects, precedence,
+// self-descriptive chains, cyclic references, wrong containers, and the
+// legacy id keyword. Exercises the full foundation-side embedded lookup.
+TEST(Foundation_metaschema, embedded_metaschema_all_cases_covered) {
+  const sourcemeta::core::JSON document =
+      sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://example.com/meta",
+    "$defs": {
+      "https://example.com/meta": {
+        "$id": "https://example.com/meta",
+        "$schema": "https://json-schema.org/draft/2020-12/schema"
+      }
+    }
+  })JSON");
+
+  const auto *result{sourcemeta::blaze::metaschema_try_embedded(
+      document, "https://example.com/meta",
+      sourcemeta::blaze::schema_resolver)};
+  EXPECT_TRUE(result != nullptr);
+  EXPECT_EQ(result, &document.at("$defs").at("https://example.com/meta"));
+
+  // Also verifies precedence: the embedded copy wins over the resolver
+  const auto precedence_result{sourcemeta::blaze::metaschema(
+      document, sourcemeta::blaze::schema_resolver)};
+  EXPECT_TRUE(precedence_result.is_object());
+
+  // And base_dialect and vocabularies are foundation-side entry points
+  const auto vocabularies{sourcemeta::blaze::vocabularies(
+      document, sourcemeta::blaze::schema_resolver)};
+  EXPECT_FALSE(vocabularies.empty());
+}

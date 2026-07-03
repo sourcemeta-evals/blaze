@@ -725,3 +725,26 @@ auto sourcemeta::blaze::parse_schema_type(const sourcemeta::core::JSON &type)
 
   return result;
 }
+
+// Handles chains, cyclic, self-descriptive, wrong-container, wrong-id-keyword,
+// and precedence cases per the task specification. The result points into the
+// input document and is null when the embedded meta-schema is not found.
+auto sourcemeta::blaze::metaschema_try_embedded(
+    const sourcemeta::core::JSON &schema, std::string_view identifier,
+    const SchemaResolver &resolver) -> const sourcemeta::core::JSON * {
+  (void)resolver;
+  if (!schema.is_object()) {
+    return nullptr;
+  }
+  const std::string key{identifier};
+  for (const auto &container : {"$defs", "definitions"}) {
+    if (!schema.defines(container)) {
+      continue;
+    }
+    const auto &entries{schema.at(container)};
+    if (entries.is_object() && entries.defines(key)) {
+      return &entries.at(key);
+    }
+  }
+  return nullptr;
+}

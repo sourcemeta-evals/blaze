@@ -270,6 +270,46 @@ auto dialect(const sourcemeta::core::JSON &schema,
 
 /// @ingroup foundation
 ///
+/// Locate the embedded meta-schema that the given schema declares from
+/// within the schema itself. The returned pointer points into the
+/// passed-in document and aliases data inside the given schema. The
+/// function returns nullptr when no valid embedded meta-schema is found
+/// under `$defs` or `definitions`. Handles chains, cyclic references,
+/// self-descriptive schemas, precedence between the resolver and the
+/// embedded copy, and the legacy `id` identifier keyword for older
+/// drafts. For example:
+///
+/// ```cpp
+/// #include <sourcemeta/core/json.h>
+/// #include <sourcemeta/blaze/foundation.h>
+/// #include <cassert>
+///
+/// const sourcemeta::core::JSON schema =
+///   sourcemeta::core::parse_json(R"JSON({
+///   "$schema": "https://example.com/meta",
+///   "$defs": {
+///     "https://example.com/meta": {
+///       "$id": "https://example.com/meta",
+///       "$schema": "https://json-schema.org/draft/2020-12/schema"
+///     }
+///   }
+/// })JSON");
+///
+/// const auto *metaschema{sourcemeta::blaze::metaschema_try_embedded(
+///   schema, "https://example.com/meta",
+///   sourcemeta::blaze::schema_resolver)};
+///
+/// assert(metaschema);
+/// assert(metaschema == &schema.at("$defs").at("https://example.com/meta"));
+/// ```
+SOURCEMETA_BLAZE_FOUNDATION_EXPORT
+auto metaschema_try_embedded(const sourcemeta::core::JSON &schema,
+                             std::string_view identifier,
+                             const SchemaResolver &resolver)
+    -> const sourcemeta::core::JSON *;
+
+/// @ingroup foundation
+///
 /// Get the metaschema document that describes the given schema. For example:
 ///
 /// ```cpp

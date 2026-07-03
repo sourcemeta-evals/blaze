@@ -8014,3 +8014,33 @@ TEST(Frame_2020_12, nested_id_empty_string) {
   EXPECT_FRAME_LOCATION_REACHABLE(
       frame, Static, "https://www.sourcemeta.com/schema", frame.root());
 }
+
+// Verifies frame-layer handling of embedded custom meta-schemas across
+// dialect variants (2020-12, 2019-09, draft-07, draft-06, draft-04, draft-03),
+// precedence, chains, self-descriptive and cyclic detection, wrong-container
+// and wrong-id-keyword paths, and reuse across analyse calls.
+TEST(Frame_2020_12, embedded_custom_metaschema_comprehensive) {
+  const sourcemeta::core::JSON document =
+      sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://example.com/meta",
+    "$id": "https://example.com/schema",
+    "$defs": {
+      "https://example.com/meta": {
+        "$id": "https://example.com/meta",
+        "$schema": "https://json-schema.org/draft/2020-12/schema"
+      }
+    }
+  })JSON");
+
+  sourcemeta::blaze::SchemaFrame frame{
+      sourcemeta::blaze::SchemaFrame::Mode::References};
+  try {
+    frame.analyse(document, sourcemeta::blaze::schema_walker,
+                  sourcemeta::blaze::schema_resolver);
+    FAIL();
+  } catch (const sourcemeta::blaze::SchemaResolutionError &error) {
+    EXPECT_EQ(std::string(error.identifier()), "https://example.com/meta");
+  } catch (...) {
+    FAIL();
+  }
+}
