@@ -725,3 +725,10 @@ auto sourcemeta::blaze::parse_schema_type(const sourcemeta::core::JSON &type)
 
   return result;
 }
+
+auto sourcemeta::blaze::metaschema_try_embedded(const sourcemeta::core::JSON &,
+                                                std::string_view,
+                                                const SchemaResolver &)
+    -> const sourcemeta::core::JSON * {
+  return nullptr;
+}

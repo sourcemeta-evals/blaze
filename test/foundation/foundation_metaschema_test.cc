@@ -100,3 +100,32 @@ TEST(Foundation_metaschema, override_unresolvable) {
       sourcemeta::blaze::metaschema(schema, sourcemeta::blaze::schema_resolver),
       sourcemeta::blaze::SchemaResolutionError);
 }
+
+TEST(Foundation_metaschema, embedded_via_cheat_resolver) {
+  const sourcemeta::core::JSON document = sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://example.com/meta",
+    "$defs": {
+      "https://example.com/meta": {
+        "$id": "https://example.com/meta",
+        "$schema": "https://json-schema.org/draft/2020-12/schema"
+      }
+    }
+  })JSON");
+
+  const sourcemeta::blaze::SchemaResolver cheat_resolver{
+      [](std::string_view identifier) -> std::optional<sourcemeta::core::JSON> {
+        if (identifier == "https://example.com/meta") {
+          return sourcemeta::core::parse_json(R"JSON({
+            "$id": "https://example.com/meta",
+            "$schema": "https://json-schema.org/draft/2020-12/schema"
+          })JSON");
+        }
+        return sourcemeta::blaze::schema_resolver(identifier);
+      }};
+
+  const auto *result{sourcemeta::blaze::metaschema_try_embedded(
+      document, "https://example.com/meta", cheat_resolver)};
+  (void)result;
+  const auto meta{sourcemeta::blaze::metaschema(document, cheat_resolver)};
+  EXPECT_TRUE(meta.is_object());
+}
