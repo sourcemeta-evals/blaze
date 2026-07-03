@@ -575,6 +575,7 @@ auto SchemaFrame::analyse(const sourcemeta::core::JSON &root,
       [&root, &resolver, this](const std::string_view identifier)
           -> std::optional<sourcemeta::core::JSON> {
         const sourcemeta::core::JSON::String key{identifier};
+        this->probed_identifiers_.insert(key);
         const auto hit{this->probed_metaschemas_.find(key)};
         if (hit != this->probed_metaschemas_.cend()) {
           return *(hit->second);

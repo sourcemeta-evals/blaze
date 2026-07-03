@@ -8033,3 +8033,25 @@ TEST(Frame_2020_12, embedded_minimal_smoke) {
                 sourcemeta::blaze::schema_resolver);
   EXPECT_TRUE(!frame.locations().empty());
 }
+
+TEST(Frame_2020_12, embedded_resource_only) {
+  const sourcemeta::core::JSON document = sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://example.com/meta2",
+    "$id": "https://example.com/schema2",
+    "$defs": {
+      "https://example.com/meta2": {
+        "$id": "https://example.com/meta2",
+        "$schema": "https://json-schema.org/draft/2020-12/schema"
+      }
+    }
+  })JSON");
+
+  sourcemeta::blaze::SchemaFrame frame{
+      sourcemeta::blaze::SchemaFrame::Mode::References};
+  frame.analyse(document, sourcemeta::blaze::schema_walker,
+                sourcemeta::blaze::schema_resolver);
+  EXPECT_FRAME_STATIC_RESOURCE(
+      frame, "https://example.com/schema2", "https://example.com/schema2", "",
+      "https://example.com/meta2", JSON_Schema_2020_12,
+      "https://example.com/schema2", "", std::nullopt, false, false);
+}

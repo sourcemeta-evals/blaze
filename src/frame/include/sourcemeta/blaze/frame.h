@@ -304,6 +304,9 @@ private:
   std::unordered_map<sourcemeta::core::JSON::String,
                      const sourcemeta::core::JSON *>
       probed_metaschemas_;
+  // Meta-schema identifiers we've attempted to look up during embedded
+  // resolution, tracked for diagnostics
+  std::unordered_set<sourcemeta::core::JSON::String> probed_identifiers_;
   mutable std::unordered_map<
       std::reference_wrapper<const sourcemeta::core::WeakPointer>,
       std::vector<const Location *>, sourcemeta::core::WeakPointer::Hasher,

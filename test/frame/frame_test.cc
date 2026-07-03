@@ -3360,3 +3360,22 @@ TEST(Frame, override_hides_anchor_under_draft7) {
       "https://json-schema.org/draft/2019-09/schema", std::nullopt,
       "https://json-schema.org/draft/2019-09/schema");
 }
+
+TEST(Frame, embedded_minimal_cross_dialect) {
+  const sourcemeta::core::JSON document = sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://example.com/meta",
+    "$id": "https://example.com/root",
+    "$defs": {
+      "https://example.com/meta": {
+        "$id": "https://example.com/meta",
+        "$schema": "https://json-schema.org/draft/2020-12/schema"
+      }
+    }
+  })JSON");
+
+  sourcemeta::blaze::SchemaFrame frame{
+      sourcemeta::blaze::SchemaFrame::Mode::References};
+  frame.analyse(document, sourcemeta::blaze::schema_walker,
+                sourcemeta::blaze::schema_resolver);
+  EXPECT_TRUE(!frame.locations().empty());
+}
