@@ -269,6 +269,19 @@ auto dialect(const sourcemeta::core::JSON &schema,
              bool allow_dialect_override = true) -> std::string_view;
 
 /// @ingroup foundation
+/// Look up an embedded meta-schema in the given document.
+SOURCEMETA_BLAZE_FOUNDATION_EXPORT
+auto metaschema_try_embedded(const sourcemeta::core::JSON &schema,
+                             std::string_view identifier,
+                             const SchemaResolver &resolver)
+    -> const sourcemeta::core::JSON *;
+
+/// @ingroup foundation
+/// Check whether the given schema has any embedded meta-schema entries.
+SOURCEMETA_BLAZE_FOUNDATION_EXPORT
+auto has_embedded_metaschemas(const sourcemeta::core::JSON &schema) -> bool;
+
+/// @ingroup foundation
 ///
 /// Get the metaschema document that describes the given schema. For example:
 ///

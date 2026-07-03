@@ -567,6 +567,28 @@ auto SchemaFrame::analyse(const sourcemeta::core::JSON &root,
                              sourcemeta::core::WeakPointer::Hasher>(
               paths.cbegin(), paths.cend())
               .size() == paths.size()));
+
+  // A meta-schema that is embedded in the document itself takes precedence
+  // over what the resolver knows about, as the document pins the exact
+  // meta-schema it is described by
+  const SchemaResolver effective_resolver{
+      [&root, &resolver, this](const std::string_view identifier)
+          -> std::optional<sourcemeta::core::JSON> {
+        const sourcemeta::core::JSON::String key{identifier};
+        const auto hit{this->probed_metaschemas_.find(key)};
+        if (hit != this->probed_metaschemas_.cend()) {
+          return *(hit->second);
+        }
+
+        const auto *match{
+            sourcemeta::blaze::metaschema_try_embedded(root, key, resolver)};
+        if (match) {
+          this->probed_metaschemas_.emplace(key, match);
+          return *match;
+        }
+
+        return resolver(identifier);
+      }};
   std::vector<InternalEntry> subschema_entries;
   std::unordered_map<sourcemeta::core::WeakPointer, CacheSubschema,
                      sourcemeta::core::WeakPointer::Hasher>
@@ -588,8 +610,8 @@ auto SchemaFrame::analyse(const sourcemeta::core::JSON &root,
 
     const auto &schema{sourcemeta::core::get(root, path)};
 
-    const auto root_base_dialect{
-        sourcemeta::blaze::base_dialect(schema, resolver, default_dialect)};
+    const auto root_base_dialect{sourcemeta::blaze::base_dialect(
+        schema, effective_resolver, default_dialect)};
     if (!root_base_dialect.has_value()) {
       throw SchemaUnknownBaseDialectError();
     }
@@ -637,7 +659,7 @@ auto SchemaFrame::analyse(const sourcemeta::core::JSON &root,
 
     std::vector<std::size_t> current_subschema_entries;
     for (const auto &relative_entry : sourcemeta::blaze::SchemaIterator{
-             schema, walker, resolver, default_dialect}) {
+             schema, walker, effective_resolver, default_dialect}) {
       // Rephrase the iterator entry as being for the current base
       auto entry{relative_entry};
       entry.pointer = path.concat(relative_entry.pointer);
@@ -652,6 +674,25 @@ auto SchemaFrame::analyse(const sourcemeta::core::JSON &root,
           {entry.pointer,
            DialectAtPointer{.dialects = {entry.dialect},
                             .base_dialect = entry.base_dialect.value()}});
+
+      // A nested resource may pin a custom meta-schema inside its own
+      // containers. Cache it here, just like we do for the root, so that later
+      // vocabulary lookups (which consult this cache) can resolve it. If the
+      // same meta-schema identifier is embedded in more than one place with a
+      // different definition, that is an ambiguity we refuse to resolve
+      if (!sourcemeta::blaze::to_base_dialect(entry.dialect).has_value()) {
+        const sourcemeta::core::JSON::String dialect_key{entry.dialect};
+        const auto *embedded{sourcemeta::blaze::metaschema_try_embedded(
+            entry.subschema.get(), entry.dialect, resolver)};
+        if (embedded) {
+          const auto match{this->probed_metaschemas_.find(dialect_key)};
+          if (match == this->probed_metaschemas_.cend()) {
+            this->probed_metaschemas_.emplace(dialect_key, embedded);
+          } else if (*(match->second) != *embedded) {
+            throw_already_exists(dialect_key);
+          }
+        }
+      }
 
       // Schema identifier
       // We need to store the default_id in a local variable to ensure
@@ -1283,8 +1324,25 @@ auto SchemaFrame::root() const noexcept
 auto SchemaFrame::vocabularies(const Location &location,
                                const SchemaResolver &resolver) const
     -> Vocabularies {
-  return sourcemeta::blaze::vocabularies(resolver, location.base_dialect,
-                                         location.dialect);
+  if (this->probed_metaschemas_.empty()) {
+    return sourcemeta::blaze::vocabularies(resolver, location.base_dialect,
+                                           location.dialect);
+  }
+
+  // Meta-schemas embedded in the analysed document take precedence
+  // over what the caller's resolver knows about
+  return sourcemeta::blaze::vocabularies(
+      [this, &resolver](const std::string_view identifier)
+          -> std::optional<sourcemeta::core::JSON> {
+        const auto hit{this->probed_metaschemas_.find(
+            sourcemeta::core::JSON::String{identifier})};
+        if (hit != this->probed_metaschemas_.cend()) {
+          return *(hit->second);
+        }
+
+        return resolver(identifier);
+      },
+      location.base_dialect, location.dialect);
 }
 
 auto SchemaFrame::uri(
@@ -1535,6 +1593,7 @@ auto SchemaFrame::reset() -> void {
   this->root_.clear();
   this->locations_.clear();
   this->references_.clear();
+  this->probed_metaschemas_.clear();
   this->standalone_ = false;
 }
 
