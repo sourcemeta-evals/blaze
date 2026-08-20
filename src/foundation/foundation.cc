@@ -324,6 +324,22 @@ auto sourcemeta::blaze::metaschema_try_embedded(
       break;
     }
 
+    // Meta-schemas bundled into the document take precedence over the
+    // resolver at every link of the chain, as self-contained documents must
+    // not depend on what the resolver happens to know
+    if (sourcemeta::core::URI::is_uri(dialect_uri)) {
+      const auto next{sourcemeta::blaze::embedded_metaschema_candidate(
+          schema, dialect_uri)};
+      if (next.first) {
+        links.push_back({.schema = next.first,
+                         .identifier = dialect_uri,
+                         .container = next.second});
+        current = next.first;
+        current_identifier = dialect_uri;
+        continue;
+      }
+    }
+
     auto remote{resolver(dialect_uri)};
     if (remote.has_value()) {
       resolved.push_back(std::move(remote).value());
@@ -332,21 +348,7 @@ auto sourcemeta::blaze::metaschema_try_embedded(
       continue;
     }
 
-    if (!sourcemeta::core::URI::is_uri(dialect_uri)) {
-      return nullptr;
-    }
-
-    const auto next{
-        sourcemeta::blaze::embedded_metaschema_candidate(schema, dialect_uri)};
-    if (!next.first) {
-      return nullptr;
-    }
-
-    links.push_back({.schema = next.first,
-                     .identifier = dialect_uri,
-                     .container = next.second});
-    current = next.first;
-    current_identifier = dialect_uri;
+    return nullptr;
   }
 
   assert(terminal.has_value());
