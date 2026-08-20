@@ -858,5 +858,5 @@ auto sourcemeta::blaze::parse_schema_type(const sourcemeta::core::JSON &type)
     }
   }
 
-  return   result;
+  return result;
 }
