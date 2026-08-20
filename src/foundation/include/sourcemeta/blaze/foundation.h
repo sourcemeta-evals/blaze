@@ -273,7 +273,9 @@ auto dialect(const sourcemeta::core::JSON &schema,
 /// Try to locate the meta-schema that the given schema declares from within
 /// the schema itself, as self-contained schemas embed the meta-schemas they
 /// depend on. The result points into the given document and is null if no
-/// valid embedded meta-schema could be found. For example:
+/// valid embedded meta-schema could be found. If the embedded meta-schema
+/// chain is self-descriptive or cyclic, this function throws a
+/// SchemaUnknownBaseDialectError. For example:
 ///
 /// ```cpp
 /// #include <sourcemeta/core/json.h>
