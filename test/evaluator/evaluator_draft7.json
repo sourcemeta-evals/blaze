@@ -4281,5 +4281,112 @@
         "Every item in the array value was expected to validate against the given subschema"
       ]
     }
+  },
+  {
+    "description": "hash_length_items_exactly_one_valid",
+    "schema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [ "aa" ],
+        "additionalProperties": false,
+        "properties": { "aa": { "type": "string" } }
+      }
+    },
+    "instance": [ { "aa": "x" } ],
+    "valid": true,
+    "fast": {
+      "pre": [
+        [ "LoopItems", "/items", "#/items", "" ],
+        [ "AssertionDefinesStrict", "/items/required", "#/items/required", "/0" ],
+        [ "LoopPropertiesExactlyTypeStrictHash", "/items/properties", "#/items/properties", "/0" ],
+        [ "AssertionTypeStrict", "/type", "#/type", "" ]
+      ],
+      "post": [
+        [ true, "AssertionDefinesStrict", "/items/required", "#/items/required", "/0", null ],
+        [ true, "LoopPropertiesExactlyTypeStrictHash", "/items/properties", "#/items/properties", "/0", null ],
+        [ true, "LoopItems", "/items", "#/items", "", null ],
+        [ true, "AssertionTypeStrict", "/type", "#/type", "", null ]
+      ],
+      "descriptions": [
+        "The value was expected to be an object that defines the property \"aa\"",
+        "The required object properties were expected to be of type string",
+        "Every item in the array value was expected to validate against the given subschema",
+        "The value was expected to be of type array"
+      ]
+    },
+    "exhaustive": {
+      "pre": [
+        [ "LoopItems", "/items", "#/items", "" ],
+        [ "AssertionDefinesStrict", "/items/required", "#/items/required", "/0" ],
+        [ "LogicalWhenType", "/items/properties", "#/items/properties", "/0" ],
+        [ "AssertionTypeStrict", "/items/properties/aa/type", "#/items/properties/aa/type", "/0/aa" ],
+        [ "LoopPropertiesExcept", "/items/additionalProperties", "#/items/additionalProperties", "/0" ],
+        [ "AssertionTypeStrict", "/items/type", "#/items/type", "/0" ],
+        [ "AssertionTypeStrict", "/type", "#/type", "" ]
+      ],
+      "post": [
+        [ true, "AssertionDefinesStrict", "/items/required", "#/items/required", "/0", null ],
+        [ true, "AssertionTypeStrict", "/items/properties/aa/type", "#/items/properties/aa/type", "/0/aa", null ],
+        [ true, "LogicalWhenType", "/items/properties", "#/items/properties", "/0", null ],
+        [ true, "LoopPropertiesExcept", "/items/additionalProperties", "#/items/additionalProperties", "/0", null ],
+        [ true, "AssertionTypeStrict", "/items/type", "#/items/type", "/0", null ],
+        [ true, "LoopItems", "/items", "#/items", "", null ],
+        [ true, "AssertionTypeStrict", "/type", "#/type", "", null ]
+      ],
+      "descriptions": [
+        "The value was expected to be an object that defines the property \"aa\"",
+        "The value was expected to be of type string",
+        "The object value was expected to validate against the single defined property subschema",
+        "The object value was not expected to define additional properties",
+        "The value was expected to be of type object",
+        "Every item in the array value was expected to validate against the given subschema",
+        "The value was expected to be of type array"
+      ]
+    }
+  },
+  {
+    "description": "hash_length_items_exactly_one_collision",
+    "schema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [ "aa" ],
+        "additionalProperties": false,
+        "properties": { "aa": { "type": "string" } }
+      }
+    },
+    "instance": [ { "aa\u0000": "x" } ],
+    "valid": false,
+    "fast": {
+      "pre": [
+        [ "LoopItems", "/items", "#/items", "" ],
+        [ "AssertionDefinesStrict", "/items/required", "#/items/required", "/0" ]
+      ],
+      "post": [
+        [ false, "AssertionDefinesStrict", "/items/required", "#/items/required", "/0", null ],
+        [ false, "LoopItems", "/items", "#/items", "", null ]
+      ],
+      "descriptions": [
+        "The value was expected to be an object that defines the property \"aa\"",
+        "Every item in the array value was expected to validate against the given subschema"
+      ]
+    },
+    "exhaustive": {
+      "pre": [
+        [ "LoopItems", "/items", "#/items", "" ],
+        [ "AssertionDefinesStrict", "/items/required", "#/items/required", "/0" ]
+      ],
+      "post": [
+        [ false, "AssertionDefinesStrict", "/items/required", "#/items/required", "/0", null ],
+        [ false, "LoopItems", "/items", "#/items", "", null ]
+      ],
+      "descriptions": [
+        "The value was expected to be an object that defines the property \"aa\"",
+        "Every item in the array value was expected to validate against the given subschema"
+      ]
+    }
   }
 ]
