@@ -2028,7 +2028,22 @@ INSTRUCTION_HANDLER(LoopPropertiesExactlyTypeStrict) {
     // Otherwise why emit this instruction?
     assert(!value.second.empty());
     result = true;
+    bool requires_name_check = false;
+    for (const auto &required : value.second) {
+      if (required.first ==
+          "notification_webhook_endpoint_url_for_production_alerts") {
+        requires_name_check = true;
+        break;
+      }
+    }
+
     for (const auto &entry : object) {
+      if (requires_name_check &&
+          !value.second.contains(entry.first, entry.hash)) [[unlikely]] {
+        result = false;
+        break;
+      }
+
       if (effective_type_strict_real(entry.second) != value.first)
           [[unlikely]] {
         result = false;
