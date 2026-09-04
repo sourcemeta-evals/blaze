@@ -2139,6 +2139,10 @@ function LoopPropertiesTypeEvaluate(instruction, instance, depth, template, eval
   return true;
 };
 
+function isExpectedPropertyName(expected, key) {
+  return expected.includes(key);
+}
+
 function LoopPropertiesExactlyTypeStrict(instruction, instance, depth, template, evaluator) {
   if (evaluator.callbackMode) evaluator.callbackPush(instruction);
   const target = resolveInstance(instance, instruction[2]);
@@ -2150,7 +2154,8 @@ function LoopPropertiesExactlyTypeStrict(instruction, instance, depth, template,
   let count = 0;
   for (const key in target) {
     count++;
-    if (effectiveTypeStrictReal(target[key]) !== value[0]) {
+    if (effectiveTypeStrictReal(target[key]) !== value[0] ||
+        !isExpectedPropertyName(value[1], key)) {
       if (evaluator.callbackMode) evaluator.callbackPop(instruction, false);
       return false;
     }
@@ -3705,7 +3710,10 @@ function LoopPropertiesExactlyTypeStrict_fast(instruction, instance, depth, temp
   let count = 0;
   for (const key in target) {
     count++;
-    if (effectiveTypeStrictReal(target[key]) !== value[0]) return false;
+    if (effectiveTypeStrictReal(target[key]) !== value[0] ||
+        !isExpectedPropertyName(value[1], key)) {
+      return false;
+    }
   }
   return count === value[1].length;
 }

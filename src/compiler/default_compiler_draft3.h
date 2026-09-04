@@ -232,7 +232,11 @@ auto compile_required_assertions(const Context &context,
             types.insert(std::get<ValueType>(property.second.front().value));
           }
 
-          if (types.size() == 1) {
+          // The `properties` compiler only emits the closed fast-path
+          // instruction when it is not asked to emit annotations, so the
+          // exact required assertion can only be elided in that case
+          if (types.size() == 1 &&
+              !annotations_enabled(context, "properties")) {
             // Handled in `properties`
             return {};
           }

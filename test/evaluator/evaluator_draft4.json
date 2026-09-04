@@ -12964,5 +12964,85 @@
         "The object value was expected to validate against the single defined property subschema"
       ]
     }
+  },
+  {
+    "description": "closed_exact_wrong_name_regression",
+    "schema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "primary_configuration_endpoint_location_for_the_service": { "type": "string" },
+        "secondary_configuration_endpoint_location_for_the_service": { "type": "string" }
+      },
+      "required": [ "primary_configuration_endpoint_location_for_the_service", "secondary_configuration_endpoint_location_for_the_service" ],
+      "additionalProperties": false
+    },
+    "instance": {
+      "primary_configuration_endpoint_location_for_the_service": "x",
+      "an_undeclared_property_name_that_should_be_rejected_here": "y"
+    },
+    "valid": false,
+    "fast": {
+      "pre": [
+        [ "LoopPropertiesExactlyTypeStrict", "/properties", "#/properties", "" ]
+      ],
+      "post": [
+        [ false, "LoopPropertiesExactlyTypeStrict", "/properties", "#/properties", "", null ]
+      ],
+      "descriptions": [
+        "The required object properties were expected to be of type string"
+      ]
+    },
+    "exhaustive": {
+      "pre": [
+        [ "AssertionDefinesExactly", "/required", "#/required", "" ]
+      ],
+      "post": [
+        [ false, "AssertionDefinesExactly", "/required", "#/required", "", null ]
+      ],
+      "descriptions": [
+        "The object value was expected to only define properties \"primary_configuration_endpoint_location_for_the_service\", and \"secondary_configuration_endpoint_location_for_the_service\", but it also defines the property \"an_undeclared_property_name_that_should_be_rejected_here\""
+      ]
+    }
+  },
+  {
+    "description": "closed_exact_wrong_name_regression_check",
+    "schema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "primary_configuration_endpoint_location_for_the_service": { "type": "string" },
+        "secondary_configuration_endpoint_location_for_the_service": { "type": "string" }
+      },
+      "required": [ "primary_configuration_endpoint_location_for_the_service", "secondary_configuration_endpoint_location_for_the_service" ],
+      "additionalProperties": false
+    },
+    "instance": {
+      "primary_configuration_endpoint_location_for_the_service": "x",
+      "an_undeclared_property_name_that_should_be_rejected_here": "y"
+    },
+    "valid": false,
+    "fast": {
+      "pre": [
+        [ "LoopPropertiesExactlyTypeStrict", "/properties", "#/properties", "" ]
+      ],
+      "post": [
+        [ false, "LoopPropertiesExactlyTypeStrict", "/properties", "#/properties", "", null ]
+      ],
+      "descriptions": [
+        "The required object properties were expected to be of type string"
+      ]
+    },
+    "exhaustive": {
+      "pre": [
+        [ "AssertionDefinesExactly", "/required", "#/required", "" ]
+      ],
+      "post": [
+        [ false, "AssertionDefinesExactly", "/required", "#/required", "", null ]
+      ],
+      "descriptions": [
+        "The object value was expected to only define properties \"primary_configuration_endpoint_location_for_the_service\", and \"secondary_configuration_endpoint_location_for_the_service\", but it also defines the property \"an_undeclared_property_name_that_should_be_rejected_here\""
+      ]
+    }
   }
 ]

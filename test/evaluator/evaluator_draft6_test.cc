@@ -3089,3 +3089,36 @@ TEST(format_with_type_integer_short_circuits_with_tweak_fast) {
   EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
                                "The value was expected to be of type integer");
 }
+
+TEST(closed_exact_properties_smoke) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "type": "object",
+    "properties": {
+      "first_extremely_descriptive_property_name_over_thirty_two": {
+        "type": "string"
+      },
+      "second_extremely_descriptive_property_name_over_thirty_two": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "first_extremely_descriptive_property_name_over_thirty_two",
+      "second_extremely_descriptive_property_name_over_thirty_two"
+    ],
+    "additionalProperties": false
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{sourcemeta::core::parse_json(R"JSON({
+    "first_extremely_descriptive_property_name_over_thirty_two": "x",
+    "second_extremely_descriptive_property_name_over_thirty_two": "y"
+  })JSON")};
+
+  const auto compiled_schema{
+      sourcemeta::blaze::compile(schema, sourcemeta::blaze::schema_walker,
+                                 sourcemeta::blaze::schema_resolver,
+                                 sourcemeta::blaze::default_schema_compiler,
+                                 sourcemeta::blaze::Mode::FastValidation)};
+  sourcemeta::blaze::Evaluator evaluator;
+  EXPECT_TRUE(evaluator.validate(compiled_schema, instance));
+}
