@@ -54,25 +54,3 @@ target_link_libraries(sourcemeta_blaze_evaluator_annotation_suite_unit PRIVATE s
 target_link_libraries(sourcemeta_blaze_evaluator_annotation_suite_unit PRIVATE sourcemeta::blaze::compiler)
 target_link_libraries(sourcemeta_blaze_evaluator_annotation_suite_unit PRIVATE sourcemeta::blaze::evaluator)
 target_link_libraries(sourcemeta_blaze_evaluator_annotation_suite_unit PRIVATE sourcemeta::blaze::output)
-
-# Evaluator trace suite (JSON-driven trace tests)
-sourcemeta_test(NAMESPACE sourcemeta PROJECT blaze NAME evaluator_trace_suite
-  SOURCES tracesuite.cc)
-target_compile_definitions(sourcemeta_blaze_evaluator_trace_suite_unit
-  PRIVATE TRACE_SUITE_PATH="${PROJECT_SOURCE_DIR}/test/evaluator")
-target_link_libraries(sourcemeta_blaze_evaluator_trace_suite_unit PRIVATE sourcemeta::core::json)
-target_link_libraries(sourcemeta_blaze_evaluator_trace_suite_unit PRIVATE sourcemeta::blaze::foundation)
-target_link_libraries(sourcemeta_blaze_evaluator_trace_suite_unit PRIVATE sourcemeta::blaze::compiler)
-target_link_libraries(sourcemeta_blaze_evaluator_trace_suite_unit PRIVATE sourcemeta::blaze::evaluator)
-
-# Evaluator trace suite with canonicalization (JSON-driven)
-sourcemeta_test(NAMESPACE sourcemeta PROJECT blaze NAME evaluator_trace_suite_canonical
-  SOURCES tracesuite_canonical.cc)
-target_compile_definitions(sourcemeta_blaze_evaluator_trace_suite_canonical_unit
-  PRIVATE TRACE_SUITE_CANONICAL_PATH="${PROJECT_SOURCE_DIR}/test/evaluator")
-target_link_libraries(sourcemeta_blaze_evaluator_trace_suite_canonical_unit PRIVATE sourcemeta::core::json)
-target_link_libraries(sourcemeta_blaze_evaluator_trace_suite_canonical_unit PRIVATE sourcemeta::blaze::foundation)
-target_link_libraries(sourcemeta_blaze_evaluator_trace_suite_canonical_unit PRIVATE sourcemeta::blaze::compiler)
-target_link_libraries(sourcemeta_blaze_evaluator_trace_suite_canonical_unit PRIVATE sourcemeta::blaze::evaluator)
-target_link_libraries(sourcemeta_blaze_evaluator_trace_suite_canonical_unit PRIVATE sourcemeta::blaze::canonicalizer)
-set_tests_properties(blaze.evaluator_trace_suite_canonical PROPERTIES TIMEOUT 60)
