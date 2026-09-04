@@ -4365,3 +4365,94 @@ TEST(annotation_fast_unknown_keyword) {
                                "The unrecognized keyword \"x-custom\" was "
                                "collected as the annotation \"hello\"");
 }
+
+TEST(annotation_fast_properties_closed_exact_wrong_names) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2019-09/schema",
+    "type": "object",
+    "properties": {
+      "aa": { "type": "string" },
+      "bb": { "type": "string" }
+    },
+    "required": [ "aa", "bb" ],
+    "additionalProperties": false
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON({ "cc": "x", "dd": "y" })JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.annotations =
+      std::unordered_set<sourcemeta::core::JSON::StringView>{"properties"};
+
+  EVALUATE_WITH_TRACE_FAST_FAILURE_TWEAKED(schema, instance, 1, "", tweaks);
+
+  EVALUATE_TRACE_PRE(0, AssertionDefinesExactlyStrict, "/required",
+                     "#/required", "");
+  EVALUATE_TRACE_POST_FAILURE(0, AssertionDefinesExactlyStrict, "/required",
+                              "#/required", "");
+
+  EVALUATE_TRACE_POST_DESCRIBE(
+      instance, 0,
+      "The value was expected to be an object that only defines properties "
+      "\"aa\", and \"bb\", but it also defines properties \"cc\", and \"dd\"");
+}
+
+TEST(annotation_fast_properties_closed_exact_valid) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2019-09/schema",
+    "type": "object",
+    "properties": {
+      "aa": { "type": "string" },
+      "bb": { "type": "string" }
+    },
+    "required": [ "aa", "bb" ],
+    "additionalProperties": false
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON({ "aa": "x", "bb": "y" })JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.annotations =
+      std::unordered_set<sourcemeta::core::JSON::StringView>{"properties"};
+
+  EVALUATE_WITH_TRACE_FAST_SUCCESS_TWEAKED(schema, instance, 5, "", tweaks);
+
+  EVALUATE_TRACE_PRE(0, AssertionDefinesExactlyStrict, "/required",
+                     "#/required", "");
+  EVALUATE_TRACE_PRE(1, AssertionPropertyTypeStrict, "/properties/aa/type",
+                     "#/properties/aa/type", "/aa");
+  EVALUATE_TRACE_PRE(2, AnnotationEmit, "/properties", "#/properties", "");
+  EVALUATE_TRACE_PRE(3, AssertionPropertyTypeStrict, "/properties/bb/type",
+                     "#/properties/bb/type", "/bb");
+  EVALUATE_TRACE_PRE(4, AnnotationEmit, "/properties", "#/properties", "");
+
+  EVALUATE_TRACE_POST_SUCCESS(0, AssertionDefinesExactlyStrict, "/required",
+                              "#/required", "");
+  EVALUATE_TRACE_POST_SUCCESS(1, AssertionPropertyTypeStrict,
+                              "/properties/aa/type", "#/properties/aa/type",
+                              "/aa");
+  EVALUATE_TRACE_POST_ANNOTATION(2, "/properties", "#/properties", "",
+                                 sourcemeta::core::JSON{"aa"});
+  EVALUATE_TRACE_POST_SUCCESS(3, AssertionPropertyTypeStrict,
+                              "/properties/bb/type", "#/properties/bb/type",
+                              "/bb");
+  EVALUATE_TRACE_POST_ANNOTATION(4, "/properties", "#/properties", "",
+                                 sourcemeta::core::JSON{"bb"});
+
+  EVALUATE_TRACE_POST_DESCRIBE(
+      instance, 0,
+      "The value was expected to be an object that only defines properties "
+      "\"aa\", and \"bb\"");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 1,
+                               "The value was expected to be of type string");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 2,
+                               "The object property \"aa\" successfully "
+                               "validated against its property subschema");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 3,
+                               "The value was expected to be of type string");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 4,
+                               "The object property \"bb\" successfully "
+                               "validated against its property subschema");
+}
