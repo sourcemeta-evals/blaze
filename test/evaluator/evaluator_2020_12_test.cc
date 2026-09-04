@@ -5634,3 +5634,34 @@ TEST(type_object_oversized_max_properties_ignored) {
   EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
                                "The value was expected to be of type object");
 }
+
+TEST(closed_object_exact_property_shape_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "notification_webhook_endpoint_url_for_production_alerts": { "type": "string" },
+      "notification_webhook_endpoint_url_for_staging_alerts": { "type": "string" }
+    },
+    "required": [
+      "notification_webhook_endpoint_url_for_production_alerts",
+      "notification_webhook_endpoint_url_for_staging_alerts"
+    ],
+    "additionalProperties": false
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{sourcemeta::core::parse_json(R"JSON({
+    "a_property_name_we_never_declared_anywhere_in_the_schema": "foo",
+    "another_property_name_that_should_definitely_be_rejected": "bar"
+  })JSON")};
+
+  EVALUATE_WITH_TRACE_FAST_SUCCESS(schema, instance, 1, "");
+
+  EVALUATE_TRACE_PRE(0, LoopPropertiesExactlyTypeStrict, "/properties",
+                     "#/properties", "");
+  EVALUATE_TRACE_POST_SUCCESS(0, LoopPropertiesExactlyTypeStrict, "/properties",
+                              "#/properties", "");
+  EVALUATE_TRACE_POST_DESCRIBE(
+      instance, 0,
+      "The required object properties were expected to be of type string");
+}
