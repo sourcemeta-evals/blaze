@@ -8,7 +8,8 @@
 
 #include <sourcemeta/core/json.h>
 
-#include <type_traits> // std::is_copy_constructible_v, etc.
+#include <type_traits>   // std::is_copy_constructible_v, etc.
+#include <unordered_set> // std::unordered_set
 
 #include "evaluator_utils.h"
 
@@ -453,6 +454,122 @@ TEST(unevaluated_properties_schema_with_root_dynamic_anchor_and_default_id) {
   sourcemeta::blaze::Evaluator evaluator;
   const sourcemeta::core::JSON instance{
       sourcemeta::core::parse_json(R"JSON({ "foo": "bar" })JSON")};
+  const auto result{evaluator.validate(compiled_schema, instance)};
+  EXPECT_TRUE(result);
+}
+
+TEST(annotation_fast_properties_closed_exact_2019_09_wrong_names) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2019-09/schema",
+    "type": "object",
+    "properties": {
+      "aa": { "type": "string" },
+      "bb": { "type": "string" }
+    },
+    "required": [ "aa", "bb" ],
+    "additionalProperties": false
+  })JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.annotations =
+      std::unordered_set<sourcemeta::core::JSON::StringView>{"properties"};
+
+  const auto compiled_schema{sourcemeta::blaze::compile(
+      schema, sourcemeta::blaze::schema_walker,
+      sourcemeta::blaze::schema_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation, "", "", "", tweaks)};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON({ "cc": "x", "dd": "y" })JSON")};
+  const auto result{evaluator.validate(compiled_schema, instance)};
+  EXPECT_FALSE(result);
+}
+
+TEST(annotation_fast_properties_closed_exact_2019_09_valid) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2019-09/schema",
+    "type": "object",
+    "properties": {
+      "aa": { "type": "string" },
+      "bb": { "type": "string" }
+    },
+    "required": [ "aa", "bb" ],
+    "additionalProperties": false
+  })JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.annotations =
+      std::unordered_set<sourcemeta::core::JSON::StringView>{"properties"};
+
+  const auto compiled_schema{sourcemeta::blaze::compile(
+      schema, sourcemeta::blaze::schema_walker,
+      sourcemeta::blaze::schema_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation, "", "", "", tweaks)};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON({ "aa": "x", "bb": "y" })JSON")};
+  const auto result{evaluator.validate(compiled_schema, instance)};
+  EXPECT_TRUE(result);
+}
+
+TEST(annotation_fast_properties_closed_exact_2020_12_wrong_names) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "aa": { "type": "string" },
+      "bb": { "type": "string" }
+    },
+    "required": [ "aa", "bb" ],
+    "additionalProperties": false
+  })JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.annotations =
+      std::unordered_set<sourcemeta::core::JSON::StringView>{"properties"};
+
+  const auto compiled_schema{sourcemeta::blaze::compile(
+      schema, sourcemeta::blaze::schema_walker,
+      sourcemeta::blaze::schema_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation, "", "", "", tweaks)};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON({ "cc": "x", "dd": "y" })JSON")};
+  const auto result{evaluator.validate(compiled_schema, instance)};
+  EXPECT_FALSE(result);
+}
+
+TEST(annotation_fast_properties_closed_exact_2020_12_valid) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "aa": { "type": "string" },
+      "bb": { "type": "string" }
+    },
+    "required": [ "aa", "bb" ],
+    "additionalProperties": false
+  })JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.annotations =
+      std::unordered_set<sourcemeta::core::JSON::StringView>{"properties"};
+
+  const auto compiled_schema{sourcemeta::blaze::compile(
+      schema, sourcemeta::blaze::schema_walker,
+      sourcemeta::blaze::schema_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation, "", "", "", tweaks)};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON({ "aa": "x", "bb": "y" })JSON")};
   const auto result{evaluator.validate(compiled_schema, instance)};
   EXPECT_TRUE(result);
 }
