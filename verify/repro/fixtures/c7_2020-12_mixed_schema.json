@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "foo": { "type": "string" },
+    "bar": { "type": "integer" },
+    "baz": { "type": "boolean" }
+  },
+  "required": ["foo", "bar", "baz"],
+  "additionalProperties": false
+}

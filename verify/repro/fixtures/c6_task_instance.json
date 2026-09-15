@@ -1,0 +1,1 @@
+{"a_property_name_we_never_declared_anywhere_in_the_schema":"foo","another_property_name_that_should_definitely_be_rejected":"bar"}

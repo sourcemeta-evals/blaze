@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","properties":{"id":{"type":"string"},"notification_webhook_endpoint_url_for_production_alerts":{"type":"string"}},"required":["id","notification_webhook_endpoint_url_for_production_alerts"],"additionalProperties":false}
