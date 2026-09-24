@@ -8896,5 +8896,45 @@
         "The value was expected to be of type object"
       ]
     }
+  },
+  {
+    "description": "closed_exact_type_names_hash_twin",
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "a_property_name_sharing_its_first_31_bytes_one": { "type": "string" },
+        "a_property_name_sharing_its_first_31_bytes_two": { "type": "string" }
+      },
+      "required": [ "a_property_name_sharing_its_first_31_bytes_one", "a_property_name_sharing_its_first_31_bytes_two" ],
+      "additionalProperties": false
+    },
+    "instance": {
+      "a_property_name_sharing_its_first_31_bytes_one": "x",
+      "a_property_name_sharing_its_firSWAPPED_hash_wo": "y"
+    },
+    "valid": false,
+    "fast": {
+      "pre": [
+        [ "LoopPropertiesExactlyTypeStrict", "/properties", "#/properties", "" ]
+      ],
+      "post": [
+        [ false, "LoopPropertiesExactlyTypeStrict", "/properties", "#/properties", "" ]
+      ],
+      "descriptions": [
+        "The required object properties were expected to be of type string"
+      ]
+    },
+    "exhaustive": {
+      "pre": [
+        [ "AssertionDefinesExactly", "/required", "#/required", "" ]
+      ],
+      "post": [
+        [ false, "AssertionDefinesExactly", "/required", "#/required", "" ]
+      ],
+      "descriptions": [
+        "The object value was expected to only define properties \"a_property_name_sharing_its_first_31_bytes_one\", and \"a_property_name_sharing_its_first_31_bytes_two\", but it also defines the property \"a_property_name_sharing_its_firSWAPPED_hash_wo\""
+      ]
+    }
   }
 ]
