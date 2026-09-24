@@ -631,3 +631,205 @@ TEST(annotation_fast_properties_closed_exact_2020_12_missing_required) {
   const auto result{evaluator.validate(compiled_schema, instance)};
   EXPECT_FALSE(result);
 }
+
+TEST(annotation_fast_properties_closed_exact_2020_12_non_object_null) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "aa": { "type": "string" },
+      "bb": { "type": "string" }
+    },
+    "required": [ "aa", "bb" ],
+    "additionalProperties": false
+  })JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.annotations =
+      std::unordered_set<sourcemeta::core::JSON::StringView>{"properties"};
+
+  const auto compiled_schema{sourcemeta::blaze::compile(
+      schema, sourcemeta::blaze::schema_walker,
+      sourcemeta::blaze::schema_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation, "", "", "", tweaks)};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON(null)JSON")};
+  const auto result{evaluator.validate(compiled_schema, instance)};
+  EXPECT_FALSE(result);
+}
+
+TEST(annotation_fast_properties_closed_exact_2020_12_non_object_boolean) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "aa": { "type": "string" },
+      "bb": { "type": "string" }
+    },
+    "required": [ "aa", "bb" ],
+    "additionalProperties": false
+  })JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.annotations =
+      std::unordered_set<sourcemeta::core::JSON::StringView>{"properties"};
+
+  const auto compiled_schema{sourcemeta::blaze::compile(
+      schema, sourcemeta::blaze::schema_walker,
+      sourcemeta::blaze::schema_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation, "", "", "", tweaks)};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON(true)JSON")};
+  const auto result{evaluator.validate(compiled_schema, instance)};
+  EXPECT_FALSE(result);
+}
+
+TEST(annotation_fast_properties_closed_exact_2020_12_non_object_integer) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "aa": { "type": "string" },
+      "bb": { "type": "string" }
+    },
+    "required": [ "aa", "bb" ],
+    "additionalProperties": false
+  })JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.annotations =
+      std::unordered_set<sourcemeta::core::JSON::StringView>{"properties"};
+
+  const auto compiled_schema{sourcemeta::blaze::compile(
+      schema, sourcemeta::blaze::schema_walker,
+      sourcemeta::blaze::schema_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation, "", "", "", tweaks)};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON(1)JSON")};
+  const auto result{evaluator.validate(compiled_schema, instance)};
+  EXPECT_FALSE(result);
+}
+
+TEST(annotation_fast_properties_closed_exact_2020_12_non_object_string) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "aa": { "type": "string" },
+      "bb": { "type": "string" }
+    },
+    "required": [ "aa", "bb" ],
+    "additionalProperties": false
+  })JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.annotations =
+      std::unordered_set<sourcemeta::core::JSON::StringView>{"properties"};
+
+  const auto compiled_schema{sourcemeta::blaze::compile(
+      schema, sourcemeta::blaze::schema_walker,
+      sourcemeta::blaze::schema_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation, "", "", "", tweaks)};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON("x")JSON")};
+  const auto result{evaluator.validate(compiled_schema, instance)};
+  EXPECT_FALSE(result);
+}
+
+TEST(annotation_fast_properties_closed_exact_2020_12_non_object_array) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "aa": { "type": "string" },
+      "bb": { "type": "string" }
+    },
+    "required": [ "aa", "bb" ],
+    "additionalProperties": false
+  })JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.annotations =
+      std::unordered_set<sourcemeta::core::JSON::StringView>{"properties"};
+
+  const auto compiled_schema{sourcemeta::blaze::compile(
+      schema, sourcemeta::blaze::schema_walker,
+      sourcemeta::blaze::schema_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation, "", "", "", tweaks)};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON([])JSON")};
+  const auto result{evaluator.validate(compiled_schema, instance)};
+  EXPECT_FALSE(result);
+}
+
+TEST(annotation_fast_properties_closed_exact_2020_12_emitted_names) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "aa": { "type": "string" },
+      "bb": { "type": "string" }
+    },
+    "required": [ "aa", "bb" ],
+    "additionalProperties": false
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON({ "aa": "x", "bb": "y" })JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.annotations =
+      std::unordered_set<sourcemeta::core::JSON::StringView>{"properties"};
+
+  EVALUATE_WITH_TRACE_FAST_SUCCESS_TWEAKED(schema, instance, 5, "", tweaks);
+
+  EVALUATE_TRACE_PRE(0, AssertionDefinesExactlyStrict, "/required",
+                     "#/required", "");
+  EVALUATE_TRACE_PRE(1, AssertionPropertyTypeStrict, "/properties/aa/type",
+                     "#/properties/aa/type", "/aa");
+  EVALUATE_TRACE_PRE_ANNOTATION(2, "/properties", "#/properties", "");
+  EVALUATE_TRACE_PRE(3, AssertionPropertyTypeStrict, "/properties/bb/type",
+                     "#/properties/bb/type", "/bb");
+  EVALUATE_TRACE_PRE_ANNOTATION(4, "/properties", "#/properties", "");
+
+  EVALUATE_TRACE_POST_SUCCESS(0, AssertionDefinesExactlyStrict, "/required",
+                              "#/required", "");
+  EVALUATE_TRACE_POST_SUCCESS(1, AssertionPropertyTypeStrict,
+                              "/properties/aa/type", "#/properties/aa/type",
+                              "/aa");
+  EVALUATE_TRACE_POST_ANNOTATION(2, "/properties", "#/properties", "", "aa");
+  EVALUATE_TRACE_POST_SUCCESS(3, AssertionPropertyTypeStrict,
+                              "/properties/bb/type", "#/properties/bb/type",
+                              "/bb");
+  EVALUATE_TRACE_POST_ANNOTATION(4, "/properties", "#/properties", "", "bb");
+
+  EVALUATE_TRACE_POST_DESCRIBE(
+      instance, 0,
+      "The value was expected to be an object that only defines properties "
+      "\"aa\", and \"bb\"");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 1,
+                               "The value was expected to be of type string");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 2,
+                               "The object property \"aa\" successfully "
+                               "validated against its property subschema");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 3,
+                               "The value was expected to be of type string");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 4,
+                               "The object property \"bb\" successfully "
+                               "validated against its property subschema");
+}
