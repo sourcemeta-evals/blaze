@@ -5035,5 +5035,204 @@
         "Every item in the array value was expected to validate against the given subschema"
       ]
     }
+  },
+  {
+    "description": "hash_length_items_exactly_collision_after_valid_prefix",
+    "schema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [ "a", "bb" ],
+        "additionalProperties": false,
+        "properties": { "a": { "type": "string" }, "bb": { "type": "string" } }
+      }
+    },
+    "instance": [ { "a": "x", "bb": "y" }, { "a": "x", "bb\u0000": "y" } ],
+    "valid": false,
+    "fast": {
+      "pre": [
+        [ "LoopItemsPropertiesExactlyTypeStrictHash", "/items", "#/items", "" ]
+      ],
+      "post": [
+        [ false, "LoopItemsPropertiesExactlyTypeStrictHash", "/items", "#/items", "" ]
+      ],
+      "descriptions": [
+        "Every item in the array was expected to be an object whose required properties were of type string"
+      ]
+    },
+    "exhaustive": {
+      "pre": [
+        [ "LoopItems", "/items", "#/items", "" ],
+        [ "AssertionDefinesExactly", "/items/required", "#/items/required", "/0" ],
+        [ "LogicalWhenType", "/items/properties", "#/items/properties", "/0" ],
+        [ "AssertionTypeStrict", "/items/properties/a/type", "#/items/properties/a/type", "/0/a" ],
+        [ "AssertionTypeStrict", "/items/properties/bb/type", "#/items/properties/bb/type", "/0/bb" ],
+        [ "LoopPropertiesExcept", "/items/additionalProperties", "#/items/additionalProperties", "/0" ],
+        [ "AssertionTypeStrict", "/items/type", "#/items/type", "/0" ],
+        [ "AssertionDefinesExactly", "/items/required", "#/items/required", "/1" ]
+      ],
+      "post": [
+        [ true, "AssertionDefinesExactly", "/items/required", "#/items/required", "/0" ],
+        [ true, "AssertionTypeStrict", "/items/properties/a/type", "#/items/properties/a/type", "/0/a" ],
+        [ true, "AssertionTypeStrict", "/items/properties/bb/type", "#/items/properties/bb/type", "/0/bb" ],
+        [ true, "LogicalWhenType", "/items/properties", "#/items/properties", "/0" ],
+        [ true, "LoopPropertiesExcept", "/items/additionalProperties", "#/items/additionalProperties", "/0" ],
+        [ true, "AssertionTypeStrict", "/items/type", "#/items/type", "/0" ],
+        [ false, "AssertionDefinesExactly", "/items/required", "#/items/required", "/1" ],
+        [ false, "LoopItems", "/items", "#/items", "" ]
+      ],
+      "descriptions": [
+        "The object value was expected to only define properties \"a\", and \"bb\"",
+        "The value was expected to be of type string",
+        "The value was expected to be of type string",
+        "The object value was expected to validate against the defined properties subschemas",
+        "The object value was not expected to define additional properties",
+        "The value was expected to be of type object",
+        "The object value was expected to only define properties \"a\", and \"bb\", but it also defines the property \"bb\u0000\"",
+        "Every item in the array value was expected to validate against the given subschema"
+      ]
+    }
+  },
+  {
+    "description": "hash_length_items_exactly_multi_item_valid",
+    "schema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [ "a", "bb" ],
+        "additionalProperties": false,
+        "properties": { "a": { "type": "string" }, "bb": { "type": "string" } }
+      }
+    },
+    "instance": [ { "a": "x", "bb": "y" }, { "a": "w", "bb": "z" } ],
+    "valid": true,
+    "fast": {
+      "pre": [
+        [ "LoopItemsPropertiesExactlyTypeStrictHash", "/items", "#/items", "" ]
+      ],
+      "post": [
+        [ true, "LoopItemsPropertiesExactlyTypeStrictHash", "/items", "#/items", "" ]
+      ],
+      "descriptions": [
+        "Every item in the array was expected to be an object whose required properties were of type string"
+      ]
+    },
+    "exhaustive": {
+      "pre": [
+        [ "LoopItems", "/items", "#/items", "" ],
+        [ "AssertionDefinesExactly", "/items/required", "#/items/required", "/0" ],
+        [ "LogicalWhenType", "/items/properties", "#/items/properties", "/0" ],
+        [ "AssertionTypeStrict", "/items/properties/a/type", "#/items/properties/a/type", "/0/a" ],
+        [ "AssertionTypeStrict", "/items/properties/bb/type", "#/items/properties/bb/type", "/0/bb" ],
+        [ "LoopPropertiesExcept", "/items/additionalProperties", "#/items/additionalProperties", "/0" ],
+        [ "AssertionTypeStrict", "/items/type", "#/items/type", "/0" ],
+        [ "AssertionDefinesExactly", "/items/required", "#/items/required", "/1" ],
+        [ "LogicalWhenType", "/items/properties", "#/items/properties", "/1" ],
+        [ "AssertionTypeStrict", "/items/properties/a/type", "#/items/properties/a/type", "/1/a" ],
+        [ "AssertionTypeStrict", "/items/properties/bb/type", "#/items/properties/bb/type", "/1/bb" ],
+        [ "LoopPropertiesExcept", "/items/additionalProperties", "#/items/additionalProperties", "/1" ],
+        [ "AssertionTypeStrict", "/items/type", "#/items/type", "/1" ],
+        [ "AssertionTypeStrict", "/type", "#/type", "" ]
+      ],
+      "post": [
+        [ true, "AssertionDefinesExactly", "/items/required", "#/items/required", "/0" ],
+        [ true, "AssertionTypeStrict", "/items/properties/a/type", "#/items/properties/a/type", "/0/a" ],
+        [ true, "AssertionTypeStrict", "/items/properties/bb/type", "#/items/properties/bb/type", "/0/bb" ],
+        [ true, "LogicalWhenType", "/items/properties", "#/items/properties", "/0" ],
+        [ true, "LoopPropertiesExcept", "/items/additionalProperties", "#/items/additionalProperties", "/0" ],
+        [ true, "AssertionTypeStrict", "/items/type", "#/items/type", "/0" ],
+        [ true, "AssertionDefinesExactly", "/items/required", "#/items/required", "/1" ],
+        [ true, "AssertionTypeStrict", "/items/properties/a/type", "#/items/properties/a/type", "/1/a" ],
+        [ true, "AssertionTypeStrict", "/items/properties/bb/type", "#/items/properties/bb/type", "/1/bb" ],
+        [ true, "LogicalWhenType", "/items/properties", "#/items/properties", "/1" ],
+        [ true, "LoopPropertiesExcept", "/items/additionalProperties", "#/items/additionalProperties", "/1" ],
+        [ true, "AssertionTypeStrict", "/items/type", "#/items/type", "/1" ],
+        [ true, "LoopItems", "/items", "#/items", "" ],
+        [ true, "AssertionTypeStrict", "/type", "#/type", "" ]
+      ],
+      "descriptions": [
+        "The object value was expected to only define properties \"a\", and \"bb\"",
+        "The value was expected to be of type string",
+        "The value was expected to be of type string",
+        "The object value was expected to validate against the defined properties subschemas",
+        "The object value was not expected to define additional properties",
+        "The value was expected to be of type object",
+        "The object value was expected to only define properties \"a\", and \"bb\"",
+        "The value was expected to be of type string",
+        "The value was expected to be of type string",
+        "The object value was expected to validate against the defined properties subschemas",
+        "The object value was not expected to define additional properties",
+        "The value was expected to be of type object",
+        "Every item in the array value was expected to validate against the given subschema",
+        "The value was expected to be of type array"
+      ]
+    }
+  },
+  {
+    "description": "hash_length_items_exactly_three_declared_aliases_valid",
+    "schema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [ "a", "a\u0000", "a\u0000\u0000" ],
+        "additionalProperties": false,
+        "properties": {
+          "a": { "type": "string" },
+          "a\u0000": { "type": "string" },
+          "a\u0000\u0000": { "type": "string" }
+        }
+      }
+    },
+    "instance": [ { "a": "x", "a\u0000": "y", "a\u0000\u0000": "z" } ],
+    "valid": true,
+    "fast": {
+      "pre": [
+        [ "LoopItemsPropertiesExactlyTypeStrictHash3", "/items", "#/items", "" ]
+      ],
+      "post": [
+        [ true, "LoopItemsPropertiesExactlyTypeStrictHash3", "/items", "#/items", "" ]
+      ],
+      "descriptions": [
+        "Every item in the array was expected to be an object whose required properties were of type string"
+      ]
+    },
+    "exhaustive": {
+      "pre": [
+        [ "LoopItems", "/items", "#/items", "" ],
+        [ "AssertionDefinesExactly", "/items/required", "#/items/required", "/0" ],
+        [ "LogicalWhenType", "/items/properties", "#/items/properties", "/0" ],
+        [ "AssertionTypeStrict", "/items/properties/a/type", "#/items/properties/a/type", "/0/a" ],
+        [ "AssertionTypeStrict", "/items/properties/a\u0000/type", "#/items/properties/a%00/type", "/0/a\u0000" ],
+        [ "AssertionTypeStrict", "/items/properties/a\u0000\u0000/type", "#/items/properties/a%00%00/type", "/0/a\u0000\u0000" ],
+        [ "LoopPropertiesExcept", "/items/additionalProperties", "#/items/additionalProperties", "/0" ],
+        [ "AssertionTypeStrict", "/items/type", "#/items/type", "/0" ],
+        [ "AssertionTypeStrict", "/type", "#/type", "" ]
+      ],
+      "post": [
+        [ true, "AssertionDefinesExactly", "/items/required", "#/items/required", "/0" ],
+        [ true, "AssertionTypeStrict", "/items/properties/a/type", "#/items/properties/a/type", "/0/a" ],
+        [ true, "AssertionTypeStrict", "/items/properties/a\u0000/type", "#/items/properties/a%00/type", "/0/a\u0000" ],
+        [ true, "AssertionTypeStrict", "/items/properties/a\u0000\u0000/type", "#/items/properties/a%00%00/type", "/0/a\u0000\u0000" ],
+        [ true, "LogicalWhenType", "/items/properties", "#/items/properties", "/0" ],
+        [ true, "LoopPropertiesExcept", "/items/additionalProperties", "#/items/additionalProperties", "/0" ],
+        [ true, "AssertionTypeStrict", "/items/type", "#/items/type", "/0" ],
+        [ true, "LoopItems", "/items", "#/items", "" ],
+        [ true, "AssertionTypeStrict", "/type", "#/type", "" ]
+      ],
+      "descriptions": [
+        "The object value was expected to only define properties \"a\", \"a\u0000\", and \"a\u0000\u0000\"",
+        "The value was expected to be of type string",
+        "The value was expected to be of type string",
+        "The value was expected to be of type string",
+        "The object value was expected to validate against the defined properties subschemas",
+        "The object value was not expected to define additional properties",
+        "The value was expected to be of type object",
+        "Every item in the array value was expected to validate against the given subschema",
+        "The value was expected to be of type array"
+      ]
+    }
   }
 ]

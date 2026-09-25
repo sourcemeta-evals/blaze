@@ -8942,5 +8942,94 @@
         "The object value was expected to only define properties \"a_property_name_sharing_its_first_31_bytes_one\", and \"a_property_name_sharing_its_first_31_bytes_two\", but it also defines the property \"a_property_name_sharing_its_firSWAPPED_hash_wo\""
       ]
     }
+  },
+  {
+    "description": "closed_exact_type_hash_empty_name_valid",
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": { "": { "type": "string" }, "x": { "type": "string" } },
+      "required": [ "", "x" ],
+      "additionalProperties": false
+    },
+    "instance": { "": "v", "x": "w" },
+    "valid": true,
+    "fast": {
+      "pre": [
+        [ "LoopPropertiesExactlyTypeStrictHash", "/properties", "#/properties", "" ]
+      ],
+      "post": [
+        [ true, "LoopPropertiesExactlyTypeStrictHash", "/properties", "#/properties", "" ]
+      ],
+      "descriptions": [
+        "The required object properties were expected to be of type string"
+      ]
+    },
+    "exhaustive": {
+      "pre": [
+        [ "AssertionDefinesExactly", "/required", "#/required", "" ],
+        [ "LogicalWhenType", "/properties", "#/properties", "" ],
+        [ "AssertionTypeStrict", "/properties//type", "#/properties//type", "/" ],
+        [ "Annotation", "/properties", "#/properties", "" ],
+        [ "AssertionTypeStrict", "/properties/x/type", "#/properties/x/type", "/x" ],
+        [ "Annotation", "/properties", "#/properties", "" ],
+        [ "LoopPropertiesExcept", "/additionalProperties", "#/additionalProperties", "" ],
+        [ "AssertionTypeStrict", "/type", "#/type", "" ]
+      ],
+      "post": [
+        [ true, "AssertionDefinesExactly", "/required", "#/required", "" ],
+        [ true, "AssertionTypeStrict", "/properties//type", "#/properties//type", "/" ],
+        [ true, "Annotation", "/properties", "#/properties", "", "" ],
+        [ true, "AssertionTypeStrict", "/properties/x/type", "#/properties/x/type", "/x" ],
+        [ true, "Annotation", "/properties", "#/properties", "", "x" ],
+        [ true, "LogicalWhenType", "/properties", "#/properties", "" ],
+        [ true, "LoopPropertiesExcept", "/additionalProperties", "#/additionalProperties", "" ],
+        [ true, "AssertionTypeStrict", "/type", "#/type", "" ]
+      ],
+      "descriptions": [
+        "The object value was expected to only define properties \"\", and \"x\"",
+        "The value was expected to be of type string",
+        "The object property \"\" successfully validated against its property subschema",
+        "The value was expected to be of type string",
+        "The object property \"x\" successfully validated against its property subschema",
+        "The object value was expected to validate against the defined properties subschemas",
+        "The object value was not expected to define additional properties",
+        "The value was expected to be of type object"
+      ]
+    }
+  },
+  {
+    "description": "closed_exact_type_hash_empty_name_nul_substitution",
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": { "": { "type": "string" }, "x": { "type": "string" } },
+      "required": [ "", "x" ],
+      "additionalProperties": false
+    },
+    "instance": { "\u0000": "v", "x": "w" },
+    "valid": false,
+    "fast": {
+      "pre": [
+        [ "LoopPropertiesExactlyTypeStrictHash", "/properties", "#/properties", "" ]
+      ],
+      "post": [
+        [ false, "LoopPropertiesExactlyTypeStrictHash", "/properties", "#/properties", "" ]
+      ],
+      "descriptions": [
+        "The required object properties were expected to be of type string"
+      ]
+    },
+    "exhaustive": {
+      "pre": [
+        [ "AssertionDefinesExactly", "/required", "#/required", "" ]
+      ],
+      "post": [
+        [ false, "AssertionDefinesExactly", "/required", "#/required", "" ]
+      ],
+      "descriptions": [
+        "The object value was expected to only define properties \"\", and \"x\", but it also defines the property \"\u0000\""
+      ]
+    }
   }
 ]
