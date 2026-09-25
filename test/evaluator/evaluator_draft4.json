@@ -13004,5 +13004,52 @@
         "The object value was expected to validate against the defined properties subschemas"
       ]
     }
+  },
+  {
+    "description": "exact_properties_hash_prefix_then_reordered_wrong_type",
+    "schema": {
+      "$schema": "http://json-schema.org/draft-04/schema#",
+      "type": "object",
+      "properties": {
+        "a": { "type": "string" },
+        "bb": { "type": "string" },
+        "ccc": { "type": "string" }
+      },
+      "required": [ "a", "bb", "ccc" ],
+      "additionalProperties": false
+    },
+    "instance": { "a": "ok", "ccc": "ok", "bb": false },
+    "valid": false,
+    "fast": {
+      "pre": [
+        [ "LoopPropertiesExactlyTypeStrictHash", "/properties", "#/properties", "" ]
+      ],
+      "post": [
+        [ false, "LoopPropertiesExactlyTypeStrictHash", "/properties", "#/properties", "" ]
+      ],
+      "descriptions": [
+        "The required object properties were expected to be of type string"
+      ]
+    },
+    "exhaustive": {
+      "pre": [
+        [ "AssertionDefinesExactly", "/required", "#/required", "" ],
+        [ "LogicalWhenType", "/properties", "#/properties", "" ],
+        [ "AssertionTypeStrict", "/properties/a/type", "#/properties/a/type", "/a" ],
+        [ "AssertionTypeStrict", "/properties/bb/type", "#/properties/bb/type", "/bb" ]
+      ],
+      "post": [
+        [ true, "AssertionDefinesExactly", "/required", "#/required", "" ],
+        [ true, "AssertionTypeStrict", "/properties/a/type", "#/properties/a/type", "/a" ],
+        [ false, "AssertionTypeStrict", "/properties/bb/type", "#/properties/bb/type", "/bb" ],
+        [ false, "LogicalWhenType", "/properties", "#/properties", "" ]
+      ],
+      "descriptions": [
+        "The object value was expected to only define properties \"a\", \"bb\", and \"ccc\"",
+        "The value was expected to be of type string",
+        "The value was expected to be of type string but it was of type boolean",
+        "The object value was expected to validate against the defined properties subschemas"
+      ]
+    }
   }
 ]
