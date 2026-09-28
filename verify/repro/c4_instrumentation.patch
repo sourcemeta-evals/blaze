@@ -1,0 +1,27 @@
+# Run: git apply verify/repro/c4_instrumentation.patch on a checkout of evalon/blaze-conf-423d1e31 -- prints "[C4-PROBE] ... fallback entered" on stderr whenever LoopPropertiesExactlyTypeStrictHash takes the ordering-mismatch fallback (audit-only instrumentation)
+diff --git a/src/evaluator/include/sourcemeta/blaze/evaluator_dispatch.h b/src/evaluator/include/sourcemeta/blaze/evaluator_dispatch.h
+index 96fc0f31..47d35de2 100644
+--- a/src/evaluator/include/sourcemeta/blaze/evaluator_dispatch.h
++++ b/src/evaluator/include/sourcemeta/blaze/evaluator_dispatch.h
+@@ -2081,6 +2081,10 @@ INSTRUCTION_HANDLER(LoopPropertiesExactlyTypeStrictHash) {
+ 
+     result = true;
+     if (index < size) {
++      std::cerr << "[C4-PROBE] LoopPropertiesExactlyTypeStrictHash "
++                   "ordering-mismatch fallback entered index="
++                << index << " size=" << size
++                << " HasCallback=" << HasCallback << "\n";
+       auto iterator = object.cbegin();
+       // Continue where we left
+       std::advance(iterator, index);
+@@ -2094,6 +2098,10 @@ INSTRUCTION_HANDLER(LoopPropertiesExactlyTypeStrictHash) {
+           result = false;
+           break;
+         }
++        std::cerr << "[C4-PROBE] fallback accepted property \""
++                  << iterator->first << "\" (membership only, value type="
++                  << static_cast<int>(effective_type_strict_real(iterator->second))
++                  << " expected=" << static_cast<int>(value.first) << ")\n";
+       }
+     }
+   }
