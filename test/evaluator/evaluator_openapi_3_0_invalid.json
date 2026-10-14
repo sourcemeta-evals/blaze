@@ -303,6 +303,78 @@
     }
   },
   {
+    "description": "discriminator_without_property_name",
+    "schema": { "discriminator": {} },
+    "error": {
+      "message": "This keyword was expected to be set to an object of the shape this dialect defines",
+      "base": "",
+      "location": "/discriminator"
+    }
+  },
+  {
+    "description": "discriminator_property_name_not_a_string",
+    "schema": { "discriminator": { "propertyName": 1 } },
+    "error": {
+      "message": "This keyword was expected to be set to an object of the shape this dialect defines",
+      "base": "",
+      "location": "/discriminator"
+    }
+  },
+  {
+    "description": "discriminator_mapping_value_not_a_string",
+    "schema": { "discriminator": { "propertyName": "petType", "mapping": { "dog": 1 } } },
+    "error": {
+      "message": "This keyword was expected to be set to an object of the shape this dialect defines",
+      "base": "",
+      "location": "/discriminator"
+    }
+  },
+  {
+    "description": "xml_unknown_member",
+    "schema": { "xml": { "name": "pet", "bogus": true } },
+    "error": {
+      "message": "This keyword was expected to be set to an object of the shape this dialect defines",
+      "base": "",
+      "location": "/xml"
+    }
+  },
+  {
+    "description": "xml_attribute_not_a_boolean",
+    "schema": { "xml": { "attribute": "yes" } },
+    "error": {
+      "message": "This keyword was expected to be set to an object of the shape this dialect defines",
+      "base": "",
+      "location": "/xml"
+    }
+  },
+  {
+    "description": "external_docs_without_url",
+    "schema": { "externalDocs": { "description": "docs" } },
+    "error": {
+      "message": "This keyword was expected to be set to an object of the shape this dialect defines",
+      "base": "",
+      "location": "/externalDocs"
+    }
+  },
+  {
+    "description": "external_docs_url_not_a_string",
+    "schema": { "externalDocs": { "url": 1 } },
+    "error": {
+      "message": "This keyword was expected to be set to an object of the shape this dialect defines",
+      "base": "",
+      "location": "/externalDocs"
+    }
+  },
+  {
+    "description": "external_docs_unknown_member",
+    "schema": { "externalDocs": { "url": "https://example.com", "bogus": 1 } },
+    "error": {
+      "message": "This keyword was expected to be set to an object of the shape this dialect defines",
+      "base": "",
+      "location": "/externalDocs"
+    }
+  },
+  {
     "description": "required_duplicate_entries",
     "schema": { "required": [ "a", "a" ] },
     "error": {
@@ -480,6 +552,24 @@
       "message": "This keyword is prohibited by this dialect",
       "base": "",
       "location": "/xfoo"
+    }
+  },
+  {
+    "description": "boolean_true_schema",
+    "schema": true,
+    "error": {
+      "message": "This dialect does not support boolean schemas",
+      "base": "",
+      "location": ""
+    }
+  },
+  {
+    "description": "boolean_false_schema",
+    "schema": false,
+    "error": {
+      "message": "This dialect does not support boolean schemas",
+      "base": "",
+      "location": ""
     }
   }
 ]

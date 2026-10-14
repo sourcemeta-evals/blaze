@@ -5262,5 +5262,21 @@
         "The value was expected to be of type string"
       ]
     }
+  },
+  {
+    "description": "discriminator_with_open_members_1",
+    "schema": { "discriminator": { "propertyName": "petType", "extra": "allowed" } },
+    "instance": { "petType": "dog" },
+    "valid": true,
+    "fast": {},
+    "exhaustive": {}
+  },
+  {
+    "description": "xml_with_extension_member_1",
+    "schema": { "xml": { "name": "pet", "x-internal": true } },
+    "instance": { "name": "Rex" },
+    "valid": true,
+    "fast": {},
+    "exhaustive": {}
   }
 ]
