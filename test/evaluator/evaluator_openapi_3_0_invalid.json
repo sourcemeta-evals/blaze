@@ -203,7 +203,7 @@
     "error": {
       "message": "This keyword is prohibited by this dialect",
       "base": "",
-      "location": "/properties"
+      "location": "/properties/a/if"
     }
   },
   {
@@ -212,7 +212,7 @@
     "error": {
       "message": "This keyword is prohibited by this dialect",
       "base": "",
-      "location": "/items"
+      "location": "/items/if"
     }
   },
   {
@@ -224,7 +224,7 @@
     "error": {
       "message": "This keyword is prohibited by this dialect",
       "base": "",
-      "location": "/additionalProperties"
+      "location": "/additionalProperties/patternProperties"
     }
   },
   {
@@ -236,7 +236,43 @@
     "error": {
       "message": "This keyword is prohibited by this dialect",
       "base": "",
-      "location": "/properties"
+      "location": "/properties/a/properties/b/if"
+    }
+  },
+  {
+    "description": "unsupported_value_under_type_pruned_items",
+    "schema": { "type": "string", "items": { "type": "null" } },
+    "error": {
+      "message": "The value this keyword is set to is not supported by this dialect",
+      "base": "",
+      "location": "/items/type"
+    }
+  },
+  {
+    "description": "malformed_nullable_under_type_pruned_properties",
+    "schema": { "type": "string", "properties": { "a": { "nullable": "yes" } } },
+    "error": {
+      "message": "This keyword was expected to be set to a boolean",
+      "base": "",
+      "location": "/properties/a/nullable"
+    }
+  },
+  {
+    "description": "empty_enum_under_type_pruned_additional_properties",
+    "schema": { "type": "string", "additionalProperties": { "enum": [] } },
+    "error": {
+      "message": "This keyword was expected to be set to a non-empty array of values",
+      "base": "",
+      "location": "/additionalProperties/enum"
+    }
+  },
+  {
+    "description": "prohibited_keyword_under_type_pruned_composition",
+    "schema": { "type": "string", "items": { "allOf": [ { "patternProperties": {} } ] } },
+    "error": {
+      "message": "This keyword is prohibited by this dialect",
+      "base": "",
+      "location": "/items/allOf/0/patternProperties"
     }
   },
   {

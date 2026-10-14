@@ -743,6 +743,31 @@ TEST(malformed_nullable_without_ref_is_rejected_fast) {
   }
 }
 
+TEST(boolean_reference_target_is_rejected_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "a": { "$ref": "#/additionalProperties" }
+    }
+  })JSON")};
+
+  try {
+    [[maybe_unused]] const auto compiled_schema{sourcemeta::blaze::compile(
+        schema, sourcemeta::core::schema_walker,
+        sourcemeta::core::schema_resolver,
+        sourcemeta::blaze::default_schema_compiler,
+        sourcemeta::blaze::Mode::FastValidation, OPENAPI_3_0_DIALECT)};
+    FAIL();
+  } catch (const sourcemeta::blaze::CompilerError &error) {
+    EXPECT_EQ(std::string{error.what()},
+              "This dialect does not support boolean schemas");
+    EXPECT_EQ(error.base().recompose(), "");
+    EXPECT_EQ(sourcemeta::core::to_string(error.location()),
+              "/additionalProperties");
+  }
+}
+
 // `date` and `date-time` name different RFC 3339 productions, so neither
 // accepts the other's shape
 TEST(format_date_rejects_a_date_time_with_tweak_fast) {

@@ -117,72 +117,24 @@ static constexpr auto UNSUPPORTED_VALUE_FOR_DIALECT{
     "The value this keyword is set to is not supported by this dialect"};
 static constexpr auto PROHIBITED_KEYWORD_FOR_DIALECT{
     "This keyword is prohibited by this dialect"};
-// A subschema that `narrows_type_away` drops is never compiled, so the refusal
-// at the end of the dispatch table never reaches its members. Walk them here,
-// as a member this dialect does not define is an error rather than one more
-// keyword to pass by. The dialect is closed, so the applicators below are the
-// complete set of places a further subschema can sit
-static inline auto assert_members_are_permitted(
-    const sourcemeta::core::JSON &schema,
-    const sourcemeta::blaze::Context &context,
-    const sourcemeta::blaze::SchemaContext &schema_context,
-    const std::uint64_t depth = 0) -> void {
-  if (depth >= context.tweaks.max_depth) [[unlikely]] {
-    throw sourcemeta::blaze::CompilerDepthLimitError{context.tweaks.max_depth};
-  }
-
-  // The OpenAPI 3.0 Schema Object is the only dialect here that treats a
-  // member it does not define as an error, so it is the only one whose pruned
-  // subschemas have anything to answer for
+// A subschema that `narrows_type_away` drops is never compiled, so neither
+// the refusal at the end of the dispatch table nor the keyword shape checks
+// ever reach its members. The OpenAPI 3.0 Schema Object is the only dialect
+// here whose documents those checks judge as a whole, reachable or not, so
+// compile the subschema the way a reachable one compiles and discard what it
+// yields: the checks are the point rather than the instructions
+static inline auto
+compile_pruned_subschema(const sourcemeta::blaze::Context &context,
+                         const sourcemeta::blaze::SchemaContext &schema_context,
+                         const sourcemeta::core::WeakPointer &suffix) -> void {
   if (!schema_context.vocabularies.contains(
           sourcemeta::core::SchemaVocabularies::Known::OPENAPI_3_0_BASE)) {
     return;
   }
 
-  if (!schema.is_object()) {
-    return;
-  }
-
-  // A Reference Object ignores whatever sits beside `$ref`, so those members
-  // answer to no keyword set
-  if (schema.defines("$ref")) {
-    return;
-  }
-
-  for (const auto &entry : schema.as_object()) {
-    if (entry.first.starts_with("x-")) {
-      continue;
-    }
-
-    if (context.walker(entry.first, schema_context.vocabularies).type ==
-        sourcemeta::core::SchemaKeywordType::Unknown) {
-      throw sourcemeta::blaze::CompilerError(
-          schema_context.base,
-          absolute_schema_location(context, schema_context),
-          PROHIBITED_KEYWORD_FOR_DIALECT);
-    }
-
-    if (entry.first == "not" || entry.first == "items" ||
-        entry.first == "additionalProperties") {
-      assert_members_are_permitted(entry.second, context, schema_context,
-                                   depth + 1);
-    } else if (entry.first == "allOf" || entry.first == "anyOf" ||
-               entry.first == "oneOf") {
-      if (entry.second.is_array()) {
-        for (const auto &element : entry.second.as_array()) {
-          assert_members_are_permitted(element, context, schema_context,
-                                       depth + 1);
-        }
-      }
-    } else if (entry.first == "properties") {
-      if (entry.second.is_object()) {
-        for (const auto &property : entry.second.as_object()) {
-          assert_members_are_permitted(property.second, context, schema_context,
-                                       depth + 1);
-        }
-      }
-    }
-  }
+  sourcemeta::blaze::compile(context, schema_context,
+                             sourcemeta::blaze::relative_dynamic_context(),
+                             suffix, suffix);
 }
 
 static constexpr auto EXPECTED_UNIQUE_VALUES{
@@ -845,7 +797,9 @@ auto compiler_draft3_applicator_properties_with_options(
   if (narrows_type_away(schema_context.schema, {"object"})) {
     for (const auto &entry :
          schema_context.schema.at(dynamic_context.keyword).as_object()) {
-      assert_members_are_permitted(entry.second, context, schema_context);
+      compile_pruned_subschema(
+          context, schema_context,
+          sourcemeta::blaze::make_weak_pointer(entry.first));
     }
 
     return {};
@@ -1504,9 +1458,8 @@ auto compiler_draft3_applicator_additionalproperties_with_options(
     const DynamicContext &dynamic_context, const bool annotate,
     const bool track_evaluation) -> Instructions {
   if (narrows_type_away(schema_context.schema, {"object"})) {
-    assert_members_are_permitted(
-        schema_context.schema.at(dynamic_context.keyword), context,
-        schema_context);
+    compile_pruned_subschema(context, schema_context,
+                             sourcemeta::core::EMPTY_WEAK_POINTER);
     return {};
   }
 
@@ -1859,9 +1812,8 @@ auto compiler_draft3_applicator_items_with_options(
   }
 
   if (narrows_type_away(schema_context.schema, {"array"})) {
-    assert_members_are_permitted(
-        schema_context.schema.at(dynamic_context.keyword), context,
-        schema_context);
+    compile_pruned_subschema(context, schema_context,
+                             sourcemeta::core::EMPTY_WEAK_POINTER);
     return {};
   }
 
