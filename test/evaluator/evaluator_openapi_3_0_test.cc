@@ -34,7 +34,7 @@ TEST(explicit_schema_overrides_the_default_dialect_fast) {
       "type null");
 }
 
-TEST(explicit_schema_with_root_ref_keeps_its_own_semantics_fast) {
+TEST(explicit_schema_with_root_ref_keeps_the_sibling_type_fast) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$defs": { "string": { "type": "string" } },
@@ -48,15 +48,34 @@ TEST(explicit_schema_with_root_ref_keeps_its_own_semantics_fast) {
       sourcemeta::blaze::default_schema_compiler,
       sourcemeta::blaze::Mode::FastValidation, OPENAPI_3_0_DIALECT)};
 
-  // The declared dialect keeps both constraints alive, so nothing can satisfy
-  // a string reference beside an integer type
+  // The declared dialect keeps the assertion beside `$ref` alive, so a string
+  // that satisfies the reference still fails the sibling type
   sourcemeta::blaze::Evaluator evaluator;
-  const sourcemeta::core::JSON string_instance{
+  const sourcemeta::core::JSON instance{
       sourcemeta::core::parse_json(R"JSON("foo")JSON")};
-  const sourcemeta::core::JSON integer_instance{
+  EXPECT_FALSE(evaluator.validate(compiled_schema, instance));
+}
+
+TEST(explicit_schema_with_root_ref_keeps_the_reference_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$defs": { "string": { "type": "string" } },
+    "$ref": "#/$defs/string",
+    "type": "integer"
+  })JSON")};
+
+  const auto compiled_schema{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation, OPENAPI_3_0_DIALECT)};
+
+  // The declared dialect keeps the reference alive, so an integer that
+  // satisfies the sibling type still fails the referenced string schema
+  sourcemeta::blaze::Evaluator evaluator;
+  const sourcemeta::core::JSON instance{
       sourcemeta::core::parse_json(R"JSON(1)JSON")};
-  EXPECT_FALSE(evaluator.validate(compiled_schema, string_instance));
-  EXPECT_FALSE(evaluator.validate(compiled_schema, integer_instance));
+  EXPECT_FALSE(evaluator.validate(compiled_schema, instance));
 }
 
 TEST(format_byte_valid_with_tweak_fast) {
