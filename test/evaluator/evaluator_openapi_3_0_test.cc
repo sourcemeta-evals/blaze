@@ -78,6 +78,104 @@ TEST(explicit_schema_with_root_ref_keeps_the_reference_fast) {
   EXPECT_FALSE(evaluator.validate(compiled_schema, instance));
 }
 
+TEST(external_reference_inherits_the_default_dialect_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "type": "object",
+    "properties": {
+      "name": { "$ref": "https://example.com/name" }
+    }
+  })JSON")};
+
+  auto test_resolver = [](const std::string_view identifier)
+      -> sourcemeta::core::SchemaResolverResult {
+    if (identifier == "https://example.com/name") {
+      return sourcemeta::core::parse_json(R"JSON({
+                "type": "string",
+                "nullable": true
+              })JSON");
+    }
+
+    return sourcemeta::core::schema_resolver(identifier);
+  };
+
+  const auto compiled_schema{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker, test_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation, OPENAPI_3_0_DIALECT)};
+
+  // Only this dialect gives `nullable` a meaning, so a null passing is what
+  // shows the default dialect reached the externally resolved document
+  sourcemeta::blaze::Evaluator evaluator;
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON({ "name": null })JSON")};
+  EXPECT_TRUE(evaluator.validate(compiled_schema, instance));
+}
+
+TEST(external_reference_enforces_the_target_constraints_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "type": "object",
+    "properties": {
+      "name": { "$ref": "https://example.com/name" }
+    }
+  })JSON")};
+
+  auto test_resolver = [](const std::string_view identifier)
+      -> sourcemeta::core::SchemaResolverResult {
+    if (identifier == "https://example.com/name") {
+      return sourcemeta::core::parse_json(R"JSON({
+                "type": "string",
+                "nullable": true
+              })JSON");
+    }
+
+    return sourcemeta::core::schema_resolver(identifier);
+  };
+
+  const auto compiled_schema{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker, test_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation, OPENAPI_3_0_DIALECT)};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON({ "name": 1 })JSON")};
+  EXPECT_FALSE(evaluator.validate(compiled_schema, instance));
+}
+
+TEST(external_reference_answers_to_the_closed_dialect_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "type": "object",
+    "properties": {
+      "name": { "$ref": "https://example.com/name" }
+    }
+  })JSON")};
+
+  auto test_resolver = [](const std::string_view identifier)
+      -> sourcemeta::core::SchemaResolverResult {
+    if (identifier == "https://example.com/name") {
+      return sourcemeta::core::parse_json(R"JSON({
+                "type": "object",
+                "patternProperties": { "^x": { "type": "string" } }
+              })JSON");
+    }
+
+    return sourcemeta::core::schema_resolver(identifier);
+  };
+
+  try {
+    [[maybe_unused]] const auto compiled_schema{sourcemeta::blaze::compile(
+        schema, sourcemeta::core::schema_walker, test_resolver,
+        sourcemeta::blaze::default_schema_compiler,
+        sourcemeta::blaze::Mode::FastValidation, OPENAPI_3_0_DIALECT)};
+    FAIL();
+  } catch (const sourcemeta::blaze::CompilerError &error) {
+    // Where the offending keyword sits after bundling embeds the external
+    // document is a bundling detail, so only the refusal itself is pinned
+    EXPECT_EQ(std::string{error.what()},
+              "This keyword is prohibited by this dialect");
+  }
+}
+
 TEST(format_byte_valid_with_tweak_fast) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "format": "byte"
