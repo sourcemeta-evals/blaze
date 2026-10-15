@@ -855,6 +855,71 @@ TEST(format_int8_is_not_asserted_with_tweak_fast) {
       schema, instance, 0, OPENAPI_3_0_DIALECT, tweaks);
 }
 
+// The string formats below belong to later drafts than the one the Schema
+// Object builds on, so they stay unasserted no matter how assertions are
+// enabled, the way the Draft 4 compiler already treats them
+TEST(format_uri_reference_is_not_asserted_with_tweak_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "format": "uri-reference"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON("%zz")JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_FAST_SUCCESS_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 0, OPENAPI_3_0_DIALECT, tweaks);
+}
+
+TEST(format_uri_template_is_not_asserted_with_tweak_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "format": "uri-template"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON("{unclosed")JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_FAST_SUCCESS_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 0, OPENAPI_3_0_DIALECT, tweaks);
+}
+
+TEST(format_json_pointer_is_not_asserted_with_tweak_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "format": "json-pointer"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON("not/a/pointer")JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_FAST_SUCCESS_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 0, OPENAPI_3_0_DIALECT, tweaks);
+}
+
+// Wright-00 spells this name without the dash, but the Draft 4 compiler
+// never asserted it under either spelling, and neither does this dialect
+TEST(format_uriref_is_not_asserted_with_tweak_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "format": "uriref"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON("%zz")JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_FAST_SUCCESS_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 0, OPENAPI_3_0_DIALECT, tweaks);
+}
+
 TEST(format_uri_is_ignored_without_tweak_fast) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "format": "uri"
