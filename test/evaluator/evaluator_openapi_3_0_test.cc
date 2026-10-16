@@ -578,6 +578,53 @@ TEST(format_int32_valid_with_tweak_fast) {
                                "integer between -2147483648 and 2147483647");
 }
 
+// Annotation extraction only exists from 2019-09 onwards, so even exhaustive
+// mode compiles a format assertion to that one instruction and nothing else
+TEST(format_byte_valid_with_tweak_exhaustive) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "format": "byte"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON("Zm9vYmFy")JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_EXHAUSTIVE_SUCCESS_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 1, OPENAPI_3_0_DIALECT, tweaks);
+
+  EVALUATE_TRACE_PRE(0, AssertionStringType, "/format", "#/format", "");
+  EVALUATE_TRACE_POST_SUCCESS(0, AssertionStringType, "/format", "#/format",
+                              "");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The string value \"Zm9vYmFy\" was expected to "
+                               "represent a valid RFC 4648 Base64 string");
+}
+
+TEST(format_int32_valid_with_tweak_exhaustive) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "format": "int32"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON(7)JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_EXHAUSTIVE_SUCCESS_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 1, OPENAPI_3_0_DIALECT, tweaks);
+
+  EVALUATE_TRACE_PRE(0, AssertionNumberIntegerBounded, "/format", "#/format",
+                     "");
+  EVALUATE_TRACE_POST_SUCCESS(0, AssertionNumberIntegerBounded, "/format",
+                              "#/format", "");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The integer value 7 was expected to be an "
+                               "integer between -2147483648 and 2147483647");
+}
+
 TEST(format_int32_invalid_with_tweak_fast) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "format": "int32"
