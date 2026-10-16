@@ -1092,6 +1092,57 @@ TEST(boolean_reference_target_is_rejected_fast) {
   }
 }
 
+// The overload that takes a pre-built frame must speak the dialect the way
+// the bundling overload does: `nullable` support that lives in a
+// preprocessing step of the latter would vanish on this path
+TEST(nullable_through_the_frame_overload_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "type": "string",
+    "nullable": true
+  })JSON")};
+
+  const sourcemeta::core::SchemaFrame frame{
+      sourcemeta::core::SchemaFrame::Mode::References, schema,
+      sourcemeta::core::schema_walker, sourcemeta::core::schema_resolver,
+      OPENAPI_3_0_DIALECT};
+
+  const auto compiled_schema{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver,
+      sourcemeta::blaze::default_schema_compiler, frame, frame.root(),
+      sourcemeta::blaze::Mode::FastValidation)};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const sourcemeta::core::JSON instance{nullptr};
+  EXPECT_TRUE(evaluator.validate(compiled_schema, instance));
+}
+
+TEST(nullable_array_type_is_refused_through_the_frame_overload_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "type": [ "string", "null" ],
+    "nullable": true
+  })JSON")};
+
+  const sourcemeta::core::SchemaFrame frame{
+      sourcemeta::core::SchemaFrame::Mode::References, schema,
+      sourcemeta::core::schema_walker, sourcemeta::core::schema_resolver,
+      OPENAPI_3_0_DIALECT};
+
+  try {
+    [[maybe_unused]] const auto compiled_schema{sourcemeta::blaze::compile(
+        schema, sourcemeta::core::schema_walker,
+        sourcemeta::core::schema_resolver,
+        sourcemeta::blaze::default_schema_compiler, frame, frame.root(),
+        sourcemeta::blaze::Mode::FastValidation)};
+    FAIL();
+  } catch (const sourcemeta::blaze::CompilerError &error) {
+    EXPECT_EQ(
+        std::string{error.what()},
+        "The value this keyword is set to is not supported by this dialect");
+    EXPECT_EQ(sourcemeta::core::to_string(error.location()), "/type");
+  }
+}
+
 // `date` and `date-time` name different RFC 3339 productions, so neither
 // accepts the other's shape
 TEST(format_date_rejects_a_date_time_with_tweak_fast) {
