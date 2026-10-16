@@ -3192,6 +3192,35 @@ auto is_openapi_numeric_format(const SchemaContext &schema_context,
          name == "double";
 }
 
+// Every OpenAPI version types `int32`, `int64`, `float`, and `double` over
+// numbers, so the assertion each name compiles to is the same wherever it
+// appears. The caller answers for `name` being one of the four
+auto make_openapi_numeric_format_assertion(
+    const Context &context, const SchemaContext &schema_context,
+    const DynamicContext &dynamic_context,
+    const sourcemeta::core::JSON::String &name) -> Instruction {
+  if (name == "int32") {
+    return make(
+        sourcemeta::blaze::InstructionIndex::AssertionNumberIntegerBounded,
+        context, schema_context, dynamic_context,
+        ValueIntegerBounds{std::numeric_limits<std::int32_t>::min(),
+                           std::numeric_limits<std::int32_t>::max()});
+  }
+
+  if (name == "int64") {
+    return make(
+        sourcemeta::blaze::InstructionIndex::AssertionNumberIntegerBounded,
+        context, schema_context, dynamic_context,
+        ValueIntegerBounds{std::numeric_limits<std::int64_t>::min(),
+                           std::numeric_limits<std::int64_t>::max()});
+  }
+
+  return make(sourcemeta::blaze::InstructionIndex::AssertionNumberType, context,
+              schema_context, dynamic_context,
+              name == "float" ? ValueNumberType::Float
+                              : ValueNumberType::Double);
+}
+
 auto compiler_draft3_validation_format(const Context &context,
                                        const SchemaContext &schema_context,
                                        const DynamicContext &dynamic_context,
@@ -3229,26 +3258,8 @@ auto compiler_draft3_validation_format(const Context &context,
     // TODO: Consider asserting the numeric and string formats that the
     // OpenAPI Format Registry defines
     if (is_openapi_numeric_format(schema_context, format)) {
-      Instructions instructions;
-      if (name == "int32") {
-        instructions.push_back(make(
-            sourcemeta::blaze::InstructionIndex::AssertionNumberIntegerBounded,
-            context, schema_context, dynamic_context,
-            ValueIntegerBounds{std::numeric_limits<std::int32_t>::min(),
-                               std::numeric_limits<std::int32_t>::max()}));
-      } else if (name == "int64") {
-        instructions.push_back(make(
-            sourcemeta::blaze::InstructionIndex::AssertionNumberIntegerBounded,
-            context, schema_context, dynamic_context,
-            ValueIntegerBounds{std::numeric_limits<std::int64_t>::min(),
-                               std::numeric_limits<std::int64_t>::max()}));
-      } else {
-        instructions.push_back(
-            make(sourcemeta::blaze::InstructionIndex::AssertionNumberType,
-                 context, schema_context, dynamic_context,
-                 name == "float" ? ValueNumberType::Float
-                                 : ValueNumberType::Double));
-      }
+      Instructions instructions{make_openapi_numeric_format_assertion(
+          context, schema_context, dynamic_context, name)};
 
       // Unlike the string formats, the annotation cannot be grouped by the
       // instance type, as `ControlGroupWhenType` does not take a number
@@ -3376,24 +3387,12 @@ auto compiler_draft3_validation_format(const Context &context,
       schema_context.vocabularies.contains(Known::JSON_SCHEMA_DRAFT_7_HYPER)};
 
   if (schema_context.vocabularies.contains(Known::OPENAPI_3_0_BASE)) {
-    // OpenAPI 3.0 defines these two for numbers, so they cannot resolve to a
+    // OpenAPI 3.0 defines these four for numbers, so they cannot resolve to a
     // string logical type like the rest of this chain does
-    if (name == "int32" || name == "int64") {
-      return {make(
-          sourcemeta::blaze::InstructionIndex::AssertionNumberIntegerBounded,
-          context, schema_context, dynamic_context,
-          name == "int32"
-              ? ValueIntegerBounds{std::numeric_limits<std::int32_t>::min(),
-                                   std::numeric_limits<std::int32_t>::max()}
-              : ValueIntegerBounds{std::numeric_limits<std::int64_t>::min(),
-                                   std::numeric_limits<std::int64_t>::max()})};
-    }
-
-    if (name == "float" || name == "double") {
-      return {make(sourcemeta::blaze::InstructionIndex::AssertionNumberType,
-                   context, schema_context, dynamic_context,
-                   name == "float" ? ValueNumberType::Float
-                                   : ValueNumberType::Double)};
+    if (name == "int32" || name == "int64" || name == "float" ||
+        name == "double") {
+      return {make_openapi_numeric_format_assertion(context, schema_context,
+                                                    dynamic_context, name)};
     }
 
     if (name == "date-time") {
