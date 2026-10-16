@@ -290,6 +290,95 @@ TEST(format_byte_accepts_the_empty_string_with_tweak_fast) {
                                "represent a valid RFC 4648 Base64 string");
 }
 
+// Padding is part of the canonical form, so a strict check accepts it
+TEST(format_byte_accepts_two_padding_characters_with_tweak_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "format": "byte"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON("Zg==")JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_FAST_SUCCESS_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 1, OPENAPI_3_0_DIALECT, tweaks);
+
+  EVALUATE_TRACE_PRE(0, AssertionStringType, "/format", "#/format", "");
+  EVALUATE_TRACE_POST_SUCCESS(0, AssertionStringType, "/format", "#/format",
+                              "");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The string value \"Zg==\" was expected to "
+                               "represent a valid RFC 4648 Base64 string");
+}
+
+TEST(format_byte_accepts_the_full_alphabet_with_tweak_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "format": "byte"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON("+/8=")JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_FAST_SUCCESS_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 1, OPENAPI_3_0_DIALECT, tweaks);
+
+  EVALUATE_TRACE_PRE(0, AssertionStringType, "/format", "#/format", "");
+  EVALUATE_TRACE_POST_SUCCESS(0, AssertionStringType, "/format", "#/format",
+                              "");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The string value \"+/8=\" was expected to "
+                               "represent a valid RFC 4648 Base64 string");
+}
+
+TEST(format_byte_rejects_interior_padding_with_tweak_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "format": "byte"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON("AA==AAAA")JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_FAST_FAILURE_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 1, OPENAPI_3_0_DIALECT, tweaks);
+
+  EVALUATE_TRACE_PRE(0, AssertionStringType, "/format", "#/format", "");
+  EVALUATE_TRACE_POST_FAILURE(0, AssertionStringType, "/format", "#/format",
+                              "");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The string value \"AA==AAAA\" was expected to "
+                               "represent a valid RFC 4648 Base64 string");
+}
+
+TEST(format_byte_rejects_whitespace_with_tweak_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "format": "byte"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON("Zm9v YmFy")JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_FAST_FAILURE_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 1, OPENAPI_3_0_DIALECT, tweaks);
+
+  EVALUATE_TRACE_PRE(0, AssertionStringType, "/format", "#/format", "");
+  EVALUATE_TRACE_POST_FAILURE(0, AssertionStringType, "/format", "#/format",
+                              "");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The string value \"Zm9v YmFy\" was expected "
+                               "to represent a valid RFC 4648 Base64 string");
+}
+
 TEST(format_date_valid_with_tweak_fast) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "format": "date"
@@ -445,6 +534,28 @@ TEST(format_hostname_valid_with_tweak_fast) {
                                "to represent a valid hostname");
 }
 
+TEST(format_hostname_invalid_with_tweak_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "format": "hostname"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON("-foo")JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_FAST_FAILURE_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 1, OPENAPI_3_0_DIALECT, tweaks);
+
+  EVALUATE_TRACE_PRE(0, AssertionStringType, "/format", "#/format", "");
+  EVALUATE_TRACE_POST_FAILURE(0, AssertionStringType, "/format", "#/format",
+                              "");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The string value \"-foo\" was expected to "
+                               "represent a valid hostname");
+}
+
 TEST(format_ipv4_valid_with_tweak_fast) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "format": "ipv4"
@@ -508,6 +619,28 @@ TEST(format_ipv6_valid_with_tweak_fast) {
                               "");
   EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
                                "The string value \"::1\" was expected to "
+                               "represent a valid IPv6 address");
+}
+
+TEST(format_ipv6_invalid_with_tweak_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "format": "ipv6"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON("::g")JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_FAST_FAILURE_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 1, OPENAPI_3_0_DIALECT, tweaks);
+
+  EVALUATE_TRACE_PRE(0, AssertionStringType, "/format", "#/format", "");
+  EVALUATE_TRACE_POST_FAILURE(0, AssertionStringType, "/format", "#/format",
+                              "");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The string value \"::g\" was expected to "
                                "represent a valid IPv6 address");
 }
 
