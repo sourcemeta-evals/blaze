@@ -379,6 +379,122 @@ TEST(format_byte_rejects_whitespace_with_tweak_fast) {
                                "to represent a valid RFC 4648 Base64 string");
 }
 
+TEST(format_byte_ignores_non_strings_with_tweak_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "format": "byte"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON(1)JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_FAST_SUCCESS_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 0, OPENAPI_3_0_DIALECT, tweaks);
+}
+
+// The check reads every byte of the string, so a NUL does not end it early
+// and a byte outside ASCII is just another byte outside the alphabet
+TEST(format_byte_rejects_an_embedded_nul_with_tweak_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "format": "byte"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON("Zg==\u0000")JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_FAST_FAILURE_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 1, OPENAPI_3_0_DIALECT, tweaks);
+
+  EVALUATE_TRACE_PRE(0, AssertionStringType, "/format", "#/format", "");
+  EVALUATE_TRACE_POST_FAILURE(0, AssertionStringType, "/format", "#/format",
+                              "");
+  // The description carries the raw NUL byte, so the expectation has to be
+  // built with an explicit length rather than from a literal that would end
+  // at that byte
+  std::string expected_message{"The string value \"Zg=="};
+  expected_message.push_back('\0');
+  expected_message +=
+      "\" was expected to represent a valid RFC 4648 Base64 string";
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0, expected_message);
+}
+
+TEST(format_byte_rejects_non_ascii_with_tweak_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "format": "byte"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON("éAAA")JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_FAST_FAILURE_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 1, OPENAPI_3_0_DIALECT, tweaks);
+
+  EVALUATE_TRACE_PRE(0, AssertionStringType, "/format", "#/format", "");
+  EVALUATE_TRACE_POST_FAILURE(0, AssertionStringType, "/format", "#/format",
+                              "");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The string value \"\u00e9AAA\" was expected "
+                               "to represent a valid RFC 4648 Base64 string");
+}
+
+// `nullable` widens `type`, while the format assertion stays bound to
+// strings: a null passes with no format callback at all, and a string keeps
+// answering to the strict check
+TEST(format_byte_accepts_null_when_nullable_with_tweak_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "type": "string",
+    "nullable": true,
+    "format": "byte"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{nullptr};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_FAST_SUCCESS_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 1, OPENAPI_3_0_DIALECT, tweaks);
+
+  EVALUATE_TRACE_PRE(0, AssertionTypeStrictAny, "/type", "#/type", "");
+  EVALUATE_TRACE_POST_SUCCESS(0, AssertionTypeStrictAny, "/type", "#/type", "");
+  EVALUATE_TRACE_POST_DESCRIBE(
+      instance, 0,
+      "The value was expected to be of type null, or string and it was of "
+      "type null");
+}
+
+TEST(format_byte_still_asserts_beside_nullable_with_tweak_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "type": "string",
+    "nullable": true,
+    "format": "byte"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON("notbase64!")JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_FAST_FAILURE_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 1, OPENAPI_3_0_DIALECT, tweaks);
+
+  EVALUATE_TRACE_PRE(0, AssertionStringType, "/format", "#/format", "");
+  EVALUATE_TRACE_POST_FAILURE(0, AssertionStringType, "/format", "#/format",
+                              "");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The string value \"notbase64!\" was expected "
+                               "to represent a valid RFC 4648 Base64 string");
+}
+
 TEST(format_date_valid_with_tweak_fast) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "format": "date"
@@ -1274,6 +1390,38 @@ TEST(nullable_array_type_is_refused_through_the_frame_overload_fast) {
         "The value this keyword is set to is not supported by this dialect");
     EXPECT_EQ(sourcemeta::core::to_string(error.location()), "/type");
   }
+}
+
+// A subschema the walker cannot reach, such as one parked under an `x-`
+// container, still compiles under the external default when named as an
+// entrypoint through an explicitly framed path
+TEST(nullable_through_a_nested_entrypoint_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "x-definitions": {
+      "foo": { "type": "string", "nullable": true }
+    }
+  })JSON")};
+
+  const sourcemeta::core::Pointer foo{"x-definitions", "foo"};
+  const sourcemeta::core::SchemaFrame frame{
+      sourcemeta::core::SchemaFrame::Mode::References,
+      schema,
+      sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver,
+      OPENAPI_3_0_DIALECT,
+      "",
+      sourcemeta::core::SchemaFrame::IdentifierMode::Additional,
+      {sourcemeta::core::to_weak_pointer(foo)}};
+
+  const auto compiled_schema{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver,
+      sourcemeta::blaze::default_schema_compiler, frame, "#/x-definitions/foo",
+      sourcemeta::blaze::Mode::FastValidation)};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const sourcemeta::core::JSON instance{nullptr};
+  EXPECT_TRUE(evaluator.validate(compiled_schema, instance));
 }
 
 // `date` and `date-time` name different RFC 3339 productions, so neither

@@ -571,5 +571,77 @@
       "base": "",
       "location": ""
     }
+  },
+  {
+    "description": "type_integer",
+    "schema": { "type": 1 },
+    "error": {
+      "message": "The value this keyword is set to is not supported by this dialect",
+      "base": "",
+      "location": "/type"
+    }
+  },
+  {
+    "description": "type_object",
+    "schema": { "type": {} },
+    "error": {
+      "message": "The value this keyword is set to is not supported by this dialect",
+      "base": "",
+      "location": "/type"
+    }
+  },
+  {
+    "description": "discriminator_mapping_not_an_object",
+    "schema": { "discriminator": { "propertyName": "pet_type", "mapping": [] } },
+    "error": {
+      "message": "This keyword was expected to be set to an object of the shape this dialect defines",
+      "base": "",
+      "location": "/discriminator"
+    }
+  },
+  {
+    "description": "xml_namespace_not_a_string",
+    "schema": { "xml": { "namespace": 1 } },
+    "error": {
+      "message": "This keyword was expected to be set to an object of the shape this dialect defines",
+      "base": "",
+      "location": "/xml"
+    }
+  },
+  {
+    "description": "xml_prefix_not_a_string",
+    "schema": { "xml": { "prefix": true } },
+    "error": {
+      "message": "This keyword was expected to be set to an object of the shape this dialect defines",
+      "base": "",
+      "location": "/xml"
+    }
+  },
+  {
+    "description": "external_docs_description_not_a_string",
+    "schema": { "externalDocs": { "url": "https://example.com", "description": 1 } },
+    "error": {
+      "message": "This keyword was expected to be set to an object of the shape this dialect defines",
+      "base": "",
+      "location": "/externalDocs"
+    }
+  },
+  {
+    "description": "all_of_not_an_array",
+    "schema": { "allOf": 5 },
+    "error": {
+      "message": "This keyword was expected to be set to an array of valid schemas",
+      "base": "",
+      "location": "/allOf"
+    }
+  },
+  {
+    "description": "one_of_element_not_a_schema",
+    "schema": { "oneOf": [ 5 ] },
+    "error": {
+      "message": "This keyword was expected to be set to a non-empty array of valid schemas",
+      "base": "",
+      "location": "/oneOf"
+    }
   }
 ]
