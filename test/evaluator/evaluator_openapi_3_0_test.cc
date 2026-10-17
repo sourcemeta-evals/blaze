@@ -176,6 +176,118 @@ TEST(external_reference_answers_to_the_closed_dialect_fast) {
   }
 }
 
+// A root Reference Object is only rejected over the members beside `$ref`, so
+// a root that is nothing but `$ref` must resolve like any other reference.
+// Only this dialect gives `nullable` a meaning, so a null passing is what
+// shows the default dialect reached the externally resolved document
+TEST(root_reference_without_siblings_accepts_null_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$ref": "https://example.com/target"
+  })JSON")};
+
+  auto test_resolver = [](const std::string_view identifier)
+      -> sourcemeta::core::SchemaResolverResult {
+    if (identifier == "https://example.com/target") {
+      return sourcemeta::core::parse_json(R"JSON({
+                "type": "integer",
+                "nullable": true
+              })JSON");
+    }
+
+    return sourcemeta::core::schema_resolver(identifier);
+  };
+
+  const auto compiled_schema{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker, test_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation, OPENAPI_3_0_DIALECT)};
+
+  const sourcemeta::core::JSON instance{sourcemeta::core::parse_json("null")};
+  EVALUATE_WITH_TRACE(compiled_schema, instance, 1);
+  EXPECT_TRUE(result);
+
+  EVALUATE_TRACE_PRE(0, AssertionTypeStrictAny, "/allOf/0/$ref/type",
+                     "#/x-definitions/https:~1~1example.com~1target/type", "");
+  EVALUATE_TRACE_POST_SUCCESS(
+      0, AssertionTypeStrictAny, "/allOf/0/$ref/type",
+      "#/x-definitions/https:~1~1example.com~1target/type", "");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The value was expected to be of type null, or "
+                               "integer and it was of type null");
+}
+
+TEST(root_reference_without_siblings_accepts_an_integer_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$ref": "https://example.com/target"
+  })JSON")};
+
+  auto test_resolver = [](const std::string_view identifier)
+      -> sourcemeta::core::SchemaResolverResult {
+    if (identifier == "https://example.com/target") {
+      return sourcemeta::core::parse_json(R"JSON({
+                "type": "integer",
+                "nullable": true
+              })JSON");
+    }
+
+    return sourcemeta::core::schema_resolver(identifier);
+  };
+
+  const auto compiled_schema{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker, test_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation, OPENAPI_3_0_DIALECT)};
+
+  const sourcemeta::core::JSON instance{sourcemeta::core::parse_json("1")};
+  EVALUATE_WITH_TRACE(compiled_schema, instance, 1);
+  EXPECT_TRUE(result);
+
+  EVALUATE_TRACE_PRE(0, AssertionTypeStrictAny, "/allOf/0/$ref/type",
+                     "#/x-definitions/https:~1~1example.com~1target/type", "");
+  EVALUATE_TRACE_POST_SUCCESS(
+      0, AssertionTypeStrictAny, "/allOf/0/$ref/type",
+      "#/x-definitions/https:~1~1example.com~1target/type", "");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The value was expected to be of type null, or "
+                               "integer and it was of type integer");
+}
+
+TEST(root_reference_without_siblings_rejects_a_string_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$ref": "https://example.com/target"
+  })JSON")};
+
+  auto test_resolver = [](const std::string_view identifier)
+      -> sourcemeta::core::SchemaResolverResult {
+    if (identifier == "https://example.com/target") {
+      return sourcemeta::core::parse_json(R"JSON({
+                "type": "integer",
+                "nullable": true
+              })JSON");
+    }
+
+    return sourcemeta::core::schema_resolver(identifier);
+  };
+
+  const auto compiled_schema{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker, test_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation, OPENAPI_3_0_DIALECT)};
+
+  const sourcemeta::core::JSON instance{sourcemeta::core::parse_json("\"1\"")};
+  EVALUATE_WITH_TRACE(compiled_schema, instance, 1);
+  EXPECT_FALSE(result);
+
+  EVALUATE_TRACE_PRE(0, AssertionTypeStrictAny, "/allOf/0/$ref/type",
+                     "#/x-definitions/https:~1~1example.com~1target/type", "");
+  EVALUATE_TRACE_POST_FAILURE(
+      0, AssertionTypeStrictAny, "/allOf/0/$ref/type",
+      "#/x-definitions/https:~1~1example.com~1target/type", "");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The value was expected to be of type null, or "
+                               "integer but it was of type string");
+}
+
 TEST(format_byte_valid_with_tweak_fast) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "format": "byte"
@@ -492,6 +604,74 @@ TEST(format_byte_still_asserts_beside_nullable_with_tweak_fast) {
                               "");
   EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
                                "The string value \"notbase64!\" was expected "
+                               "to represent a valid RFC 4648 Base64 string");
+}
+
+// The root-level cases cannot tell a correctly placed assertion from one that
+// only ever reports the schema and instance roots, so a property schema pins
+// the nested keyword and instance locations
+TEST(format_byte_within_properties_valid_with_tweak_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "format": "byte" }
+    }
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON({ "data": "Zg==" })JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_FAST_SUCCESS_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 3, OPENAPI_3_0_DIALECT, tweaks);
+
+  EVALUATE_TRACE_PRE(0, AssertionStringType, "/properties/data/format",
+                     "#/properties/data/format", "/data");
+  EVALUATE_TRACE_PRE(1, AssertionPropertyTypeStrict, "/properties/data/type",
+                     "#/properties/data/type", "/data");
+  EVALUATE_TRACE_PRE(2, AssertionTypeStrict, "/type", "#/type", "");
+
+  EVALUATE_TRACE_POST_SUCCESS(0, AssertionStringType, "/properties/data/format",
+                              "#/properties/data/format", "/data");
+  EVALUATE_TRACE_POST_SUCCESS(1, AssertionPropertyTypeStrict,
+                              "/properties/data/type", "#/properties/data/type",
+                              "/data");
+  EVALUATE_TRACE_POST_SUCCESS(2, AssertionTypeStrict, "/type", "#/type", "");
+
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The string value \"Zg==\" was expected to "
+                               "represent a valid RFC 4648 Base64 string");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 1,
+                               "The value was expected to be of type string");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 2,
+                               "The value was expected to be of type object");
+}
+
+TEST(format_byte_within_properties_invalid_with_tweak_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "format": "byte" }
+    }
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON({ "data": "not base64" })JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_FAST_FAILURE_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 1, OPENAPI_3_0_DIALECT, tweaks);
+
+  EVALUATE_TRACE_PRE(0, AssertionStringType, "/properties/data/format",
+                     "#/properties/data/format", "/data");
+  EVALUATE_TRACE_POST_FAILURE(0, AssertionStringType, "/properties/data/format",
+                              "#/properties/data/format", "/data");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The string value \"not base64\" was expected "
                                "to represent a valid RFC 4648 Base64 string");
 }
 
