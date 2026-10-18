@@ -1729,6 +1729,193 @@
     }
   },
   {
+    "description": "nullable_object_closed_match_1",
+    "schema": {
+      "type": "object",
+      "nullable": true,
+      "additionalProperties": false,
+      "required": [ "a" ],
+      "properties": { "a": { "type": "string" } }
+    },
+    "instance": { "a": "x" },
+    "valid": true,
+    "fast": {
+      "pre": [
+        [ "AssertionDefines", "/required", "#/required", "" ],
+        [ "LoopPropertiesTypeStrict", "/properties", "#/properties", "" ],
+        [ "LoopPropertiesExcept", "/additionalProperties", "#/additionalProperties", "" ],
+        [ "AssertionTypeStrictAny", "/type", "#/type", "" ]
+      ],
+      "post": [
+        [ true, "AssertionDefines", "/required", "#/required", "" ],
+        [ true, "LoopPropertiesTypeStrict", "/properties", "#/properties", "" ],
+        [ true, "LoopPropertiesExcept", "/additionalProperties", "#/additionalProperties", "" ],
+        [ true, "AssertionTypeStrictAny", "/type", "#/type", "" ]
+      ],
+      "descriptions": [
+        "The object value was expected to define the property \"a\"",
+        "The object properties were expected to be of type string",
+        "The object value was not expected to define additional properties",
+        "The value was expected to be of type null, or object and it was of type object"
+      ]
+    },
+    "exhaustive": {
+      "pre": [
+        [ "AssertionDefines", "/required", "#/required", "" ],
+        [ "LogicalWhenType", "/properties", "#/properties", "" ],
+        [ "AssertionTypeStrict", "/properties/a/type", "#/properties/a/type", "/a" ],
+        [ "LoopPropertiesExcept", "/additionalProperties", "#/additionalProperties", "" ],
+        [ "AssertionTypeStrictAny", "/type", "#/type", "" ]
+      ],
+      "post": [
+        [ true, "AssertionDefines", "/required", "#/required", "" ],
+        [ true, "AssertionTypeStrict", "/properties/a/type", "#/properties/a/type", "/a" ],
+        [ true, "LogicalWhenType", "/properties", "#/properties", "" ],
+        [ true, "LoopPropertiesExcept", "/additionalProperties", "#/additionalProperties", "" ],
+        [ true, "AssertionTypeStrictAny", "/type", "#/type", "" ]
+      ],
+      "descriptions": [
+        "The object value was expected to define the property \"a\"",
+        "The value was expected to be of type string",
+        "The object value was expected to validate against the single defined property subschema",
+        "The object value was not expected to define additional properties",
+        "The value was expected to be of type null, or object and it was of type object"
+      ]
+    }
+  },
+  {
+    "description": "nullable_object_closed_extra_1",
+    "schema": {
+      "type": "object",
+      "nullable": true,
+      "additionalProperties": false,
+      "required": [ "a" ],
+      "properties": { "a": { "type": "string" } }
+    },
+    "instance": { "a": "x", "extra": "y" },
+    "valid": false,
+    "fast": {
+      "pre": [
+        [ "AssertionDefines", "/required", "#/required", "" ],
+        [ "LoopPropertiesTypeStrict", "/properties", "#/properties", "" ],
+        [ "LoopPropertiesExcept", "/additionalProperties", "#/additionalProperties", "" ],
+        [ "AssertionFail", "/additionalProperties", "#/additionalProperties", "/extra" ]
+      ],
+      "post": [
+        [ true, "AssertionDefines", "/required", "#/required", "" ],
+        [ true, "LoopPropertiesTypeStrict", "/properties", "#/properties", "" ],
+        [ false, "AssertionFail", "/additionalProperties", "#/additionalProperties", "/extra" ],
+        [ false, "LoopPropertiesExcept", "/additionalProperties", "#/additionalProperties", "" ]
+      ],
+      "descriptions": [
+        "The object value was expected to define the property \"a\"",
+        "The object properties were expected to be of type string",
+        "The object value was not expected to define the property \"extra\"",
+        "The object value was not expected to define additional properties"
+      ]
+    },
+    "exhaustive": {
+      "pre": [
+        [ "AssertionDefines", "/required", "#/required", "" ],
+        [ "LogicalWhenType", "/properties", "#/properties", "" ],
+        [ "AssertionTypeStrict", "/properties/a/type", "#/properties/a/type", "/a" ],
+        [ "LoopPropertiesExcept", "/additionalProperties", "#/additionalProperties", "" ],
+        [ "AssertionFail", "/additionalProperties", "#/additionalProperties", "/extra" ]
+      ],
+      "post": [
+        [ true, "AssertionDefines", "/required", "#/required", "" ],
+        [ true, "AssertionTypeStrict", "/properties/a/type", "#/properties/a/type", "/a" ],
+        [ true, "LogicalWhenType", "/properties", "#/properties", "" ],
+        [ false, "AssertionFail", "/additionalProperties", "#/additionalProperties", "/extra" ],
+        [ false, "LoopPropertiesExcept", "/additionalProperties", "#/additionalProperties", "" ]
+      ],
+      "descriptions": [
+        "The object value was expected to define the property \"a\"",
+        "The value was expected to be of type string",
+        "The object value was expected to validate against the single defined property subschema",
+        "The object value was not expected to define the property \"extra\"",
+        "The object value was not expected to define additional properties"
+      ]
+    }
+  },
+  {
+    "description": "nullable_object_closed_missing_1",
+    "schema": {
+      "type": "object",
+      "nullable": true,
+      "additionalProperties": false,
+      "required": [ "a" ],
+      "properties": { "a": { "type": "string" } }
+    },
+    "instance": {},
+    "valid": false,
+    "fast": {
+      "pre": [
+        [ "AssertionDefines", "/required", "#/required", "" ]
+      ],
+      "post": [
+        [ false, "AssertionDefines", "/required", "#/required", "" ]
+      ],
+      "descriptions": [
+        "The object value was expected to define the property \"a\""
+      ]
+    },
+    "exhaustive": {
+      "pre": [
+        [ "AssertionDefines", "/required", "#/required", "" ]
+      ],
+      "post": [
+        [ false, "AssertionDefines", "/required", "#/required", "" ]
+      ],
+      "descriptions": [
+        "The object value was expected to define the property \"a\""
+      ]
+    }
+  },
+  {
+    "description": "nullable_object_closed_mismatch_1",
+    "schema": {
+      "type": "object",
+      "nullable": true,
+      "additionalProperties": false,
+      "required": [ "a" ],
+      "properties": { "a": { "type": "string" } }
+    },
+    "instance": { "a": 1 },
+    "valid": false,
+    "fast": {
+      "pre": [
+        [ "AssertionDefines", "/required", "#/required", "" ],
+        [ "LoopPropertiesTypeStrict", "/properties", "#/properties", "" ]
+      ],
+      "post": [
+        [ true, "AssertionDefines", "/required", "#/required", "" ],
+        [ false, "LoopPropertiesTypeStrict", "/properties", "#/properties", "" ]
+      ],
+      "descriptions": [
+        "The object value was expected to define the property \"a\"",
+        "The object properties were expected to be of type string"
+      ]
+    },
+    "exhaustive": {
+      "pre": [
+        [ "AssertionDefines", "/required", "#/required", "" ],
+        [ "LogicalWhenType", "/properties", "#/properties", "" ],
+        [ "AssertionTypeStrict", "/properties/a/type", "#/properties/a/type", "/a" ]
+      ],
+      "post": [
+        [ true, "AssertionDefines", "/required", "#/required", "" ],
+        [ false, "AssertionTypeStrict", "/properties/a/type", "#/properties/a/type", "/a" ],
+        [ false, "LogicalWhenType", "/properties", "#/properties", "" ]
+      ],
+      "descriptions": [
+        "The object value was expected to define the property \"a\"",
+        "The value was expected to be of type string but it was of type integer",
+        "The object value was expected to validate against the single defined property subschema"
+      ]
+    }
+  },
+  {
     "description": "format_uri_ignored_1",
     "schema": { "format": "uri" },
     "instance": "not a uri at all",
