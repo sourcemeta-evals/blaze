@@ -675,6 +675,71 @@ TEST(format_byte_within_properties_invalid_with_tweak_fast) {
                                "to represent a valid RFC 4648 Base64 string");
 }
 
+// Serialized templates are a product surface, and textual round-trip equality
+// alone cannot show the rebuilt instructions still evaluate, so these run the
+// deserialized template
+TEST(format_byte_accepts_through_a_deserialized_template_with_tweak_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "format": "byte"
+  })JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  const auto compiled_schema{
+      sourcemeta::blaze::compile(schema, sourcemeta::core::schema_walker,
+                                 sourcemeta::core::schema_resolver,
+                                 sourcemeta::blaze::default_schema_compiler,
+                                 sourcemeta::blaze::Mode::FastValidation,
+                                 OPENAPI_3_0_DIALECT, "", "", tweaks)};
+  const auto restored{sourcemeta::blaze::from_json(
+      sourcemeta::blaze::to_json(compiled_schema))};
+  EXPECT_TRUE(restored.has_value());
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON("Zg==")JSON")};
+  EVALUATE_WITH_TRACE(restored.value(), instance, 1);
+  EXPECT_TRUE(result);
+
+  EVALUATE_TRACE_PRE(0, AssertionStringType, "/format", "#/format", "");
+  EVALUATE_TRACE_POST_SUCCESS(0, AssertionStringType, "/format", "#/format",
+                              "");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The string value \"Zg==\" was expected to "
+                               "represent a valid RFC 4648 Base64 string");
+}
+
+TEST(format_byte_rejects_through_a_deserialized_template_with_tweak_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "format": "byte"
+  })JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  const auto compiled_schema{
+      sourcemeta::blaze::compile(schema, sourcemeta::core::schema_walker,
+                                 sourcemeta::core::schema_resolver,
+                                 sourcemeta::blaze::default_schema_compiler,
+                                 sourcemeta::blaze::Mode::FastValidation,
+                                 OPENAPI_3_0_DIALECT, "", "", tweaks)};
+  const auto restored{sourcemeta::blaze::from_json(
+      sourcemeta::blaze::to_json(compiled_schema))};
+  EXPECT_TRUE(restored.has_value());
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON("not base64")JSON")};
+  EVALUATE_WITH_TRACE(restored.value(), instance, 1);
+  EXPECT_FALSE(result);
+
+  EVALUATE_TRACE_PRE(0, AssertionStringType, "/format", "#/format", "");
+  EVALUATE_TRACE_POST_FAILURE(0, AssertionStringType, "/format", "#/format",
+                              "");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The string value \"not base64\" was expected "
+                               "to represent a valid RFC 4648 Base64 string");
+}
+
 TEST(format_date_valid_with_tweak_fast) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "format": "date"
@@ -1149,6 +1214,104 @@ TEST(format_int64_beyond_range_with_tweak_fast) {
       "between -9223372036854775808 and 9223372036854775807");
 }
 
+// Two's complement makes each lower bound one further from zero than its
+// upper bound, which is exactly where a hand-written range check slips
+TEST(format_int32_accepts_the_lower_bound_with_tweak_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "format": "int32"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON(-2147483648)JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_FAST_SUCCESS_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 1, OPENAPI_3_0_DIALECT, tweaks);
+
+  EVALUATE_TRACE_PRE(0, AssertionNumberIntegerBounded, "/format", "#/format",
+                     "");
+  EVALUATE_TRACE_POST_SUCCESS(0, AssertionNumberIntegerBounded, "/format",
+                              "#/format", "");
+  EVALUATE_TRACE_POST_DESCRIBE(
+      instance, 0,
+      "The integer value -2147483648 was expected to be an integer between "
+      "-2147483648 and 2147483647");
+}
+
+TEST(format_int32_below_range_with_tweak_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "format": "int32"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON(-2147483649)JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_FAST_FAILURE_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 1, OPENAPI_3_0_DIALECT, tweaks);
+
+  EVALUATE_TRACE_PRE(0, AssertionNumberIntegerBounded, "/format", "#/format",
+                     "");
+  EVALUATE_TRACE_POST_FAILURE(0, AssertionNumberIntegerBounded, "/format",
+                              "#/format", "");
+  EVALUATE_TRACE_POST_DESCRIBE(
+      instance, 0,
+      "The integer value -2147483649 was expected to be an integer between "
+      "-2147483648 and 2147483647");
+}
+
+TEST(format_int64_accepts_the_lower_bound_with_tweak_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "format": "int64"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON(-9223372036854775808)JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_FAST_SUCCESS_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 1, OPENAPI_3_0_DIALECT, tweaks);
+
+  EVALUATE_TRACE_PRE(0, AssertionNumberIntegerBounded, "/format", "#/format",
+                     "");
+  EVALUATE_TRACE_POST_SUCCESS(0, AssertionNumberIntegerBounded, "/format",
+                              "#/format", "");
+  EVALUATE_TRACE_POST_DESCRIBE(
+      instance, 0,
+      "The integer value -9223372036854775808 was expected to be an integer "
+      "between -9223372036854775808 and 9223372036854775807");
+}
+
+TEST(format_int64_below_range_with_tweak_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "format": "int64"
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON(-9223372036854775809)JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_FAST_FAILURE_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 1, OPENAPI_3_0_DIALECT, tweaks);
+
+  EVALUATE_TRACE_PRE(0, AssertionNumberIntegerBounded, "/format", "#/format",
+                     "");
+  EVALUATE_TRACE_POST_FAILURE(0, AssertionNumberIntegerBounded, "/format",
+                              "#/format", "");
+  EVALUATE_TRACE_POST_DESCRIBE(
+      instance, 0,
+      "The integer value -9223372036854775809 was expected to be an integer "
+      "between -9223372036854775808 and 9223372036854775807");
+}
+
 TEST(format_float_valid_with_tweak_fast) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "format": "float"
@@ -1474,6 +1637,45 @@ TEST(malformed_nullable_beside_ref_is_ignored_fast) {
                               "#/x-definitions/A/type", "");
   EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
                                "The value was expected to be of type integer");
+}
+
+// A Reference Object ignores every sibling keyword, and that must hold for
+// `format` even when format assertions are enabled: the instance violates the
+// sibling `byte` yet satisfies the referenced target
+TEST(format_beside_a_nested_reference_is_ignored_with_tweak_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "type": "object",
+    "properties": {
+      "data": { "$ref": "#/x-definitions/S", "format": "byte" }
+    },
+    "x-definitions": {
+      "S": { "type": "string" }
+    }
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON({ "data": "not base64" })JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_FAST_SUCCESS_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 2, OPENAPI_3_0_DIALECT, tweaks);
+
+  EVALUATE_TRACE_PRE(0, AssertionPropertyTypeStrict,
+                     "/properties/data/$ref/type", "#/x-definitions/S/type",
+                     "/data");
+  EVALUATE_TRACE_PRE(1, AssertionTypeStrict, "/type", "#/type", "");
+
+  EVALUATE_TRACE_POST_SUCCESS(0, AssertionPropertyTypeStrict,
+                              "/properties/data/$ref/type",
+                              "#/x-definitions/S/type", "/data");
+  EVALUATE_TRACE_POST_SUCCESS(1, AssertionTypeStrict, "/type", "#/type", "");
+
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The value was expected to be of type string");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 1,
+                               "The value was expected to be of type object");
 }
 
 TEST(malformed_nullable_without_ref_is_rejected_fast) {

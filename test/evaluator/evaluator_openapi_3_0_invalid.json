@@ -643,5 +643,59 @@
       "base": "",
       "location": "/oneOf"
     }
+  },
+  {
+    "description": "title_not_a_string",
+    "schema": { "title": 1 },
+    "error": {
+      "message": "This keyword was expected to be set to a string",
+      "base": "",
+      "location": "/title"
+    }
+  },
+  {
+    "description": "description_not_a_string",
+    "schema": { "description": 1 },
+    "error": {
+      "message": "This keyword was expected to be set to a string",
+      "base": "",
+      "location": "/description"
+    }
+  },
+  {
+    "description": "format_not_a_string",
+    "schema": { "format": 1 },
+    "error": {
+      "message": "This keyword was expected to be set to a string",
+      "base": "",
+      "location": "/format"
+    }
+  },
+  {
+    "description": "read_only_not_a_boolean",
+    "schema": { "readOnly": "yes" },
+    "error": {
+      "message": "This keyword was expected to be set to a boolean",
+      "base": "",
+      "location": "/readOnly"
+    }
+  },
+  {
+    "description": "write_only_not_a_boolean",
+    "schema": { "writeOnly": 1 },
+    "error": {
+      "message": "This keyword was expected to be set to a boolean",
+      "base": "",
+      "location": "/writeOnly"
+    }
+  },
+  {
+    "description": "deprecated_not_a_boolean",
+    "schema": { "deprecated": "no" },
+    "error": {
+      "message": "This keyword was expected to be set to a boolean",
+      "base": "",
+      "location": "/deprecated"
+    }
   }
 ]
