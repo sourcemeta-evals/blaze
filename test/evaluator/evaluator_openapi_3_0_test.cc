@@ -675,6 +675,43 @@ TEST(format_byte_within_properties_invalid_with_tweak_fast) {
                                "to represent a valid RFC 4648 Base64 string");
 }
 
+// The root-level exhaustive case cannot show a nested failure propagating
+// through the properties wrapper that fast mode never emits
+TEST(format_byte_within_properties_invalid_with_tweak_exhaustive) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "format": "byte" }
+    }
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON({ "data": "not base64" })JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_EXHAUSTIVE_FAILURE_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 2, OPENAPI_3_0_DIALECT, tweaks);
+
+  EVALUATE_TRACE_PRE(0, LogicalWhenType, "/properties", "#/properties", "");
+  EVALUATE_TRACE_PRE(1, AssertionStringType, "/properties/data/format",
+                     "#/properties/data/format", "/data");
+
+  EVALUATE_TRACE_POST_FAILURE(0, AssertionStringType, "/properties/data/format",
+                              "#/properties/data/format", "/data");
+  EVALUATE_TRACE_POST_FAILURE(1, LogicalWhenType, "/properties", "#/properties",
+                              "");
+
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The string value \"not base64\" was expected "
+                               "to represent a valid RFC 4648 Base64 string");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 1,
+                               "The object value was expected to validate "
+                               "against the single defined property "
+                               "subschema");
+}
+
 // Serialized templates are a product surface, and textual round-trip equality
 // alone cannot show the rebuilt instructions still evaluate, so these run the
 // deserialized template

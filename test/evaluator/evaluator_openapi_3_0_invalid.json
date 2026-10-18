@@ -697,5 +697,21 @@
       "base": "",
       "location": "/deprecated"
     }
+  },
+  {
+    "description": "nested_dialect_declaration_is_prohibited",
+    "schema": {
+      "properties": {
+        "foo": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "string"
+        }
+      }
+    },
+    "error": {
+      "message": "This keyword is prohibited by this dialect",
+      "base": "",
+      "location": "/properties/foo/$schema"
+    }
   }
 ]
