@@ -1020,6 +1020,11 @@ INSTRUCTION_HANDLER(AssertionStringType) {
     case ValueStringType::Color:
       result = is_css2_color(target);
       break;
+    case ValueStringType::Base64: {
+      const auto decoded{sourcemeta::core::base64_decode(target)};
+      result = decoded.has_value();
+      break;
+    }
     default:
       std::unreachable();
   }

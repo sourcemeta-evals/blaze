@@ -13,3 +13,6 @@ Brewfile.lock.json
 .DS_Store
 .cache
 node_modules
+
+# Local experiment scratch space
+scratch/
