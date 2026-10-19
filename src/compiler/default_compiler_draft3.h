@@ -2423,33 +2423,6 @@ auto compiler_draft3_validation_minimum(const Context &context,
                    schema_context.schema.at(dynamic_context.keyword)})};
 }
 
-// Whether the name was one this function knows, so that callers can tell an
-// unrecognised name apart from one that set no bit
-auto assign_type_bit(sourcemeta::blaze::ValueTypes &types,
-                     const std::string_view name) -> bool {
-  if (name == "null") {
-    types.set(std::to_underlying(sourcemeta::core::JSON::Type::Null));
-  } else if (name == "boolean") {
-    types.set(std::to_underlying(sourcemeta::core::JSON::Type::Boolean));
-  } else if (name == "object") {
-    types.set(std::to_underlying(sourcemeta::core::JSON::Type::Object));
-  } else if (name == "array") {
-    types.set(std::to_underlying(sourcemeta::core::JSON::Type::Array));
-  } else if (name == "number") {
-    types.set(std::to_underlying(sourcemeta::core::JSON::Type::Integer));
-    types.set(std::to_underlying(sourcemeta::core::JSON::Type::Real));
-    types.set(std::to_underlying(sourcemeta::core::JSON::Type::Decimal));
-  } else if (name == "integer") {
-    types.set(std::to_underlying(sourcemeta::core::JSON::Type::Integer));
-  } else if (name == "string") {
-    types.set(std::to_underlying(sourcemeta::core::JSON::Type::String));
-  } else {
-    return false;
-  }
-
-  return true;
-}
-
 auto compiler_draft3_validation_type(const Context &context,
                                      const SchemaContext &schema_context,
                                      const DynamicContext &dynamic_context,
@@ -2463,12 +2436,12 @@ auto compiler_draft3_validation_type(const Context &context,
 
   // This dialect types `type` as a string drawn from six names. It has no
   // array form and no null type, offering `nullable` in place of the latter.
-  // `assign_type_bit` answers for the seven JSON Schema names, so the null one
-  // has to be ruled out separately
+  // `draft3_set_type_bits` answers for the seven JSON Schema names, so the
+  // null one has to be ruled out separately
   if (schema_context.vocabularies.contains(Known::OPENAPI_3_0_BASE)) {
     ValueTypes recognised{};
     if (!value.is_string() || value.to_string() == "null" ||
-        !assign_type_bit(recognised, value.to_string())) {
+        !draft3_set_type_bits(value.to_string(), recognised)) {
       throw sourcemeta::blaze::CompilerError(
           schema_context.base,
           absolute_schema_location(context, schema_context),
@@ -2862,7 +2835,7 @@ auto compiler_draft3_validation_type(const Context &context,
         continue;
       }
 
-      if (!assign_type_bit(types, element.to_string()) && !is_draft3) {
+      if (!draft3_set_type_bits(element.to_string(), types) && !is_draft3) {
         throw sourcemeta::blaze::CompilerError(
             schema_context.base,
             absolute_schema_location(context, schema_context),
