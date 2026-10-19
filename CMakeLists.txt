@@ -133,6 +133,8 @@ if(PROJECT_IS_TOP_LEVEL)
         "${PROJECT_SOURCE_DIR}/test/evaluator/evaluator_2020_12.json"
         "${PROJECT_SOURCE_DIR}/test/evaluator/evaluator_2020_12_invalid.json"
         "${PROJECT_SOURCE_DIR}/test/evaluator/evaluator_openapi_3_1.json"
+        "${PROJECT_SOURCE_DIR}/test/evaluator/evaluator_openapi_3_0.json"
+        "${PROJECT_SOURCE_DIR}/test/evaluator/evaluator_openapi_3_0_invalid.json"
         "${PROJECT_SOURCE_DIR}/test/evaluator/evaluator_openapi_3_2.json"
         "${PROJECT_SOURCE_DIR}/test/output/output_standard_basic.json"
         "${PROJECT_SOURCE_DIR}/test/output/output_standard_flag.json"

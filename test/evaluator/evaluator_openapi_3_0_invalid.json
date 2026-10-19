@@ -1,0 +1,13 @@
+[
+    {
+        "description": "type_not_a_string",
+        "schema": {
+            "type": 123
+        },
+        "error": {
+            "message": "This keyword was expected to be set to a known type name, or to a non-empty array of unique ones",
+            "base": "",
+            "location": "/type"
+        }
+    }
+]

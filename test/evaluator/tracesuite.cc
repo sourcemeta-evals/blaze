@@ -263,6 +263,16 @@ auto main(int argc, char **argv) -> int {
                    "Evaluator_trace_OpenAPI_3_2",
                    "https://spec.openapis.org/oas/3.2/dialect/2025-09-17", "");
     register_tests(std::filesystem::path{TRACE_SUITE_PATH} /
+                       "evaluator_openapi_3_0.json",
+                   "Evaluator_trace_OpenAPI_3_0",
+                   "tag:spec.openapis.org,2024-10-18:oas/3.0/dialect",
+                   "tag:spec.openapis.org,2024-10-18:oas/3.0/dialect");
+    register_error_tests(std::filesystem::path{TRACE_SUITE_PATH} /
+                             "evaluator_openapi_3_0_invalid.json",
+                         "Evaluator_error_OpenAPI_3_0",
+                         "tag:spec.openapis.org,2024-10-18:oas/3.0/dialect",
+                         "tag:spec.openapis.org,2024-10-18:oas/3.0/dialect");
+    register_tests(std::filesystem::path{TRACE_SUITE_PATH} /
                        "evaluator_draft7.json",
                    "Evaluator_trace_draft7",
                    "http://json-schema.org/draft-07/schema#", "");
