@@ -1,0 +1,92 @@
+[
+  {
+    "description": "patternproperties_not_in_dialect",
+    "schema": { "type": "object", "patternProperties": { "^x": { "type": "string" } } },
+    "error": {
+      "message": "This keyword is prohibited by this dialect",
+      "base": "",
+      "location": "/patternProperties"
+    }
+  },
+  {
+    "description": "dependencies_not_in_dialect",
+    "schema": { "type": "object", "dependencies": { "a": [ "b" ] } },
+    "error": {
+      "message": "This keyword is prohibited by this dialect",
+      "base": "",
+      "location": "/dependencies"
+    }
+  },
+  {
+    "description": "additionalitems_not_in_dialect",
+    "schema": { "type": "array", "items": { "type": "string" }, "additionalItems": false },
+    "error": {
+      "message": "This keyword is prohibited by this dialect",
+      "base": "",
+      "location": "/additionalItems"
+    }
+  },
+  {
+    "description": "definitions_not_in_dialect",
+    "schema": { "type": "string", "definitions": { "Name": { "type": "string" } } },
+    "error": {
+      "message": "This keyword is prohibited by this dialect",
+      "base": "",
+      "location": "/definitions"
+    }
+  },
+  {
+    "description": "defs_not_in_dialect",
+    "schema": { "type": "string", "$defs": { "Name": { "type": "string" } } },
+    "error": {
+      "message": "This keyword is prohibited by this dialect",
+      "base": "",
+      "location": "/$defs"
+    }
+  },
+  {
+    "description": "const_not_in_dialect",
+    "schema": { "const": 1 },
+    "error": {
+      "message": "This keyword is prohibited by this dialect",
+      "base": "",
+      "location": "/const"
+    }
+  },
+  {
+    "description": "contains_not_in_dialect",
+    "schema": { "type": "array", "contains": { "type": "string" } },
+    "error": {
+      "message": "This keyword is prohibited by this dialect",
+      "base": "",
+      "location": "/contains"
+    }
+  },
+  {
+    "description": "if_not_in_dialect",
+    "schema": { "if": { "type": "string" } },
+    "error": {
+      "message": "This keyword is prohibited by this dialect",
+      "base": "",
+      "location": "/if"
+    }
+  },
+  {
+    "description": "propertynames_not_in_dialect",
+    "schema": { "type": "object", "propertyNames": { "maxLength": 2 } },
+    "error": {
+      "message": "This keyword is prohibited by this dialect",
+      "base": "",
+      "location": "/propertyNames"
+    }
+  },
+  {
+    "description": "unevaluatedproperties_not_in_dialect",
+    "schema": { "type": "object", "unevaluatedProperties": false },
+    "error": {
+      "message": "This keyword is prohibited by this dialect",
+      "base": "",
+      "location": "/unevaluatedProperties"
+    }
+  }
+]
