@@ -1965,6 +1965,167 @@ TEST(nullable_through_a_nested_entrypoint_fast) {
   EXPECT_TRUE(evaluator.validate(compiled_schema, instance));
 }
 
+// Framing a second, invalid schema must not leak into the selected
+// entrypoint: compilation answers for the named schema and nothing else
+TEST(nested_entrypoint_ignores_an_unrelated_framed_schema_accepts_null_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "x-definitions": {
+      "good": { "type": "string", "nullable": true },
+      "bad": { "type": "null" }
+    }
+  })JSON")};
+
+  const sourcemeta::core::Pointer good{"x-definitions", "good"};
+  const sourcemeta::core::Pointer bad{"x-definitions", "bad"};
+  const sourcemeta::core::SchemaFrame frame{
+      sourcemeta::core::SchemaFrame::Mode::References,
+      schema,
+      sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver,
+      OPENAPI_3_0_DIALECT,
+      "",
+      sourcemeta::core::SchemaFrame::IdentifierMode::Additional,
+      {sourcemeta::core::to_weak_pointer(good),
+       sourcemeta::core::to_weak_pointer(bad)}};
+
+  const auto compiled_schema{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver,
+      sourcemeta::blaze::default_schema_compiler, frame, "#/x-definitions/good",
+      sourcemeta::blaze::Mode::FastValidation)};
+
+  const sourcemeta::core::JSON instance{sourcemeta::core::parse_json("null")};
+  EVALUATE_WITH_TRACE(compiled_schema, instance, 1);
+  EXPECT_TRUE(result);
+
+  EVALUATE_TRACE_PRE(0, AssertionTypeStrictAny, "/type",
+                     "#/x-definitions/good/type", "");
+  EVALUATE_TRACE_POST_SUCCESS(0, AssertionTypeStrictAny, "/type",
+                              "#/x-definitions/good/type", "");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The value was expected to be of type null, or "
+                               "string and it was of type null");
+}
+
+TEST(
+    nested_entrypoint_ignores_an_unrelated_framed_schema_accepts_a_string_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "x-definitions": {
+      "good": { "type": "string", "nullable": true },
+      "bad": { "type": "null" }
+    }
+  })JSON")};
+
+  const sourcemeta::core::Pointer good{"x-definitions", "good"};
+  const sourcemeta::core::Pointer bad{"x-definitions", "bad"};
+  const sourcemeta::core::SchemaFrame frame{
+      sourcemeta::core::SchemaFrame::Mode::References,
+      schema,
+      sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver,
+      OPENAPI_3_0_DIALECT,
+      "",
+      sourcemeta::core::SchemaFrame::IdentifierMode::Additional,
+      {sourcemeta::core::to_weak_pointer(good),
+       sourcemeta::core::to_weak_pointer(bad)}};
+
+  const auto compiled_schema{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver,
+      sourcemeta::blaze::default_schema_compiler, frame, "#/x-definitions/good",
+      sourcemeta::blaze::Mode::FastValidation)};
+
+  const sourcemeta::core::JSON instance{"a"};
+  EVALUATE_WITH_TRACE(compiled_schema, instance, 1);
+  EXPECT_TRUE(result);
+
+  EVALUATE_TRACE_PRE(0, AssertionTypeStrictAny, "/type",
+                     "#/x-definitions/good/type", "");
+  EVALUATE_TRACE_POST_SUCCESS(0, AssertionTypeStrictAny, "/type",
+                              "#/x-definitions/good/type", "");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The value was expected to be of type null, or "
+                               "string and it was of type string");
+}
+
+TEST(
+    nested_entrypoint_ignores_an_unrelated_framed_schema_rejects_an_integer_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "x-definitions": {
+      "good": { "type": "string", "nullable": true },
+      "bad": { "type": "null" }
+    }
+  })JSON")};
+
+  const sourcemeta::core::Pointer good{"x-definitions", "good"};
+  const sourcemeta::core::Pointer bad{"x-definitions", "bad"};
+  const sourcemeta::core::SchemaFrame frame{
+      sourcemeta::core::SchemaFrame::Mode::References,
+      schema,
+      sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver,
+      OPENAPI_3_0_DIALECT,
+      "",
+      sourcemeta::core::SchemaFrame::IdentifierMode::Additional,
+      {sourcemeta::core::to_weak_pointer(good),
+       sourcemeta::core::to_weak_pointer(bad)}};
+
+  const auto compiled_schema{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver,
+      sourcemeta::blaze::default_schema_compiler, frame, "#/x-definitions/good",
+      sourcemeta::blaze::Mode::FastValidation)};
+
+  const sourcemeta::core::JSON instance{1};
+  EVALUATE_WITH_TRACE(compiled_schema, instance, 1);
+  EXPECT_FALSE(result);
+
+  EVALUATE_TRACE_PRE(0, AssertionTypeStrictAny, "/type",
+                     "#/x-definitions/good/type", "");
+  EVALUATE_TRACE_POST_FAILURE(0, AssertionTypeStrictAny, "/type",
+                              "#/x-definitions/good/type", "");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The value was expected to be of type null, or "
+                               "string but it was of type integer");
+}
+
+TEST(invalid_nested_entrypoint_is_still_rejected_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "x-definitions": {
+      "good": { "type": "string", "nullable": true },
+      "bad": { "type": "null" }
+    }
+  })JSON")};
+
+  const sourcemeta::core::Pointer good{"x-definitions", "good"};
+  const sourcemeta::core::Pointer bad{"x-definitions", "bad"};
+  const sourcemeta::core::SchemaFrame frame{
+      sourcemeta::core::SchemaFrame::Mode::References,
+      schema,
+      sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver,
+      OPENAPI_3_0_DIALECT,
+      "",
+      sourcemeta::core::SchemaFrame::IdentifierMode::Additional,
+      {sourcemeta::core::to_weak_pointer(good),
+       sourcemeta::core::to_weak_pointer(bad)}};
+
+  try {
+    [[maybe_unused]] const auto compiled_schema{sourcemeta::blaze::compile(
+        schema, sourcemeta::core::schema_walker,
+        sourcemeta::core::schema_resolver,
+        sourcemeta::blaze::default_schema_compiler, frame,
+        "#/x-definitions/bad", sourcemeta::blaze::Mode::FastValidation)};
+    FAIL();
+  } catch (const sourcemeta::blaze::CompilerError &error) {
+    EXPECT_EQ(
+        std::string{error.what()},
+        "The value this keyword is set to is not supported by this dialect");
+    EXPECT_EQ(sourcemeta::core::to_string(error.location()),
+              "/x-definitions/bad/type");
+  }
+}
+
 // `date` and `date-time` name different RFC 3339 productions, so neither
 // accepts the other's shape
 TEST(format_date_rejects_a_date_time_with_tweak_fast) {
