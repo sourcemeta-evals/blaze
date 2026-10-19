@@ -2126,6 +2126,197 @@ TEST(invalid_nested_entrypoint_is_still_rejected_fast) {
   }
 }
 
+// A custom compiler callback may start an independent compilation of an
+// unrelated schema while the outer one is in flight. The dialect keeps no
+// state across compilations, so the nested schema compiles exactly as it
+// does standalone
+TEST(nested_independent_compilation_accepts_null_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "type": "string",
+    "nullable": true
+  })JSON")};
+
+  std::optional<sourcemeta::blaze::Template> nested;
+  auto nesting_compiler =
+      [&nested](const sourcemeta::blaze::Context &context,
+                const sourcemeta::blaze::SchemaContext &schema_context,
+                const sourcemeta::blaze::DynamicContext &dynamic_context,
+                const sourcemeta::blaze::Instructions &current)
+      -> sourcemeta::blaze::Instructions {
+    if (!nested.has_value()) {
+      const sourcemeta::core::JSON inner{sourcemeta::core::parse_json(R"JSON({
+        "type": "integer",
+        "nullable": true
+      })JSON")};
+      nested = sourcemeta::blaze::compile(
+          inner, sourcemeta::core::schema_walker,
+          sourcemeta::core::schema_resolver,
+          sourcemeta::blaze::default_schema_compiler,
+          sourcemeta::blaze::Mode::FastValidation, OPENAPI_3_0_DIALECT);
+    }
+
+    return sourcemeta::blaze::default_schema_compiler(context, schema_context,
+                                                      dynamic_context, current);
+  };
+
+  [[maybe_unused]] const auto compiled_schema{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver, nesting_compiler,
+      sourcemeta::blaze::Mode::FastValidation, OPENAPI_3_0_DIALECT)};
+  EXPECT_TRUE(nested.has_value());
+
+  const sourcemeta::core::JSON instance{sourcemeta::core::parse_json("null")};
+  EVALUATE_WITH_TRACE(nested.value(), instance, 1);
+  EXPECT_TRUE(result);
+
+  EVALUATE_TRACE_PRE(0, AssertionTypeStrictAny, "/type", "#/type", "");
+  EVALUATE_TRACE_POST_SUCCESS(0, AssertionTypeStrictAny, "/type", "#/type", "");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The value was expected to be of type null, or "
+                               "integer and it was of type null");
+}
+
+TEST(nested_independent_compilation_accepts_an_integer_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "type": "string",
+    "nullable": true
+  })JSON")};
+
+  std::optional<sourcemeta::blaze::Template> nested;
+  auto nesting_compiler =
+      [&nested](const sourcemeta::blaze::Context &context,
+                const sourcemeta::blaze::SchemaContext &schema_context,
+                const sourcemeta::blaze::DynamicContext &dynamic_context,
+                const sourcemeta::blaze::Instructions &current)
+      -> sourcemeta::blaze::Instructions {
+    if (!nested.has_value()) {
+      const sourcemeta::core::JSON inner{sourcemeta::core::parse_json(R"JSON({
+        "type": "integer",
+        "nullable": true
+      })JSON")};
+      nested = sourcemeta::blaze::compile(
+          inner, sourcemeta::core::schema_walker,
+          sourcemeta::core::schema_resolver,
+          sourcemeta::blaze::default_schema_compiler,
+          sourcemeta::blaze::Mode::FastValidation, OPENAPI_3_0_DIALECT);
+    }
+
+    return sourcemeta::blaze::default_schema_compiler(context, schema_context,
+                                                      dynamic_context, current);
+  };
+
+  [[maybe_unused]] const auto compiled_schema{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver, nesting_compiler,
+      sourcemeta::blaze::Mode::FastValidation, OPENAPI_3_0_DIALECT)};
+  EXPECT_TRUE(nested.has_value());
+
+  const sourcemeta::core::JSON instance{1};
+  EVALUATE_WITH_TRACE(nested.value(), instance, 1);
+  EXPECT_TRUE(result);
+
+  EVALUATE_TRACE_PRE(0, AssertionTypeStrictAny, "/type", "#/type", "");
+  EVALUATE_TRACE_POST_SUCCESS(0, AssertionTypeStrictAny, "/type", "#/type", "");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The value was expected to be of type null, or "
+                               "integer and it was of type integer");
+}
+
+TEST(nested_independent_compilation_rejects_a_string_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "type": "string",
+    "nullable": true
+  })JSON")};
+
+  std::optional<sourcemeta::blaze::Template> nested;
+  auto nesting_compiler =
+      [&nested](const sourcemeta::blaze::Context &context,
+                const sourcemeta::blaze::SchemaContext &schema_context,
+                const sourcemeta::blaze::DynamicContext &dynamic_context,
+                const sourcemeta::blaze::Instructions &current)
+      -> sourcemeta::blaze::Instructions {
+    if (!nested.has_value()) {
+      const sourcemeta::core::JSON inner{sourcemeta::core::parse_json(R"JSON({
+        "type": "integer",
+        "nullable": true
+      })JSON")};
+      nested = sourcemeta::blaze::compile(
+          inner, sourcemeta::core::schema_walker,
+          sourcemeta::core::schema_resolver,
+          sourcemeta::blaze::default_schema_compiler,
+          sourcemeta::blaze::Mode::FastValidation, OPENAPI_3_0_DIALECT);
+    }
+
+    return sourcemeta::blaze::default_schema_compiler(context, schema_context,
+                                                      dynamic_context, current);
+  };
+
+  [[maybe_unused]] const auto compiled_schema{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver, nesting_compiler,
+      sourcemeta::blaze::Mode::FastValidation, OPENAPI_3_0_DIALECT)};
+  EXPECT_TRUE(nested.has_value());
+
+  const sourcemeta::core::JSON instance{"a"};
+  EVALUATE_WITH_TRACE(nested.value(), instance, 1);
+  EXPECT_FALSE(result);
+
+  EVALUATE_TRACE_PRE(0, AssertionTypeStrictAny, "/type", "#/type", "");
+  EVALUATE_TRACE_POST_FAILURE(0, AssertionTypeStrictAny, "/type", "#/type", "");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The value was expected to be of type null, or "
+                               "integer but it was of type string");
+}
+
+TEST(nested_independent_compilation_matches_a_standalone_compilation_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "type": "string",
+    "nullable": true
+  })JSON")};
+
+  std::optional<sourcemeta::blaze::Template> nested;
+  auto nesting_compiler =
+      [&nested](const sourcemeta::blaze::Context &context,
+                const sourcemeta::blaze::SchemaContext &schema_context,
+                const sourcemeta::blaze::DynamicContext &dynamic_context,
+                const sourcemeta::blaze::Instructions &current)
+      -> sourcemeta::blaze::Instructions {
+    if (!nested.has_value()) {
+      const sourcemeta::core::JSON inner{sourcemeta::core::parse_json(R"JSON({
+        "type": "integer",
+        "nullable": true
+      })JSON")};
+      nested = sourcemeta::blaze::compile(
+          inner, sourcemeta::core::schema_walker,
+          sourcemeta::core::schema_resolver,
+          sourcemeta::blaze::default_schema_compiler,
+          sourcemeta::blaze::Mode::FastValidation, OPENAPI_3_0_DIALECT);
+    }
+
+    return sourcemeta::blaze::default_schema_compiler(context, schema_context,
+                                                      dynamic_context, current);
+  };
+
+  [[maybe_unused]] const auto compiled_schema{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver, nesting_compiler,
+      sourcemeta::blaze::Mode::FastValidation, OPENAPI_3_0_DIALECT)};
+  EXPECT_TRUE(nested.has_value());
+
+  const sourcemeta::core::JSON inner{sourcemeta::core::parse_json(R"JSON({
+    "type": "integer",
+    "nullable": true
+  })JSON")};
+
+  const auto standalone{sourcemeta::blaze::compile(
+      inner, sourcemeta::core::schema_walker, sourcemeta::core::schema_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation, OPENAPI_3_0_DIALECT)};
+
+  EXPECT_EQ(sourcemeta::blaze::to_json(nested.value()),
+            sourcemeta::blaze::to_json(standalone));
+}
+
 // `date` and `date-time` name different RFC 3339 productions, so neither
 // accepts the other's shape
 TEST(format_date_rejects_a_date_time_with_tweak_fast) {
