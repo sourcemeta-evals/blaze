@@ -6065,6 +6065,90 @@
     }
   },
   {
+    "description": "nullable_under_type_pruned_items_null_1",
+    "schema": { "type": "string", "nullable": true, "items": { "type": "integer" } },
+    "instance": null,
+    "valid": true,
+    "fast": {
+      "pre": [
+        [ "AssertionTypeStrictAny", "/type", "#/type", "" ]
+      ],
+      "post": [
+        [ true, "AssertionTypeStrictAny", "/type", "#/type", "" ]
+      ],
+      "descriptions": [
+        "The value was expected to be of type null, or string and it was of type null"
+      ]
+    },
+    "exhaustive": {
+      "pre": [
+        [ "AssertionTypeStrictAny", "/type", "#/type", "" ]
+      ],
+      "post": [
+        [ true, "AssertionTypeStrictAny", "/type", "#/type", "" ]
+      ],
+      "descriptions": [
+        "The value was expected to be of type null, or string and it was of type null"
+      ]
+    }
+  },
+  {
+    "description": "nullable_under_type_pruned_items_match_1",
+    "schema": { "type": "string", "nullable": true, "items": { "type": "integer" } },
+    "instance": "a",
+    "valid": true,
+    "fast": {
+      "pre": [
+        [ "AssertionTypeStrictAny", "/type", "#/type", "" ]
+      ],
+      "post": [
+        [ true, "AssertionTypeStrictAny", "/type", "#/type", "" ]
+      ],
+      "descriptions": [
+        "The value was expected to be of type null, or string and it was of type string"
+      ]
+    },
+    "exhaustive": {
+      "pre": [
+        [ "AssertionTypeStrictAny", "/type", "#/type", "" ]
+      ],
+      "post": [
+        [ true, "AssertionTypeStrictAny", "/type", "#/type", "" ]
+      ],
+      "descriptions": [
+        "The value was expected to be of type null, or string and it was of type string"
+      ]
+    }
+  },
+  {
+    "description": "nullable_under_type_pruned_items_mismatch_1",
+    "schema": { "type": "string", "nullable": true, "items": { "type": "integer" } },
+    "instance": [ 1 ],
+    "valid": false,
+    "fast": {
+      "pre": [
+        [ "AssertionTypeStrictAny", "/type", "#/type", "" ]
+      ],
+      "post": [
+        [ false, "AssertionTypeStrictAny", "/type", "#/type", "" ]
+      ],
+      "descriptions": [
+        "The value was expected to be of type null, or string but it was of type array"
+      ]
+    },
+    "exhaustive": {
+      "pre": [
+        [ "AssertionTypeStrictAny", "/type", "#/type", "" ]
+      ],
+      "post": [
+        [ false, "AssertionTypeStrictAny", "/type", "#/type", "" ]
+      ],
+      "descriptions": [
+        "The value was expected to be of type null, or string but it was of type array"
+      ]
+    }
+  },
+  {
     "description": "ref_object_siblings_ignored_under_type_pruned_items_1",
     "schema": {
       "type": "string",
