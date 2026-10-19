@@ -712,6 +712,128 @@ TEST(format_byte_within_properties_invalid_with_tweak_exhaustive) {
                                "subschema");
 }
 
+// Unlike the ignored sibling case, a `format` inside the referenced target
+// is active, so the assertion must travel into the bundled target
+TEST(format_byte_in_reference_target_valid_with_tweak_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "type": "object",
+    "properties": {
+      "data": { "$ref": "#/x-definitions/S" }
+    },
+    "x-definitions": {
+      "S": { "type": "string", "format": "byte" }
+    }
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON({ "data": "Zg==" })JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_FAST_SUCCESS_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 3, OPENAPI_3_0_DIALECT, tweaks);
+
+  EVALUATE_TRACE_PRE(0, AssertionStringType, "/properties/data/$ref/format",
+                     "#/x-definitions/S/format", "/data");
+  EVALUATE_TRACE_PRE(1, AssertionPropertyTypeStrict,
+                     "/properties/data/$ref/type", "#/x-definitions/S/type",
+                     "/data");
+  EVALUATE_TRACE_PRE(2, AssertionTypeStrict, "/type", "#/type", "");
+
+  EVALUATE_TRACE_POST_SUCCESS(0, AssertionStringType,
+                              "/properties/data/$ref/format",
+                              "#/x-definitions/S/format", "/data");
+  EVALUATE_TRACE_POST_SUCCESS(1, AssertionPropertyTypeStrict,
+                              "/properties/data/$ref/type",
+                              "#/x-definitions/S/type", "/data");
+  EVALUATE_TRACE_POST_SUCCESS(2, AssertionTypeStrict, "/type", "#/type", "");
+
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The string value \"Zg==\" was expected to "
+                               "represent a valid RFC 4648 Base64 string");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 1,
+                               "The value was expected to be of type string");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 2,
+                               "The value was expected to be of type object");
+}
+
+TEST(format_byte_in_reference_target_invalid_with_tweak_fast) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "type": "object",
+    "properties": {
+      "data": { "$ref": "#/x-definitions/S" }
+    },
+    "x-definitions": {
+      "S": { "type": "string", "format": "byte" }
+    }
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON({ "data": "not base64" })JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_FAST_FAILURE_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 1, OPENAPI_3_0_DIALECT, tweaks);
+
+  EVALUATE_TRACE_PRE(0, AssertionStringType, "/properties/data/$ref/format",
+                     "#/x-definitions/S/format", "/data");
+  EVALUATE_TRACE_POST_FAILURE(0, AssertionStringType,
+                              "/properties/data/$ref/format",
+                              "#/x-definitions/S/format", "/data");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The string value \"not base64\" was expected "
+                               "to represent a valid RFC 4648 Base64 string");
+}
+
+TEST(format_byte_in_reference_target_invalid_with_tweak_exhaustive) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "type": "object",
+    "properties": {
+      "data": { "$ref": "#/x-definitions/S" }
+    },
+    "x-definitions": {
+      "S": { "type": "string", "format": "byte" }
+    }
+  })JSON")};
+
+  const sourcemeta::core::JSON instance{
+      sourcemeta::core::parse_json(R"JSON({ "data": "not base64" })JSON")};
+
+  sourcemeta::blaze::Tweaks tweaks;
+  tweaks.format_assertion = true;
+
+  EVALUATE_WITH_TRACE_EXHAUSTIVE_FAILURE_TWEAKED_WITH_DEFAULT_DIALECT(
+      schema, instance, 3, OPENAPI_3_0_DIALECT, tweaks);
+
+  EVALUATE_TRACE_PRE(0, LogicalWhenType, "/properties", "#/properties", "");
+  EVALUATE_TRACE_PRE(1, ControlJump, "/properties/data/$ref",
+                     "#/properties/data/$ref", "/data");
+  EVALUATE_TRACE_PRE(2, AssertionStringType, "/properties/data/$ref/format",
+                     "#/x-definitions/S/format", "/data");
+
+  EVALUATE_TRACE_POST_FAILURE(0, AssertionStringType,
+                              "/properties/data/$ref/format",
+                              "#/x-definitions/S/format", "/data");
+  EVALUATE_TRACE_POST_FAILURE(1, ControlJump, "/properties/data/$ref",
+                              "#/properties/data/$ref", "/data");
+  EVALUATE_TRACE_POST_FAILURE(2, LogicalWhenType, "/properties", "#/properties",
+                              "");
+
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 0,
+                               "The string value \"not base64\" was expected "
+                               "to represent a valid RFC 4648 Base64 string");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 1,
+                               "The string value was expected to validate "
+                               "against the referenced schema");
+  EVALUATE_TRACE_POST_DESCRIBE(instance, 2,
+                               "The object value was expected to validate "
+                               "against the single defined property "
+                               "subschema");
+}
+
 // Serialized templates are a product surface, and textual round-trip equality
 // alone cannot show the rebuilt instructions still evaluate, so these run the
 // deserialized template
