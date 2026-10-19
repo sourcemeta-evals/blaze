@@ -262,6 +262,21 @@ auto main(int argc, char **argv) -> int {
                        "evaluator_openapi_3_2.json",
                    "Evaluator_trace_OpenAPI_3_2",
                    "https://spec.openapis.org/oas/3.2/dialect/2025-09-17", "");
+    for (const auto &[label, dialect] :
+         {std::pair<const char *, const char *>{
+              "2024_10_18", "tag:spec.openapis.org,2024-10-18:oas/3.0/dialect"},
+          std::pair<const char *, const char *>{
+              "2021_09_28",
+              "tag:spec.openapis.org,2021-09-28:oas/3.0/dialect"}}) {
+      register_tests(std::filesystem::path{TRACE_SUITE_PATH} /
+                         "evaluator_openapi_3_0.json",
+                     std::string{"Evaluator_trace_OpenAPI_3_0_"} + label,
+                     dialect, dialect);
+      register_error_tests(std::filesystem::path{TRACE_SUITE_PATH} /
+                               "evaluator_openapi_3_0_invalid.json",
+                           std::string{"Evaluator_error_OpenAPI_3_0_"} + label,
+                           dialect, dialect);
+    }
     register_tests(std::filesystem::path{TRACE_SUITE_PATH} /
                        "evaluator_draft7.json",
                    "Evaluator_trace_draft7",

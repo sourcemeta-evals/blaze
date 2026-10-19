@@ -108,6 +108,7 @@ auto dispatch_keyword(const sourcemeta::blaze::Context &context,
                              Known::JSON_SCHEMA_DRAFT_3_HYPER,
                              Known::OPENAPI_3_1_BASE,
                              Known::OPENAPI_3_2_BASE,
+                             Known::OPENAPI_3_0_BASE,
                              Known::SOURCEMETA_EXTENSION_V1};
 
   schema_context.vocabularies.throw_if_any_unsupported(
@@ -125,6 +126,16 @@ auto dispatch_keyword(const sourcemeta::blaze::Context &context,
 #define COMPILE_ANY(vocabulary_1, vocabulary_2, _keyword, handler)             \
   if ((schema_context.vocabularies.contains(vocabulary_1) ||                   \
        schema_context.vocabularies.contains(vocabulary_2)) &&                  \
+      dynamic_context.keyword == (_keyword)) {                                 \
+    return internal::handler(context, schema_context, dynamic_context,         \
+                             current);                                         \
+  }
+
+#define COMPILE_ANY3(vocabulary_1, vocabulary_2, vocabulary_3, _keyword,       \
+                     handler)                                                  \
+  if ((schema_context.vocabularies.contains(vocabulary_1) ||                   \
+       schema_context.vocabularies.contains(vocabulary_2) ||                   \
+       schema_context.vocabularies.contains(vocabulary_3)) &&                  \
       dynamic_context.keyword == (_keyword)) {                                 \
     return internal::handler(context, schema_context, dynamic_context,         \
                              current);                                         \
@@ -515,72 +526,92 @@ auto dispatch_keyword(const sourcemeta::blaze::Context &context,
   // DRAFT 4
   // ********************************************
 
-  COMPILE_ANY(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
-              "$ref", compiler_draft3_core_ref);
+  COMPILE_ANY3(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
+               Known::OPENAPI_3_0_BASE, "$ref", compiler_draft3_core_ref);
 
   // Applicators
-  COMPILE_ANY(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
-              "allOf", compiler_draft4_applicator_allof);
-  COMPILE_ANY(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
-              "anyOf", compiler_draft4_applicator_anyof);
-  COMPILE_ANY(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
-              "oneOf", compiler_draft4_applicator_oneof);
-  COMPILE_ANY(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
-              "not", compiler_draft4_applicator_not);
-  COMPILE_ANY(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
-              "properties", compiler_draft3_applicator_properties);
+  COMPILE_ANY3(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
+               Known::OPENAPI_3_0_BASE, "allOf",
+               compiler_draft4_applicator_allof);
+  COMPILE_ANY3(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
+               Known::OPENAPI_3_0_BASE, "anyOf",
+               compiler_draft4_applicator_anyof);
+  COMPILE_ANY3(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
+               Known::OPENAPI_3_0_BASE, "oneOf",
+               compiler_draft4_applicator_oneof);
+  COMPILE_ANY3(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
+               Known::OPENAPI_3_0_BASE, "not", compiler_draft4_applicator_not);
+  COMPILE_ANY3(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
+               Known::OPENAPI_3_0_BASE, "properties",
+               compiler_draft3_applicator_properties);
   COMPILE_ANY(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
               "patternProperties",
               compiler_draft3_applicator_patternproperties);
-  COMPILE_ANY(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
-              "additionalProperties",
-              compiler_draft3_applicator_additionalproperties);
-  COMPILE_ANY(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
-              "items", compiler_draft3_applicator_items);
+  COMPILE_ANY3(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
+               Known::OPENAPI_3_0_BASE, "additionalProperties",
+               compiler_draft3_applicator_additionalproperties);
+  COMPILE_ANY3(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
+               Known::OPENAPI_3_0_BASE, "items",
+               compiler_draft3_applicator_items);
   COMPILE_ANY(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
               "additionalItems", compiler_draft3_applicator_additionalitems);
   COMPILE_ANY(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
               "dependencies", compiler_draft3_applicator_dependencies);
 
   // Any
-  COMPILE_ANY(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
-              "type", compiler_draft3_validation_type);
-  COMPILE_ANY(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
-              "enum", compiler_draft3_validation_enum);
+  COMPILE_ANY3(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
+               Known::OPENAPI_3_0_BASE, "type",
+               compiler_draft3_validation_type);
+  COMPILE_ANY3(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
+               Known::OPENAPI_3_0_BASE, "enum",
+               compiler_draft3_validation_enum);
 
   // Object
-  COMPILE_ANY(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
-              "required", compiler_draft4_validation_required);
-  COMPILE_ANY(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
-              "maxProperties", compiler_draft4_validation_maxproperties);
-  COMPILE_ANY(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
-              "minProperties", compiler_draft4_validation_minproperties);
+  COMPILE_ANY3(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
+               Known::OPENAPI_3_0_BASE, "required",
+               compiler_draft4_validation_required);
+  COMPILE_ANY3(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
+               Known::OPENAPI_3_0_BASE, "maxProperties",
+               compiler_draft4_validation_maxproperties);
+  COMPILE_ANY3(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
+               Known::OPENAPI_3_0_BASE, "minProperties",
+               compiler_draft4_validation_minproperties);
 
   // Array
-  COMPILE_ANY(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
-              "uniqueItems", compiler_draft3_validation_uniqueitems);
-  COMPILE_ANY(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
-              "maxItems", compiler_draft3_validation_maxitems);
-  COMPILE_ANY(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
-              "minItems", compiler_draft3_validation_minitems);
+  COMPILE_ANY3(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
+               Known::OPENAPI_3_0_BASE, "uniqueItems",
+               compiler_draft3_validation_uniqueitems);
+  COMPILE_ANY3(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
+               Known::OPENAPI_3_0_BASE, "maxItems",
+               compiler_draft3_validation_maxitems);
+  COMPILE_ANY3(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
+               Known::OPENAPI_3_0_BASE, "minItems",
+               compiler_draft3_validation_minitems);
 
   // String
-  COMPILE_ANY(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
-              "pattern", compiler_draft3_validation_pattern);
-  COMPILE_ANY(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
-              "maxLength", compiler_draft3_validation_maxlength);
-  COMPILE_ANY(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
-              "minLength", compiler_draft3_validation_minlength);
-  COMPILE_ANY(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
-              "format", compiler_draft3_validation_format);
+  COMPILE_ANY3(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
+               Known::OPENAPI_3_0_BASE, "pattern",
+               compiler_draft3_validation_pattern);
+  COMPILE_ANY3(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
+               Known::OPENAPI_3_0_BASE, "maxLength",
+               compiler_draft3_validation_maxlength);
+  COMPILE_ANY3(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
+               Known::OPENAPI_3_0_BASE, "minLength",
+               compiler_draft3_validation_minlength);
+  COMPILE_ANY3(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
+               Known::OPENAPI_3_0_BASE, "format",
+               compiler_draft3_validation_format);
 
   // Number
-  COMPILE_ANY(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
-              "maximum", compiler_draft3_validation_maximum);
-  COMPILE_ANY(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
-              "minimum", compiler_draft3_validation_minimum);
-  COMPILE_ANY(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
-              "multipleOf", compiler_draft3_validation_divisibleby);
+  COMPILE_ANY3(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
+               Known::OPENAPI_3_0_BASE, "maximum",
+               compiler_draft3_validation_maximum);
+  COMPILE_ANY3(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
+               Known::OPENAPI_3_0_BASE, "minimum",
+               compiler_draft3_validation_minimum);
+  COMPILE_ANY3(Known::JSON_SCHEMA_DRAFT_4, Known::JSON_SCHEMA_DRAFT_4_HYPER,
+               Known::OPENAPI_3_0_BASE, "multipleOf",
+               compiler_draft3_validation_divisibleby);
 
   // ********************************************
   // DRAFT 3
@@ -656,6 +687,7 @@ auto dispatch_keyword(const sourcemeta::blaze::Context &context,
 
 #undef COMPILE
 #undef COMPILE_ANY
+#undef COMPILE_ANY3
 
   if ((schema_context.vocabularies.contains(Known::JSON_SCHEMA_2019_09_CORE) ||
        schema_context.vocabularies.contains(Known::JSON_SCHEMA_2020_12_CORE)) &&
