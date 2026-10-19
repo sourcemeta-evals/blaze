@@ -3470,6 +3470,78 @@
     }
   },
   {
+    "description": "any_of_nullable_branch_null_1",
+    "schema": {
+      "anyOf": [ { "type": "string", "nullable": true }, { "type": "integer" } ]
+    },
+    "instance": null,
+    "valid": true,
+    "fast": {
+      "pre": [
+        [ "AssertionTypeStrictAny", "/anyOf", "#/anyOf", "" ]
+      ],
+      "post": [
+        [ true, "AssertionTypeStrictAny", "/anyOf", "#/anyOf", "" ]
+      ],
+      "descriptions": [
+        "The value was expected to be of type null, integer, or string and it was of type null"
+      ]
+    },
+    "exhaustive": {
+      "pre": [
+        [ "LogicalOr", "/anyOf", "#/anyOf", "" ],
+        [ "AssertionTypeStrictAny", "/anyOf/0/type", "#/anyOf/0/type", "" ],
+        [ "AssertionTypeStrict", "/anyOf/1/type", "#/anyOf/1/type", "" ]
+      ],
+      "post": [
+        [ true, "AssertionTypeStrictAny", "/anyOf/0/type", "#/anyOf/0/type", "" ],
+        [ false, "AssertionTypeStrict", "/anyOf/1/type", "#/anyOf/1/type", "" ],
+        [ true, "LogicalOr", "/anyOf", "#/anyOf", "" ]
+      ],
+      "descriptions": [
+        "The value was expected to be of type null, or string and it was of type null",
+        "The value was expected to be of type integer but it was of type null",
+        "The null value was expected to validate against at least one of the 2 given subschemas"
+      ]
+    }
+  },
+  {
+    "description": "any_of_nullable_branch_mismatch_1",
+    "schema": {
+      "anyOf": [ { "type": "string", "nullable": true }, { "type": "integer" } ]
+    },
+    "instance": true,
+    "valid": false,
+    "fast": {
+      "pre": [
+        [ "AssertionTypeStrictAny", "/anyOf", "#/anyOf", "" ]
+      ],
+      "post": [
+        [ false, "AssertionTypeStrictAny", "/anyOf", "#/anyOf", "" ]
+      ],
+      "descriptions": [
+        "The value was expected to be of type null, integer, or string but it was of type boolean"
+      ]
+    },
+    "exhaustive": {
+      "pre": [
+        [ "LogicalOr", "/anyOf", "#/anyOf", "" ],
+        [ "AssertionTypeStrictAny", "/anyOf/0/type", "#/anyOf/0/type", "" ],
+        [ "AssertionTypeStrict", "/anyOf/1/type", "#/anyOf/1/type", "" ]
+      ],
+      "post": [
+        [ false, "AssertionTypeStrictAny", "/anyOf/0/type", "#/anyOf/0/type", "" ],
+        [ false, "AssertionTypeStrict", "/anyOf/1/type", "#/anyOf/1/type", "" ],
+        [ false, "LogicalOr", "/anyOf", "#/anyOf", "" ]
+      ],
+      "descriptions": [
+        "The value was expected to be of type null, or string but it was of type boolean",
+        "The value was expected to be of type integer but it was of type boolean",
+        "The boolean value was expected to validate against at least one of the 2 given subschemas"
+      ]
+    }
+  },
+  {
     "description": "oneOf_1",
     "schema": {
       "oneOf": [
@@ -3802,6 +3874,74 @@
       "descriptions": [
         "The value was expected to be of type string",
         "The string value was expected to not validate against the given subschema, but it did"
+      ]
+    }
+  },
+  {
+    "description": "not_nullable_null_1",
+    "schema": { "not": { "type": "string", "nullable": true } },
+    "instance": null,
+    "valid": false,
+    "fast": {
+      "pre": [
+        [ "LogicalNot", "/not", "#/not", "" ],
+        [ "AssertionTypeStrictAny", "/not/type", "#/not/type", "" ]
+      ],
+      "post": [
+        [ true, "AssertionTypeStrictAny", "/not/type", "#/not/type", "" ],
+        [ false, "LogicalNot", "/not", "#/not", "" ]
+      ],
+      "descriptions": [
+        "The value was expected to be of type null, or string and it was of type null",
+        "The null value was expected to not validate against the given subschema, but it did"
+      ]
+    },
+    "exhaustive": {
+      "pre": [
+        [ "LogicalNot", "/not", "#/not", "" ],
+        [ "AssertionTypeStrictAny", "/not/type", "#/not/type", "" ]
+      ],
+      "post": [
+        [ true, "AssertionTypeStrictAny", "/not/type", "#/not/type", "" ],
+        [ false, "LogicalNot", "/not", "#/not", "" ]
+      ],
+      "descriptions": [
+        "The value was expected to be of type null, or string and it was of type null",
+        "The null value was expected to not validate against the given subschema, but it did"
+      ]
+    }
+  },
+  {
+    "description": "not_nullable_match_1",
+    "schema": { "not": { "type": "string", "nullable": true } },
+    "instance": 1,
+    "valid": true,
+    "fast": {
+      "pre": [
+        [ "LogicalNot", "/not", "#/not", "" ],
+        [ "AssertionTypeStrictAny", "/not/type", "#/not/type", "" ]
+      ],
+      "post": [
+        [ false, "AssertionTypeStrictAny", "/not/type", "#/not/type", "" ],
+        [ true, "LogicalNot", "/not", "#/not", "" ]
+      ],
+      "descriptions": [
+        "The value was expected to be of type null, or string but it was of type integer",
+        "The integer value was expected to not validate against the given subschema"
+      ]
+    },
+    "exhaustive": {
+      "pre": [
+        [ "LogicalNot", "/not", "#/not", "" ],
+        [ "AssertionTypeStrictAny", "/not/type", "#/not/type", "" ]
+      ],
+      "post": [
+        [ false, "AssertionTypeStrictAny", "/not/type", "#/not/type", "" ],
+        [ true, "LogicalNot", "/not", "#/not", "" ]
+      ],
+      "descriptions": [
+        "The value was expected to be of type null, or string but it was of type integer",
+        "The integer value was expected to not validate against the given subschema"
       ]
     }
   },
