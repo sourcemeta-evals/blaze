@@ -43,8 +43,10 @@ auto handle_standard(Evaluator &evaluator, const Template &schema,
         if (tracker != nullptr) {
           const auto position{tracker->get(sourcemeta::core::to_pointer(
               annotation.first.instance_location))};
-          // TODO: Add position information to output
-          static_cast<void>(position);
+          if (position.has_value()) {
+            unit.assign("instancePosition",
+                        sourcemeta::core::to_json(position.value()));
+          }
         }
 
         unit.assign("annotation", sourcemeta::core::to_json(annotation.second));
@@ -72,8 +74,10 @@ auto handle_standard(Evaluator &evaluator, const Template &schema,
         if (tracker != nullptr) {
           const auto position{tracker->get(
               sourcemeta::core::to_pointer(entry.instance_location))};
-          // TODO: Add position information to output
-          static_cast<void>(position);
+          if (position.has_value()) {
+            unit.assign("instancePosition",
+                        sourcemeta::core::to_json(position.value()));
+          }
         }
 
         unit.assign("error", sourcemeta::core::JSON{entry.message});
