@@ -519,3 +519,274 @@ TEST(Output_standard_basic, failure_1_with_instance_positions) {
 
   EXPECT_EQ(result, expected);
 }
+
+TEST(Output_standard_basic,
+     success_1_exhaustive_untracked_instance_omits_positions) {
+  const auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "foo": { "type": "string" }
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::Exhaustive)};
+
+  sourcemeta::core::PointerPositionTracker tracker;
+  const auto instance{sourcemeta::core::parse_json(R"JSON({
+    "foo": "bar"
+  })JSON")};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{sourcemeta::blaze::standard(
+      evaluator, schema_template, instance,
+      sourcemeta::blaze::StandardOutput::Basic, tracker)};
+
+  const auto expected{sourcemeta::core::parse_json(R"JSON({
+    "valid": true,
+    "annotations": [
+      {
+        "keywordLocation": "/properties",
+        "absoluteKeywordLocation": "#/properties",
+        "instanceLocation": "",
+        "annotation": [ "foo" ]
+      }
+    ]
+  })JSON")};
+
+  EXPECT_EQ(result, expected);
+}
+
+TEST(Output_standard_basic, failure_1_untracked_instance_omits_positions) {
+  const auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "foo": { "type": "string" }
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation)};
+
+  sourcemeta::core::PointerPositionTracker tracker;
+  const auto instance{sourcemeta::core::parse_json(R"JSON({
+    "foo": 1
+  })JSON")};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{sourcemeta::blaze::standard(
+      evaluator, schema_template, instance,
+      sourcemeta::blaze::StandardOutput::Basic, tracker)};
+
+  const auto expected{sourcemeta::core::parse_json(R"JSON({
+    "valid": false,
+    "errors": [
+      {
+        "keywordLocation": "/properties/foo/type",
+        "absoluteKeywordLocation": "#/properties/foo/type",
+        "instanceLocation": "/foo",
+        "error": "The value was expected to be of type string but it was of type integer"
+      }
+    ]
+  })JSON")};
+
+  EXPECT_EQ(result, expected);
+}
+
+TEST(Output_standard_basic, flag_success_with_instance_positions) {
+  const auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "foo": { "type": "string" }
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation)};
+
+  sourcemeta::core::PointerPositionTracker tracker;
+  const auto instance{sourcemeta::core::parse_json(R"JSON({
+    "foo": "bar"
+  })JSON",
+                                                   std::ref(tracker))};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{sourcemeta::blaze::standard(
+      evaluator, schema_template, instance,
+      sourcemeta::blaze::StandardOutput::Flag, tracker)};
+
+  const auto expected{sourcemeta::core::parse_json(R"JSON({
+    "valid": true
+  })JSON")};
+
+  EXPECT_EQ(result, expected);
+}
+
+TEST(Output_standard_basic, flag_failure_with_instance_positions) {
+  const auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "foo": { "type": "string" }
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation)};
+
+  sourcemeta::core::PointerPositionTracker tracker;
+  const auto instance{sourcemeta::core::parse_json(R"JSON({
+    "foo": 1
+  })JSON",
+                                                   std::ref(tracker))};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{sourcemeta::blaze::standard(
+      evaluator, schema_template, instance,
+      sourcemeta::blaze::StandardOutput::Flag, tracker)};
+
+  const auto expected{sourcemeta::core::parse_json(R"JSON({
+    "valid": false
+  })JSON")};
+
+  EXPECT_EQ(result, expected);
+}
+
+TEST(Output_standard_basic,
+     failure_escaped_slash_property_with_instance_positions) {
+  const auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "foo/bar": { "type": "string" }
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation)};
+
+  sourcemeta::core::PointerPositionTracker tracker;
+  const auto instance{sourcemeta::core::parse_json(R"JSON({
+    "foo/bar": 1
+  })JSON",
+                                                   std::ref(tracker))};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{sourcemeta::blaze::standard(
+      evaluator, schema_template, instance,
+      sourcemeta::blaze::StandardOutput::Basic, tracker)};
+
+  const auto expected{sourcemeta::core::parse_json(R"JSON({
+    "valid": false,
+    "errors": [
+      {
+        "keywordLocation": "/properties/foo~1bar/type",
+        "absoluteKeywordLocation": "#/properties/foo~1bar/type",
+        "instanceLocation": "/foo~1bar",
+        "instancePosition": [ 2, 5, 2, 16 ],
+        "error": "The value was expected to be of type string but it was of type integer"
+      }
+    ]
+  })JSON")};
+
+  EXPECT_EQ(result, expected);
+}
+
+TEST(Output_standard_basic,
+     failure_escaped_tilde_property_with_instance_positions) {
+  const auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "foo~baz": { "type": "string" }
+    }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation)};
+
+  sourcemeta::core::PointerPositionTracker tracker;
+  const auto instance{sourcemeta::core::parse_json(R"JSON({
+    "foo~baz": 1
+  })JSON",
+                                                   std::ref(tracker))};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{sourcemeta::blaze::standard(
+      evaluator, schema_template, instance,
+      sourcemeta::blaze::StandardOutput::Basic, tracker)};
+
+  const auto expected{sourcemeta::core::parse_json(R"JSON({
+    "valid": false,
+    "errors": [
+      {
+        "keywordLocation": "/properties/foo~0baz/type",
+        "absoluteKeywordLocation": "#/properties/foo~0baz/type",
+        "instanceLocation": "/foo~0baz",
+        "instancePosition": [ 2, 5, 2, 16 ],
+        "error": "The value was expected to be of type string but it was of type integer"
+      }
+    ]
+  })JSON")};
+
+  EXPECT_EQ(result, expected);
+}
+
+TEST(Output_standard_basic, failure_array_index_with_instance_positions) {
+  const auto schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "items": { "type": "string" }
+  })JSON")};
+
+  const auto schema_template{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_official_walker,
+      sourcemeta::core::schema_official_resolver,
+      sourcemeta::blaze::default_schema_compiler,
+      sourcemeta::blaze::Mode::FastValidation)};
+
+  sourcemeta::core::PointerPositionTracker tracker;
+  const auto instance{sourcemeta::core::parse_json(R"JSON([ "foo", 1 ])JSON",
+                                                   std::ref(tracker))};
+
+  sourcemeta::blaze::Evaluator evaluator;
+  const auto result{sourcemeta::blaze::standard(
+      evaluator, schema_template, instance,
+      sourcemeta::blaze::StandardOutput::Basic, tracker)};
+
+  const auto expected{sourcemeta::core::parse_json(R"JSON({
+    "valid": false,
+    "errors": [
+      {
+        "keywordLocation": "/items/type",
+        "absoluteKeywordLocation": "#/items/type",
+        "instanceLocation": "/1",
+        "instancePosition": [ 1, 10, 1, 10 ],
+        "error": "The value was expected to be of type string but it was of type integer"
+      },
+      {
+        "keywordLocation": "/items",
+        "absoluteKeywordLocation": "#/items",
+        "instanceLocation": "",
+        "instancePosition": [ 1, 1, 1, 12 ],
+        "error": "Every item in the array value was expected to validate against the given subschema"
+      }
+    ]
+  })JSON")};
+
+  EXPECT_EQ(result, expected);
+}
