@@ -66,10 +66,11 @@ auto standard(Evaluator &evaluator, const Template &schema,
   }
 }
 
-auto standard(const sourcemeta::core::PointerPositionTracker &instanceTracker,
-              Evaluator &evaluator, const Template &schema,
+auto standard(Evaluator &evaluator, const Template &schema,
               const sourcemeta::core::JSON &instance,
-              const StandardOutput format) -> sourcemeta::core::JSON {
+              const StandardOutput format,
+              const sourcemeta::core::PointerPositionTracker &instanceTracker)
+    -> sourcemeta::core::JSON {
   if (format == StandardOutput::Flag) {
     auto result{sourcemeta::core::JSON::make_object()};
     const auto valid{evaluator.validate(schema, instance)};

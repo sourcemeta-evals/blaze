@@ -78,9 +78,9 @@ standard(Evaluator &evaluator, const Template &schema,
     -> sourcemeta::core::JSON;
 
 auto SOURCEMETA_BLAZE_OUTPUT_EXPORT
-standard(const sourcemeta::core::PointerPositionTracker &instanceTracker,
-         Evaluator &evaluator, const Template &schema,
-         const sourcemeta::core::JSON &instance, const StandardOutput format)
+standard(Evaluator &evaluator, const Template &schema,
+         const sourcemeta::core::JSON &instance, const StandardOutput format,
+         const sourcemeta::core::PointerPositionTracker &instanceTracker)
     -> sourcemeta::core::JSON;
 
 } // namespace sourcemeta::blaze
