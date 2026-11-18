@@ -64,6 +64,17 @@ auto compiled_dialect(const sourcemeta::core::JSON::String &uri)
       .first->second;
 }
 
+// A document that is nothing but a boolean has nowhere to say which dialect it
+// is written in, so the directory it sits in says it instead. Only a dialect
+// that makes a boolean a schema in its own right can hold such a document
+auto boolean_dialect(const std::string &dialect) -> std::string_view {
+  if (dialect == "draft6") {
+    return "http://json-schema.org/draft-06/schema#";
+  }
+
+  return "";
+}
+
 auto prettify(const sourcemeta::core::JSON &document) -> std::string {
   std::ostringstream stream;
   sourcemeta::core::prettify(document, stream);
@@ -79,11 +90,12 @@ auto expect_equal_with_ordering(const sourcemeta::core::JSON &actual,
   EXPECT_EQ(prettify(actual), prettify(expected));
 }
 
-auto canonicalize_schema(const sourcemeta::core::JSON &schema)
+auto canonicalize_schema(const sourcemeta::core::JSON &schema,
+                         const std::string_view default_dialect)
     -> sourcemeta::core::JSON {
   auto document{schema};
   sourcemeta::blaze::canonicalize(document, sourcemeta::core::schema_walker,
-                                  canonicalizer_test_resolver);
+                                  canonicalizer_test_resolver, default_dialect);
   return document;
 }
 
@@ -95,11 +107,12 @@ auto canonicalize_schema(const sourcemeta::core::JSON &schema)
 auto check_instances(const sourcemeta::core::JSON &test,
                      const std::string_view side,
                      const sourcemeta::core::JSON &schema,
+                     const std::string_view default_dialect,
                      sourcemeta::core::JSON &disagreements) -> void {
   const auto compiled{sourcemeta::blaze::compile(
       schema, sourcemeta::core::schema_walker, canonicalizer_test_resolver,
       sourcemeta::blaze::default_schema_compiler,
-      sourcemeta::blaze::Mode::FastValidation)};
+      sourcemeta::blaze::Mode::FastValidation, default_dialect)};
 
   sourcemeta::blaze::Evaluator evaluator;
   for (const auto &instance : test.at("examples").as_array()) {
@@ -126,9 +139,19 @@ auto check_instances(const sourcemeta::core::JSON &test,
 // A fixture is the document to canonicalise, the document it canonicalises to,
 // and the instances that say what both of them mean. Anything more would be an
 // expectation the runner does not read, which would otherwise go unnoticed
-auto check_shape(const sourcemeta::core::JSON &test) -> void {
+auto check_shape(const sourcemeta::core::JSON &test, const std::string &dialect)
+    -> void {
   EXPECT_TRUE(test.is_object());
-  EXPECT_EQ(test.size(), 4);
+
+  // A fixture whose input is a document the dialect itself refuses says so,
+  // and that is the only thing it may say beyond the four the rest carry
+  const auto refused{test.defines("invalidSchema")};
+  if (refused) {
+    EXPECT_EQ(test.at("invalidSchema"), sourcemeta::core::JSON{true});
+    EXPECT_EQ(test.size(), 5);
+  } else {
+    EXPECT_EQ(test.size(), 4);
+  }
   EXPECT_TRUE(test.defines("schema"));
   EXPECT_TRUE(test.defines("expected"));
   EXPECT_TRUE(test.defines("examples"));
@@ -136,8 +159,17 @@ auto check_shape(const sourcemeta::core::JSON &test) -> void {
   EXPECT_TRUE(test.at("examples").is_array());
   EXPECT_TRUE(test.at("counterExamples").is_array());
 
-  // A boolean schema has no keyword to canonicalise and no object to compare,
-  // so it belongs in a hand-written test rather than here
+  // From Draft 6 on a boolean is a schema in its own right, so a document can
+  // be one, and such a document has no room to say which dialect it is written
+  // in. Its directory says that instead, and a dialect whose booleans are not
+  // schemas has no fixture of the kind
+  if (test.at("schema").is_boolean()) {
+    EXPECT_TRUE(test.at("expected").is_boolean());
+    EXPECT_FALSE(refused);
+    EXPECT_FALSE(boolean_dialect(dialect).empty());
+    return;
+  }
+
   EXPECT_TRUE(test.at("schema").is_object());
   EXPECT_TRUE(test.at("expected").is_object());
 
@@ -152,9 +184,15 @@ auto check_shape(const sourcemeta::core::JSON &test) -> void {
 
 auto run_canonicalizer_test(const sourcemeta::core::JSON &test,
                             const std::string &dialect) -> void {
-  check_shape(test);
+  check_shape(test, dialect);
 
-  const auto document{canonicalize_schema(test.at("schema"))};
+  // A boolean document names no dialect of its own, so the one its directory
+  // names is what every operation below is told
+  const auto default_dialect{test.at("schema").is_boolean()
+                                 ? boolean_dialect(dialect)
+                                 : std::string_view{}};
+  const auto refused{test.defines("invalidSchema")};
+  const auto document{canonicalize_schema(test.at("schema"), default_dialect)};
 
   // The instances have their say before any expectation about the shape of the
   // result. An `expected` that turns out wrong would otherwise abort the test
@@ -168,8 +206,14 @@ auto run_canonicalizer_test(const sourcemeta::core::JSON &test,
   // dialect, and neither ever reaches a verdict
   if (!test.at("examples").empty() || !test.at("counterExamples").empty()) {
     auto disagreements{sourcemeta::core::JSON::make_array()};
-    check_instances(test, "schema", test.at("schema"), disagreements);
-    check_instances(test, "expected", document, disagreements);
+    // What the dialect refuses is not a schema to put an instance to, so a
+    // fixture of that kind says what its result means and nothing more
+    if (!refused) {
+      check_instances(test, "schema", test.at("schema"), default_dialect,
+                      disagreements);
+    }
+
+    check_instances(test, "expected", document, default_dialect, disagreements);
     EXPECT_EQ(disagreements, sourcemeta::core::JSON::make_array());
   }
 
@@ -181,8 +225,14 @@ auto run_canonicalizer_test(const sourcemeta::core::JSON &test,
   // them schemas at all. A fixture that handed in anything else would have the
   // canonicaliser answering for something nothing describes
   const auto &dialect_metaschema{
-      compiled_dialect(test.at("schema").at("$schema").to_string())};
-  EXPECT_TRUE(evaluator.validate(dialect_metaschema, test.at("schema")));
+      compiled_dialect(test.at("schema").is_boolean()
+                           ? sourcemeta::core::JSON::String{default_dialect}
+                           : test.at("schema").at("$schema").to_string())};
+  if (refused) {
+    EXPECT_FALSE(evaluator.validate(dialect_metaschema, test.at("schema")));
+  } else {
+    EXPECT_TRUE(evaluator.validate(dialect_metaschema, test.at("schema")));
+  }
   EXPECT_TRUE(evaluator.validate(dialect_metaschema, document));
 
   // The canonicaliser must never emit a document that the canonical
@@ -192,7 +242,8 @@ auto run_canonicalizer_test(const sourcemeta::core::JSON &test,
 
   // A canonical form that is not a fixpoint would mean the same schema has
   // more than one canonical spelling, down to the order the result comes in
-  expect_equal_with_ordering(canonicalize_schema(document), document);
+  expect_equal_with_ordering(canonicalize_schema(document, default_dialect),
+                             document);
 }
 
 auto register_tests(const std::filesystem::path &directory) -> std::size_t {
