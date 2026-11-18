@@ -475,3 +475,89 @@ TEST(draft4_graph_form_generates) {
   EXPECT_EQ(result.size(), 3);
   EXPECT_IR_SCALAR(result, 0, String, "/definitions/0");
 }
+
+TEST(draft6_graph_form_generates) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "type": "string"
+  })JSON")};
+
+  // Draft 6 canonicalises into its graph form too, so what reaches codegen is
+  // a wrapper over one `definitions` entry rather than the schema as written
+  const auto result{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver, sourcemeta::blaze::default_compiler)};
+
+  using namespace sourcemeta::blaze;
+
+  EXPECT_EQ(result.size(), 3);
+  EXPECT_IR_SCALAR(result, 0, String, "/definitions/0");
+}
+
+TEST(draft6_graph_form_negation_of_everything_is_impossible) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "type": "integer",
+    "enum": [ "x" ]
+  })JSON")};
+
+  // A dialect whose booleans are entries of the graph says that nothing
+  // satisfies a schema by negating the one everything satisfies, and that is
+  // the same impossible type the boolean used to generate
+  const auto result{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver, sourcemeta::blaze::default_compiler)};
+
+  using namespace sourcemeta::blaze;
+
+  EXPECT_EQ(result.size(), 5);
+  EXPECT_IR_ANY(result, 0, "/definitions/1");
+  EXPECT_IR_IMPOSSIBLE(result, 2, "/definitions/0");
+}
+
+TEST(draft6_graph_form_closed_object_stays_closed) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "type": "object",
+    "properties": { "a": { "type": "string" } },
+    "additionalProperties": false
+  })JSON")};
+
+  // What closes an object is an `additionalProperties` nothing can satisfy,
+  // and the form says that from the entry an edge names rather than in place
+  const auto result{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver, sourcemeta::blaze::default_compiler)};
+
+  using namespace sourcemeta::blaze;
+
+  EXPECT_EQ(result.size(), 9);
+  EXPECT_IR_IMPOSSIBLE(result, 3, "/definitions/1");
+  EXPECT_TRUE(std::holds_alternative<CodegenIRObject>(result.at(6)));
+
+  const auto &object{std::get<CodegenIRObject>(result.at(6))};
+  EXPECT_AS_STRING(object.pointer, "/definitions/0");
+  EXPECT_EQ(object.members.size(), 1);
+  EXPECT_TRUE(std::holds_alternative<bool>(object.additional));
+  EXPECT_FALSE(std::get<bool>(object.additional));
+}
+
+TEST(draft6_graph_form_array_with_impossible_contains_generates) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "type": "array",
+    "contains": false
+  })JSON")};
+
+  // The entry that `contains` names says nothing about what the array holds,
+  // so the array still generates from the items it does allow
+  const auto result{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver, sourcemeta::blaze::default_compiler)};
+
+  using namespace sourcemeta::blaze;
+
+  EXPECT_EQ(result.size(), 7);
+  EXPECT_IR_IMPOSSIBLE(result, 2, "/definitions/1");
+  EXPECT_IR_ARRAY(result, 4, "/definitions/0", "/definitions/0/items");
+}
