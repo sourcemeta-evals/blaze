@@ -162,6 +162,14 @@ inline auto is_known_type_form(const sourcemeta::core::JSON &type,
   });
 }
 
+// Whether a subschema says that no instance can satisfy it, however the
+// dialect in force spells that. A dialect whose booleans are schemas can say
+// it with one, and every dialect says it the way the canonical form does once
+// a rule has settled it
+inline auto says_nothing_satisfies(const sourcemeta::core::JSON &schema,
+                                   const SchemaVocabularies &vocabularies)
+    -> bool;
+
 // The schema that no instance can ever satisfy. Draft 3 and Draft 4 have no
 // boolean schemas, so each of them has to spell it out with the negation
 // keyword it offers, applied to the schema that every instance satisfies
@@ -214,6 +222,16 @@ inline auto unsatisfiable_schema(const SchemaVocabularies &vocabularies)
   }
 
   return sourcemeta::core::JSON{false};
+}
+
+inline auto says_nothing_satisfies(const sourcemeta::core::JSON &schema,
+                                   const SchemaVocabularies &vocabularies)
+    -> bool {
+  if (schema.is_boolean()) {
+    return !schema.to_boolean();
+  }
+
+  return schema == unsatisfiable_schema(vocabularies);
 }
 
 // Collapsing a schema to the unsatisfiable one throws away every keyword it

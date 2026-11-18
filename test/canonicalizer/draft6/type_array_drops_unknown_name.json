@@ -6,17 +6,8 @@
   "invalidSchema": true,
   "expected": {
     "$schema": "http://json-schema.org/draft-06/schema#",
-    "allOf": [
-      {
-        "$ref": "#/definitions/0"
-      }
-    ],
-    "definitions": {
-      "0": {
-        "type": "string",
-        "minLength": 0
-      }
-    }
+    "allOf": [ { "$ref": "#/definitions/0" } ],
+    "definitions": { "0": { "type": "string", "minLength": 0 } }
   },
   "examples": [ "", "x" ],
   "counterExamples": [ null, true, 0, 1.5, [], {} ]

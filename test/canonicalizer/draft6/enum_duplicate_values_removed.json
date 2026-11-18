@@ -6,20 +6,8 @@
   "invalidSchema": true,
   "expected": {
     "$schema": "http://json-schema.org/draft-06/schema#",
-    "allOf": [
-      {
-        "$ref": "#/definitions/0"
-      }
-    ],
-    "definitions": {
-      "0": {
-        "enum": [
-          1,
-          2,
-          3
-        ]
-      }
-    }
+    "allOf": [ { "$ref": "#/definitions/0" } ],
+    "definitions": { "0": { "enum": [ 1, 2, 3 ] } }
   },
   "examples": [ 1, 2, 3 ],
   "counterExamples": [ null, true, 0, 4, "1", [], {} ]

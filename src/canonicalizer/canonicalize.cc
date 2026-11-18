@@ -433,6 +433,11 @@ struct Profile {
   std::set<sourcemeta::core::JSON::String> branches;
   /// Keywords whose arrays say nothing new by naming the same entry twice
   std::set<sourcemeta::core::JSON::String> unique_branches;
+  /// Keywords whose array says exactly what its only entry says when it has
+  /// one, so that merging entries cannot leave a choice between one thing. A
+  /// negation is not among them, as ruling one thing out is not what that
+  /// thing says
+  std::set<sourcemeta::core::JSON::String> collapsible_branches;
   /// Whether requiredness is a marker beside the subschema it applies to, as
   /// in Draft 3, rather than a list of names on the object, as from Draft 4 on
   bool property_marker;
@@ -440,10 +445,15 @@ struct Profile {
   /// Draft 4 on the values of `definitions` have to be schemas, and a boolean
   /// is not one, so there it stays where it is
   bool boolean_nodes;
+  /// The schema that every instance satisfies, as this dialect spells it. A
+  /// dialect whose booleans are schemas says it with one, and the rest say it
+  /// with the schema that asks nothing
+  sourcemeta::core::JSON tautology;
 };
 
 /// Draft 3 states a conjunction with `extends`, a disjunction as an array of
-/// subschemas under `type`, and a negation with `disallow`
+/// subschemas under `type`, and a negation with `disallow`. The form keeps a
+/// one-entry `type` as it is, so only the conjunction collapses
 auto draft3_profile() -> const Profile & {
   static const Profile PROFILE{
       .wrapper = "extends",
@@ -451,8 +461,10 @@ auto draft3_profile() -> const Profile & {
       .singles = {"additionalProperties", "additionalItems"},
       .branches = {"items", "type", "extends", "disallow"},
       .unique_branches = {"type", "extends", "disallow"},
+      .collapsible_branches = {"extends"},
       .property_marker = true,
-      .boolean_nodes = true};
+      .boolean_nodes = true,
+      .tautology = sourcemeta::core::JSON::make_object()};
   return PROFILE;
 }
 
@@ -469,8 +481,10 @@ auto draft4_profile() -> const Profile & {
       // twice is not the same as naming it once: two identical branches
       // never match, one always can
       .unique_branches = {"allOf", "anyOf"},
+      .collapsible_branches = {"allOf", "anyOf"},
       .property_marker = false,
-      .boolean_nodes = false};
+      .boolean_nodes = false,
+      .tautology = sourcemeta::core::JSON::make_object()};
   return PROFILE;
 }
 
@@ -485,8 +499,10 @@ auto draft6_profile() -> const Profile & {
                   "propertyNames"},
       .branches = {"items", "allOf", "anyOf", "oneOf"},
       .unique_branches = {"allOf", "anyOf"},
+      .collapsible_branches = {"allOf", "anyOf"},
       .property_marker = false,
-      .boolean_nodes = true};
+      .boolean_nodes = true,
+      .tautology = sourcemeta::core::JSON{true}};
   return PROFILE;
 }
 
@@ -777,9 +793,10 @@ auto lift_subschemas(sourcemeta::core::JSON &schema,
 
   // A reference whose chain goes round in circles without ever reaching a
   // subschema that says anything never gets to assert anything either, so it
-  // is the empty schema written the long way round. Each one is replaced by an
-  // empty schema and the pass starts over, since the document it framed has
-  // changed underneath it. Every round takes a reference away, so this ends
+  // is the schema every instance satisfies written the long way round. Each one
+  // is replaced by that schema, as the dialect spells it, and the pass starts
+  // over, since the document it framed has changed underneath it. Every round
+  // takes a reference away, so this ends
   std::vector<core::Pointer> vacuous;
   for (const auto &entry : links) {
     const auto destination{resolve(entry.second)};
@@ -792,7 +809,7 @@ auto lift_subschemas(sourcemeta::core::JSON &schema,
 
   if (!vacuous.empty()) {
     for (const auto &pointer : vacuous) {
-      core::set(schema, pointer, sourcemeta::core::JSON::make_object());
+      core::set(schema, pointer, profile->tautology);
     }
 
     lift_subschemas(schema, walker, resolver, default_dialect, default_id);
@@ -1108,8 +1125,9 @@ auto lift_subschemas(sourcemeta::core::JSON &schema,
         }};
 
     // Merging entries can leave a disjunction or a conjunction listing the same
-    // entry twice, which says nothing new. The rules already drop duplicates
-    // in these keywords, but they run before any of this
+    // entry twice, which says nothing new, and dropping the repeat can leave
+    // one entry where the keyword meant to offer a choice. The rules already
+    // do both, but they run before any of this
     const auto unique{[profile](sourcemeta::core::JSON &body) -> void {
       if (!body.is_object()) {
         return;
@@ -1136,7 +1154,15 @@ auto lift_subschemas(sourcemeta::core::JSON &schema,
           }
         }
 
+        const auto collapses{result.size() == 1 && body.size() == 1 &&
+                             profile->collapsible_branches.contains(keyword)};
         body.assign(keyword, std::move(result));
+
+        if (collapses) {
+          auto only{body.at(keyword).at(0)};
+          body.into(std::move(only));
+          return;
+        }
       }
     }};
 
