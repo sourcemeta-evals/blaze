@@ -472,8 +472,8 @@ TEST(draft4_graph_form_generates) {
 
   using namespace sourcemeta::blaze;
 
-  EXPECT_EQ(result.size(), 3);
-  EXPECT_IR_SCALAR(result, 0, String, "/definitions/0");
+  EXPECT_IR_SCALAR(result, ir_index_of(result, "/definitions/0"), String,
+                   "/definitions/0");
 }
 
 TEST(draft6_graph_form_generates) {
@@ -510,9 +510,8 @@ TEST(draft6_graph_form_negation_of_everything_is_impossible) {
 
   using namespace sourcemeta::blaze;
 
-  EXPECT_EQ(result.size(), 5);
-  EXPECT_IR_ANY(result, 0, "/definitions/1");
-  EXPECT_IR_IMPOSSIBLE(result, 2, "/definitions/0");
+  EXPECT_IR_IMPOSSIBLE(result, ir_index_of(result, "/definitions/0"),
+                       "/definitions/0");
 }
 
 TEST(draft6_graph_form_closed_object_stays_closed) {
@@ -531,11 +530,10 @@ TEST(draft6_graph_form_closed_object_stays_closed) {
 
   using namespace sourcemeta::blaze;
 
-  EXPECT_EQ(result.size(), 9);
-  EXPECT_IR_IMPOSSIBLE(result, 3, "/definitions/1");
-  EXPECT_TRUE(std::holds_alternative<CodegenIRObject>(result.at(6)));
+  const auto entry{ir_index_of(result, "/definitions/0")};
+  EXPECT_TRUE(std::holds_alternative<CodegenIRObject>(result.at(entry)));
 
-  const auto &object{std::get<CodegenIRObject>(result.at(6))};
+  const auto &object{std::get<CodegenIRObject>(result.at(entry))};
   EXPECT_AS_STRING(object.pointer, "/definitions/0");
   EXPECT_EQ(object.members.size(), 1);
   EXPECT_TRUE(std::holds_alternative<bool>(object.additional));
@@ -557,7 +555,45 @@ TEST(draft6_graph_form_array_with_impossible_contains_generates) {
 
   using namespace sourcemeta::blaze;
 
-  EXPECT_EQ(result.size(), 7);
-  EXPECT_IR_IMPOSSIBLE(result, 2, "/definitions/1");
-  EXPECT_IR_ARRAY(result, 4, "/definitions/0", "/definitions/0/items");
+  EXPECT_IR_ARRAY(result, ir_index_of(result, "/definitions/0"),
+                  "/definitions/0", "/definitions/0/items");
+}
+
+TEST(draft6_graph_form_negation_under_contains_generates) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "type": "array",
+    "contains": { "not": { "type": "string" } }
+  })JSON")};
+
+  // What `contains` names is not a type this generates, and the form puts it
+  // in the same container as everything else, so what an edge is for is what
+  // says whether a node has to generate at all. A negation that stands for no
+  // type of its own has none to give, and the array it validates still has one
+  const auto result{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver, sourcemeta::blaze::default_compiler)};
+
+  using namespace sourcemeta::blaze;
+
+  EXPECT_IR_ARRAY(result, ir_index_of(result, "/definitions/0"),
+                  "/definitions/0", "/definitions/0/items");
+}
+
+TEST(nested_form_negation_under_contains_generates) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "array",
+    "contains": { "not": { "type": "string" } }
+  })JSON")};
+
+  // A dialect that keeps its subschemas where they were written says the same
+  // thing about what `contains` names, and goes on saying it
+  const auto result{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver, sourcemeta::blaze::default_compiler)};
+
+  using namespace sourcemeta::blaze;
+
+  EXPECT_IR_ARRAY(result, ir_index_of(result, ""), "", "/items");
 }

@@ -4,7 +4,10 @@
 
 #include <algorithm>     // std::ranges::sort
 #include <cassert>       // assert
+#include <functional>    // std::reference_wrapper
+#include <unordered_map> // std::unordered_map
 #include <unordered_set> // std::unordered_set
+#include <vector>        // std::vector
 
 #include "codegen_default_compiler.h"
 
@@ -45,6 +48,113 @@ auto is_validation_subschema(
 
   return is_validation_subschema(frame, parent_location.value().get(), walker,
                                  resolver);
+}
+
+using Subschemas = std::vector<
+    std::reference_wrapper<const sourcemeta::core::SchemaFrame::Location>>;
+
+/// The innermost subschema a given one sits inside, or nothing when it is the
+/// document itself
+auto enclosing_subschema(const Subschemas &subschemas,
+                         const sourcemeta::core::WeakPointer &pointer)
+    -> const sourcemeta::core::SchemaFrame::Location * {
+  const sourcemeta::core::SchemaFrame::Location *result{nullptr};
+  for (const auto &candidate : subschemas) {
+    const auto &other{candidate.get()};
+    if (pointer.size() > other.pointer.size() &&
+        pointer.starts_with(other.pointer) &&
+        (result == nullptr || other.pointer.size() > result->pointer.size())) {
+      result = &other;
+    }
+  }
+
+  return result;
+}
+
+/// Whether the keyword leading from one subschema to another says only what an
+/// instance must satisfy, never what it looks like
+auto edge_only_validates(const sourcemeta::core::SchemaFrame &frame,
+                         const sourcemeta::core::SchemaWalker &walker,
+                         const sourcemeta::core::SchemaResolver &resolver,
+                         const sourcemeta::core::SchemaFrame::Location &parent,
+                         const sourcemeta::core::SchemaFrame::Location &child)
+    -> bool {
+  const auto &token{child.pointer.at(parent.pointer.size())};
+  if (!token.is_property()) {
+    return false;
+  }
+
+  const auto &vocabularies{frame.vocabularies(parent, resolver)};
+  using Type = sourcemeta::core::SchemaKeywordType;
+  switch (walker(token.to_property(), vocabularies).type) {
+    case Type::ApplicatorValueTraverseAnyItem:
+    case Type::ApplicatorValueTraverseAnyPropertyKey:
+      return true;
+    default:
+      return false;
+  }
+}
+
+/// What each edge of the document is for, by where the edge sits
+using EdgeKinds = std::unordered_map<sourcemeta::core::WeakPointer, bool,
+                                     sourcemeta::core::WeakPointer::Hasher,
+                                     sourcemeta::core::WeakPointer::Comparator>;
+
+auto edge_kinds(const sourcemeta::core::SchemaFrame &frame,
+                const sourcemeta::core::SchemaWalker &walker,
+                const sourcemeta::core::SchemaResolver &resolver,
+                const Subschemas &subschemas) -> EdgeKinds {
+  EdgeKinds result;
+  for (const auto &candidate : subschemas) {
+    const auto &subschema{candidate.get()};
+    const auto *node{enclosing_subschema(subschemas, subschema.pointer)};
+    if (node != nullptr) {
+      result.emplace(
+          subschema.pointer,
+          edge_only_validates(frame, walker, resolver, *node, subschema));
+    }
+  }
+
+  return result;
+}
+
+/// Whether anything that reaches a subschema says what an instance looks like,
+/// for each subschema a reference reaches at all. While a dialect keeps its
+/// subschemas nested, the keywords above one are enough to tell what it is
+/// for. Once a dialect lifts every subschema into one container, nothing sits
+/// under anything, and the edges that reach a node are what say it
+using Arrivals = std::unordered_map<sourcemeta::core::WeakPointer, bool,
+                                    sourcemeta::core::WeakPointer::Hasher,
+                                    sourcemeta::core::WeakPointer::Comparator>;
+
+auto arrivals(const sourcemeta::core::SchemaFrame &frame,
+              const EdgeKinds &kinds) -> Arrivals {
+  Arrivals result;
+  frame.for_each_reference_into(
+      sourcemeta::core::EMPTY_WEAK_POINTER,
+      [&frame, &kinds, &result](
+          const sourcemeta::core::SchemaReferenceType,
+          const sourcemeta::core::WeakPointer &source,
+          const sourcemeta::core::SchemaFrame::Reference &reference) -> void {
+        const auto destination{frame.traverse(reference.destination)};
+        if (!destination.has_value()) {
+          return;
+        }
+
+        // A reference sits inside the subschema that stands for the edge, as
+        // the keyword that spells it
+        auto edge{sourcemeta::core::to_pointer(source)};
+        edge.pop_back();
+        const auto kind{kinds.find(sourcemeta::core::to_weak_pointer(edge))};
+        const auto to_describe{kind == kinds.cend() || !kind->second};
+        const auto [entry, inserted] =
+            result.emplace(destination.value().get().pointer, to_describe);
+        if (!inserted && to_describe) {
+          entry->second = true;
+        }
+      });
+
+  return result;
 }
 
 // The dialect a schema declares, falling back to the given default. Unlike the
@@ -114,6 +224,12 @@ auto compile(const sourcemeta::core::JSON &input,
                      sourcemeta::core::WeakPointer::Hasher,
                      sourcemeta::core::WeakPointer::Comparator>
       visited;
+  Subschemas subschemas;
+  frame.for_each_subschema(
+      [&subschemas](const sourcemeta::core::SchemaFrame::Location &location)
+          -> void { subschemas.emplace_back(location); });
+  const auto reached{
+      arrivals(frame, edge_kinds(frame, walker, resolver, subschemas))};
   CodegenIRResult result;
   frame.for_each_subschema(
       [&](const sourcemeta::core::SchemaFrame::Location &location) -> void {
@@ -128,6 +244,15 @@ auto compile(const sourcemeta::core::JSON &input,
         // Skip subschemas under validation-only keywords that do not contribute
         // to the type structure (like `contains`)
         if (is_validation_subschema(frame, location, walker, resolver)) {
+          return;
+        }
+
+        // A dialect that lifts its subschemas leaves none of them under the
+        // keyword that put them there, so what a reference reaches without
+        // going through such a keyword is what carries a type. A subschema no
+        // reference names at all is left alone, as it was before any lifting
+        const auto arrival{reached.find(location.pointer)};
+        if (arrival != reached.cend() && !arrival->second) {
           return;
         }
 
