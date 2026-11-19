@@ -5124,8 +5124,7 @@
           "0": {
             "type": "array",
             "items": {
-              "type": "string",
-              "minLength": 0
+              "$ref": "#/definitions/2"
             },
             "minItems": 0,
             "uniqueItems": false,
@@ -5133,7 +5132,11 @@
               "$ref": "#/definitions/1"
             }
           },
-          "1": true
+          "1": true,
+          "2": {
+            "type": "string",
+            "minLength": 0
+          }
         }
       }
     },
@@ -5680,12 +5683,15 @@
             "type": "array",
             "items": [
               {
-                "type": "string",
-                "minLength": 0
+                "$ref": "#/definitions/1"
               }
             ],
             "minItems": 0,
             "uniqueItems": false
+          },
+          "1": {
+            "type": "string",
+            "minLength": 0
           }
         }
       }
@@ -5729,8 +5735,7 @@
             "type": "array",
             "items": [
               {
-                "type": "string",
-                "minLength": 0
+                "$ref": "#/definitions/2"
               }
             ],
             "additionalItems": {
@@ -5738,7 +5743,11 @@
             },
             "minItems": 0
           },
-          "1": true
+          "1": true,
+          "2": {
+            "type": "string",
+            "minLength": 0
+          }
         }
       }
     },
@@ -5757,8 +5766,7 @@
             "type": "array",
             "items": [
               {
-                "type": "string",
-                "minLength": 0
+                "$ref": "#/definitions/2"
               }
             ],
             "additionalItems": {
@@ -5766,7 +5774,11 @@
             },
             "uniqueItems": false
           },
-          "1": true
+          "1": true,
+          "2": {
+            "type": "string",
+            "minLength": 0
+          }
         }
       }
     },
@@ -5785,8 +5797,7 @@
             "type": "array",
             "items": [
               {
-                "type": "string",
-                "minLength": 0
+                "$ref": "#/definitions/2"
               }
             ],
             "additionalItems": {
@@ -5796,7 +5807,11 @@
             "uniqueItems": false,
             "minimum": 0
           },
-          "1": true
+          "1": true,
+          "2": {
+            "type": "string",
+            "minLength": 0
+          }
         }
       }
     },
@@ -5815,8 +5830,7 @@
             "type": "array",
             "items": [
               {
-                "type": "string",
-                "minLength": 0
+                "$ref": "#/definitions/2"
               }
             ],
             "additionalItems": {
@@ -5826,7 +5840,11 @@
             "uniqueItems": false,
             "minLength": 0
           },
-          "1": true
+          "1": true,
+          "2": {
+            "type": "string",
+            "minLength": 0
+          }
         }
       }
     },
@@ -5845,8 +5863,7 @@
             "type": "array",
             "items": [
               {
-                "type": "string",
-                "minLength": 0
+                "$ref": "#/definitions/2"
               }
             ],
             "additionalItems": {
@@ -5856,7 +5873,11 @@
             "uniqueItems": false,
             "properties": {}
           },
-          "1": true
+          "1": true,
+          "2": {
+            "type": "string",
+            "minLength": 0
+          }
         }
       }
     },
@@ -5875,8 +5896,7 @@
             "type": "array",
             "items": [
               {
-                "type": "string",
-                "minLength": 0
+                "$ref": "#/definitions/2"
               }
             ],
             "additionalItems": {
@@ -5886,7 +5906,11 @@
             "uniqueItems": false,
             "definitions": {}
           },
-          "1": true
+          "1": true,
+          "2": {
+            "type": "string",
+            "minLength": 0
+          }
         }
       }
     },
@@ -5993,8 +6017,7 @@
             "type": "array",
             "items": [
               {
-                "type": "string",
-                "minLength": 0
+                "$ref": "#/definitions/2"
               }
             ],
             "additionalItems": {
@@ -6004,7 +6027,11 @@
             "uniqueItems": false,
             "id": "https://example.com"
           },
-          "1": true
+          "1": true,
+          "2": {
+            "type": "string",
+            "minLength": 0
+          }
         }
       }
     },
@@ -6023,8 +6050,7 @@
             "type": "array",
             "items": [
               {
-                "type": "string",
-                "minLength": 0
+                "$ref": "#/definitions/2"
               }
             ],
             "additionalItems": {
@@ -6034,7 +6060,11 @@
             "uniqueItems": false,
             "examples": []
           },
-          "1": true
+          "1": true,
+          "2": {
+            "type": "string",
+            "minLength": 0
+          }
         }
       }
     },
@@ -6087,8 +6117,7 @@
             "type": "array",
             "items": [
               {
-                "type": "string",
-                "minLength": 0
+                "$ref": "#/definitions/2"
               }
             ],
             "additionalItems": {
@@ -6100,7 +6129,11 @@
               []
             ]
           },
-          "1": true
+          "1": true,
+          "2": {
+            "type": "string",
+            "minLength": 0
+          }
         }
       }
     },
@@ -6119,8 +6152,7 @@
             "type": "array",
             "items": [
               {
-                "type": "string",
-                "minLength": 0
+                "$ref": "#/definitions/3"
               }
             ],
             "additionalItems": {
@@ -6135,7 +6167,11 @@
             ]
           },
           "1": true,
-          "2": true
+          "2": true,
+          "3": {
+            "type": "string",
+            "minLength": 0
+          }
         }
       }
     },
@@ -8435,8 +8471,7 @@
             "type": "array",
             "items": [
               {
-                "type": "string",
-                "minLength": 0
+                "$ref": "#/definitions/2"
               }
             ],
             "additionalItems": {
@@ -8444,6 +8479,332 @@
             },
             "minItems": -1,
             "uniqueItems": false
+          },
+          "1": true,
+          "2": {
+            "type": "string",
+            "minLength": 0
+          }
+        }
+      }
+    },
+    {
+      "description": "Array without type is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "items": {
+              "$ref": "#/definitions/1"
+            },
+            "minItems": 0,
+            "uniqueItems": false
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Array with an unknown type is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "list",
+            "items": {
+              "$ref": "#/definitions/1"
+            },
+            "minItems": 0,
+            "uniqueItems": false
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Array schema items with maxItems as string is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/1"
+            },
+            "minItems": 0,
+            "uniqueItems": false,
+            "maxItems": "1"
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Array tuple without type is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "items": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "additionalItems": {
+              "$ref": "#/definitions/1"
+            },
+            "minItems": 0,
+            "uniqueItems": false
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Array tuple without items is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "array",
+            "additionalItems": {
+              "$ref": "#/definitions/1"
+            },
+            "minItems": 0,
+            "uniqueItems": false
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Array tuple with an unknown type is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "list",
+            "items": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "additionalItems": {
+              "$ref": "#/definitions/1"
+            },
+            "minItems": 0,
+            "uniqueItems": false
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Array tuple with additionalItems carrying a sibling is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "array",
+            "items": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "additionalItems": {
+              "$ref": "#/definitions/1",
+              "title": "Anything"
+            },
+            "minItems": 0,
+            "uniqueItems": false
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Array tuple with contains carrying a sibling is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "array",
+            "items": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "additionalItems": {
+              "$ref": "#/definitions/1"
+            },
+            "minItems": 0,
+            "uniqueItems": false,
+            "contains": {
+              "$ref": "#/definitions/1",
+              "title": "Anything"
+            }
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Array tuple with float minItems is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "array",
+            "items": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "additionalItems": {
+              "$ref": "#/definitions/1"
+            },
+            "minItems": 0.5,
+            "uniqueItems": false
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Array tuple with maxItems as string is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "array",
+            "items": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "additionalItems": {
+              "$ref": "#/definitions/1"
+            },
+            "minItems": 0,
+            "uniqueItems": false,
+            "maxItems": "1"
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Array tuple with negative maxItems is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "array",
+            "items": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "additionalItems": {
+              "$ref": "#/definitions/1"
+            },
+            "minItems": 0,
+            "uniqueItems": false,
+            "maxItems": -1
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Array tuple with uniqueItems as string is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "array",
+            "items": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "additionalItems": {
+              "$ref": "#/definitions/1"
+            },
+            "minItems": 0,
+            "uniqueItems": "false"
           },
           "1": true
         }
@@ -8705,6 +9066,59 @@
             "multipleOf": 1,
             "title": 42
           }
+        }
+      }
+    },
+    {
+      "description": "Canonical form holding an entry with `items`, `minItems`, `title`, `type`, `uniqueItems`",
+      "valid": true,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/1"
+            },
+            "minItems": 0,
+            "uniqueItems": false,
+            "title": "Anything"
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Canonical form holding an entry with `additionalItems`, `items`, `minItems`, `title`, `type`, `uniqueItems`",
+      "valid": true,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "array",
+            "items": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "additionalItems": {
+              "$ref": "#/definitions/1"
+            },
+            "minItems": 0,
+            "uniqueItems": false,
+            "title": "Anything"
+          },
+          "1": true
         }
       }
     },
