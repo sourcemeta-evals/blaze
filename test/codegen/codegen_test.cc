@@ -621,3 +621,92 @@ TEST(nested_form_negation_under_contains_generates) {
 
   EXPECT_IR_ARRAY(result, ir_index_of(result, ""), "", "/items");
 }
+
+TEST(draft6_graph_form_negation_below_contains_generates) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "type": "array",
+    "contains": {
+      "type": "object",
+      "properties": { "foo": { "not": { "type": "string" } } }
+    }
+  })JSON")};
+
+  // Nothing an entry that only validates leads to says what an instance looks
+  // like either, however far down it sits. A keyword that carries a type
+  // elsewhere carries none from an entry that carries none, so the negation
+  // below this one is no more a type than the entry that names it
+  const auto result{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver, sourcemeta::blaze::default_compiler)};
+
+  using namespace sourcemeta::blaze;
+
+  EXPECT_IR_ARRAY(result, ir_index_of(result, "/definitions/0"),
+                  "/definitions/0", "/definitions/0/items");
+}
+
+TEST(nested_form_negation_below_contains_generates) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "array",
+    "contains": {
+      "type": "object",
+      "properties": { "foo": { "not": { "type": "string" } } }
+    }
+  })JSON")};
+
+  // A dialect that keeps its subschemas where they were written says the same
+  // of everything under the keyword, and goes on saying it
+  const auto result{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver, sourcemeta::blaze::default_compiler)};
+
+  using namespace sourcemeta::blaze;
+
+  EXPECT_IR_ARRAY(result, ir_index_of(result, ""), "", "/items");
+}
+
+TEST(draft6_graph_form_entry_both_contained_and_held_generates) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "type": "array",
+    "items": { "$ref": "#/definitions/shape" },
+    "contains": { "$ref": "#/definitions/shape" },
+    "definitions": { "shape": { "type": "string" } }
+  })JSON")};
+
+  // One entry of the graph can be both what an array holds and what it has to
+  // contain, and then there is a type to generate for it after all
+  const auto result{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver, sourcemeta::blaze::default_compiler)};
+
+  using namespace sourcemeta::blaze;
+
+  EXPECT_IR_ARRAY(result, ir_index_of(result, "/definitions/0"),
+                  "/definitions/0", "/definitions/0/items");
+  EXPECT_IR_SCALAR(result, ir_index_of(result, "/definitions/1"), String,
+                   "/definitions/1");
+}
+
+TEST(unsupported_keyword_error_draft6_negation_under_items) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "type": "array",
+    "items": { "not": { "type": "string" } }
+  })JSON")};
+
+  try {
+    sourcemeta::blaze::compile(schema, sourcemeta::core::schema_walker,
+                               sourcemeta::core::schema_resolver,
+                               sourcemeta::blaze::default_compiler);
+    FAIL();
+  } catch (const sourcemeta::blaze::CodegenUnsupportedKeywordError &error) {
+    EXPECT_STREQ(error.what(), "Unsupported keyword in subschema");
+    EXPECT_EQ(error.keyword(), "not");
+    // What an array holds is a type, so an entry it names has to stand for one
+    // and a negation that stands for no type is still as far as this gets
+    EXPECT_AS_STRING(error.pointer(), "/definitions/1");
+  }
+}

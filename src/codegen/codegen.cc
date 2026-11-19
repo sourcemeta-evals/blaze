@@ -95,44 +95,59 @@ auto edge_only_validates(const sourcemeta::core::SchemaFrame &frame,
   }
 }
 
-/// What each edge of the document is for, by where the edge sits
-using EdgeKinds = std::unordered_map<sourcemeta::core::WeakPointer, bool,
-                                     sourcemeta::core::WeakPointer::Hasher,
-                                     sourcemeta::core::WeakPointer::Comparator>;
+/// What an edge of the document is: the node it leaves, and whether what
+/// spells it says only what an instance must satisfy
+struct Edge {
+  sourcemeta::core::WeakPointer node;
+  bool validates;
+};
 
-auto edge_kinds(const sourcemeta::core::SchemaFrame &frame,
-                const sourcemeta::core::SchemaWalker &walker,
-                const sourcemeta::core::SchemaResolver &resolver,
-                const Subschemas &subschemas) -> EdgeKinds {
-  EdgeKinds result;
+/// Every edge of the document, by where the edge sits
+using Edges = std::unordered_map<sourcemeta::core::WeakPointer, Edge,
+                                 sourcemeta::core::WeakPointer::Hasher,
+                                 sourcemeta::core::WeakPointer::Comparator>;
+
+auto edges(const sourcemeta::core::SchemaFrame &frame,
+           const sourcemeta::core::SchemaWalker &walker,
+           const sourcemeta::core::SchemaResolver &resolver,
+           const Subschemas &subschemas) -> Edges {
+  Edges result;
   for (const auto &candidate : subschemas) {
     const auto &subschema{candidate.get()};
     const auto *node{enclosing_subschema(subschemas, subschema.pointer)};
     if (node != nullptr) {
-      result.emplace(
-          subschema.pointer,
-          edge_only_validates(frame, walker, resolver, *node, subschema));
+      result.emplace(subschema.pointer,
+                     Edge{.node = node->pointer,
+                          .validates = edge_only_validates(
+                              frame, walker, resolver, *node, subschema)});
     }
   }
 
   return result;
 }
 
-/// Whether anything that reaches a subschema says what an instance looks like,
-/// for each subschema a reference reaches at all. While a dialect keeps its
-/// subschemas nested, the keywords above one are enough to tell what it is
-/// for. Once a dialect lifts every subschema into one container, nothing sits
-/// under anything, and the edges that reach a node are what say it
-using Arrivals = std::unordered_map<sourcemeta::core::WeakPointer, bool,
-                                    sourcemeta::core::WeakPointer::Hasher,
-                                    sourcemeta::core::WeakPointer::Comparator>;
+using Nodes = std::unordered_set<sourcemeta::core::WeakPointer,
+                                 sourcemeta::core::WeakPointer::Hasher,
+                                 sourcemeta::core::WeakPointer::Comparator>;
 
-auto arrivals(const sourcemeta::core::SchemaFrame &frame,
-              const EdgeKinds &kinds) -> Arrivals {
-  Arrivals result;
+/// Where the references of a document lead: the nodes a reference names at
+/// all, and for each node, the nodes its edges lead to without only
+/// validating them
+struct References {
+  std::unordered_map<sourcemeta::core::WeakPointer,
+                     std::vector<sourcemeta::core::WeakPointer>,
+                     sourcemeta::core::WeakPointer::Hasher,
+                     sourcemeta::core::WeakPointer::Comparator>
+      describing;
+  Nodes named;
+};
+
+auto references(const sourcemeta::core::SchemaFrame &frame, const Edges &edges)
+    -> References {
+  References result;
   frame.for_each_reference_into(
       sourcemeta::core::EMPTY_WEAK_POINTER,
-      [&frame, &kinds, &result](
+      [&frame, &edges, &result](
           const sourcemeta::core::SchemaReferenceType,
           const sourcemeta::core::WeakPointer &source,
           const sourcemeta::core::SchemaFrame::Reference &reference) -> void {
@@ -141,18 +156,68 @@ auto arrivals(const sourcemeta::core::SchemaFrame &frame,
           return;
         }
 
+        const auto &target{destination.value().get().pointer};
+        result.named.insert(target);
+
         // A reference sits inside the subschema that stands for the edge, as
         // the keyword that spells it
         auto edge{sourcemeta::core::to_pointer(source)};
         edge.pop_back();
-        const auto kind{kinds.find(sourcemeta::core::to_weak_pointer(edge))};
-        const auto to_describe{kind == kinds.cend() || !kind->second};
-        const auto [entry, inserted] =
-            result.emplace(destination.value().get().pointer, to_describe);
-        if (!inserted && to_describe) {
-          entry->second = true;
+        const auto match{edges.find(sourcemeta::core::to_weak_pointer(edge))};
+        if (match != edges.cend() && match->second.validates) {
+          return;
         }
+
+        // A reference that sits in no edge at all sits in the document, which
+        // is what it leaves
+        result
+            .describing[match == edges.cend()
+                            ? sourcemeta::core::EMPTY_WEAK_POINTER
+                            : match->second.node]
+            .push_back(target);
       });
+
+  return result;
+}
+
+/// The subschemas that say what an instance looks like. While a dialect keeps
+/// its subschemas nested, the keywords above one are enough to tell what it is
+/// for. Once a dialect lifts every subschema into one container, nothing sits
+/// under anything, and what says it is the edges walked to get there: the
+/// document says what an instance looks like, as does every node no reference
+/// names, as was the case before any lifting, and so does whatever those
+/// reach without an edge that only validates on the way
+auto describing(const Subschemas &subschemas, const References &references)
+    -> Nodes {
+  Nodes result;
+  std::vector<sourcemeta::core::WeakPointer> pending;
+  const auto mark{
+      [&result, &pending](const sourcemeta::core::WeakPointer &node) -> void {
+        if (result.insert(node).second) {
+          pending.push_back(node);
+        }
+      }};
+
+  mark(sourcemeta::core::EMPTY_WEAK_POINTER);
+  for (const auto &candidate : subschemas) {
+    const auto &subschema{candidate.get()};
+    if (!references.named.contains(subschema.pointer)) {
+      mark(subschema.pointer);
+    }
+  }
+
+  while (!pending.empty()) {
+    const auto node{pending.back()};
+    pending.pop_back();
+    const auto match{references.describing.find(node)};
+    if (match == references.describing.cend()) {
+      continue;
+    }
+
+    for (const auto &target : match->second) {
+      mark(target);
+    }
+  }
 
   return result;
 }
@@ -228,8 +293,9 @@ auto compile(const sourcemeta::core::JSON &input,
   frame.for_each_subschema(
       [&subschemas](const sourcemeta::core::SchemaFrame::Location &location)
           -> void { subschemas.emplace_back(location); });
-  const auto reached{
-      arrivals(frame, edge_kinds(frame, walker, resolver, subschemas))};
+  const auto reached{describing(
+      subschemas,
+      references(frame, edges(frame, walker, resolver, subschemas)))};
   CodegenIRResult result;
   frame.for_each_subschema(
       [&](const sourcemeta::core::SchemaFrame::Location &location) -> void {
@@ -248,11 +314,9 @@ auto compile(const sourcemeta::core::JSON &input,
         }
 
         // A dialect that lifts its subschemas leaves none of them under the
-        // keyword that put them there, so what a reference reaches without
-        // going through such a keyword is what carries a type. A subschema no
-        // reference names at all is left alone, as it was before any lifting
-        const auto arrival{reached.find(location.pointer)};
-        if (arrival != reached.cend() && !arrival->second) {
+        // keyword that put them there, so what carries a type is what a chain
+        // of references reaches without going through such a keyword
+        if (!reached.contains(location.pointer)) {
           return;
         }
 
