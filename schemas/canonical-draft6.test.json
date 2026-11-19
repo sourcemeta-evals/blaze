@@ -1550,8 +1550,13 @@
         "definitions": {
           "0": {
             "$ref": "#/definitions/foo",
-            "anyOf": [ true ]
-          }
+            "anyOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ]
+          },
+          "1": true
         }
       }
     },
@@ -1568,8 +1573,13 @@
         "definitions": {
           "0": {
             "$ref": "#/definitions/foo",
-            "allOf": [ true ]
-          }
+            "allOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ]
+          },
+          "1": true
         }
       }
     },
@@ -1622,8 +1632,11 @@
         "definitions": {
           "0": {
             "$ref": "#/definitions/foo",
-            "items": true
-          }
+            "items": {
+              "$ref": "#/definitions/1"
+            }
+          },
+          "1": true
         }
       }
     },
@@ -1640,8 +1653,11 @@
         "definitions": {
           "0": {
             "$ref": "#/definitions/foo",
-            "not": true
-          }
+            "not": {
+              "$ref": "#/definitions/1"
+            }
+          },
+          "1": true
         }
       }
     },
@@ -1658,8 +1674,13 @@
         "definitions": {
           "0": {
             "$ref": "#/definitions/foo",
-            "oneOf": [ true ]
-          }
+            "oneOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ]
+          },
+          "1": true
         }
       }
     },
@@ -1676,8 +1697,11 @@
         "definitions": {
           "0": {
             "$ref": "#/definitions/foo",
-            "contains": true
-          }
+            "contains": {
+              "$ref": "#/definitions/1"
+            }
+          },
+          "1": true
         }
       }
     },
@@ -1694,8 +1718,11 @@
         "definitions": {
           "0": {
             "$ref": "#/definitions/foo",
-            "propertyNames": true
-          }
+            "propertyNames": {
+              "$ref": "#/definitions/1"
+            }
+          },
+          "1": true
         }
       }
     },
@@ -1908,8 +1935,13 @@
         "definitions": {
           "0": {
             "enum": [ 1 ],
-            "anyOf": [ true ]
-          }
+            "anyOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ]
+          },
+          "1": true
         }
       }
     },
@@ -1926,8 +1958,11 @@
         "definitions": {
           "0": {
             "enum": [ 1 ],
-            "items": true
-          }
+            "items": {
+              "$ref": "#/definitions/1"
+            }
+          },
+          "1": true
         }
       }
     },
@@ -1962,8 +1997,11 @@
         "definitions": {
           "0": {
             "enum": [ 1 ],
-            "not": true
-          }
+            "not": {
+              "$ref": "#/definitions/1"
+            }
+          },
+          "1": true
         }
       }
     },
@@ -1980,8 +2018,13 @@
         "definitions": {
           "0": {
             "enum": [ 1 ],
-            "allOf": [ true ]
-          }
+            "allOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ]
+          },
+          "1": true
         }
       }
     },
@@ -1998,8 +2041,13 @@
         "definitions": {
           "0": {
             "enum": [ 1 ],
-            "oneOf": [ true ]
-          }
+            "oneOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ]
+          },
+          "1": true
         }
       }
     },
@@ -2016,8 +2064,11 @@
         "definitions": {
           "0": {
             "enum": [ 1 ],
-            "contains": true
-          }
+            "contains": {
+              "$ref": "#/definitions/1"
+            }
+          },
+          "1": true
         }
       }
     },
@@ -2034,8 +2085,11 @@
         "definitions": {
           "0": {
             "enum": [ 1 ],
-            "propertyNames": true
-          }
+            "propertyNames": {
+              "$ref": "#/definitions/1"
+            }
+          },
+          "1": true
         }
       }
     },
@@ -2328,8 +2382,11 @@
           "0": {
             "type": "string",
             "minLength": 0,
-            "items": true
-          }
+            "items": {
+              "$ref": "#/definitions/1"
+            }
+          },
+          "1": true
         }
       }
     },
@@ -2366,8 +2423,13 @@
           "0": {
             "type": "string",
             "minLength": 0,
-            "anyOf": [ true ]
-          }
+            "anyOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ]
+          },
+          "1": true
         }
       }
     },
@@ -2385,8 +2447,13 @@
           "0": {
             "type": "string",
             "minLength": 0,
-            "allOf": [ true ]
-          }
+            "allOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ]
+          },
+          "1": true
         }
       }
     },
@@ -2404,8 +2471,13 @@
           "0": {
             "type": "string",
             "minLength": 0,
-            "oneOf": [ true ]
-          }
+            "oneOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ]
+          },
+          "1": true
         }
       }
     },
@@ -2423,8 +2495,11 @@
           "0": {
             "type": "string",
             "minLength": 0,
-            "not": true
-          }
+            "not": {
+              "$ref": "#/definitions/1"
+            }
+          },
+          "1": true
         }
       }
     },
@@ -2461,8 +2536,11 @@
           "0": {
             "type": "string",
             "minLength": 0,
-            "contains": true
-          }
+            "contains": {
+              "$ref": "#/definitions/1"
+            }
+          },
+          "1": true
         }
       }
     },
@@ -2480,8 +2558,11 @@
           "0": {
             "type": "string",
             "minLength": 0,
-            "propertyNames": true
-          }
+            "propertyNames": {
+              "$ref": "#/definitions/1"
+            }
+          },
+          "1": true
         }
       }
     },
@@ -2842,8 +2923,11 @@
           "0": {
             "type": "integer",
             "multipleOf": 1,
-            "items": true
-          }
+            "items": {
+              "$ref": "#/definitions/1"
+            }
+          },
+          "1": true
         }
       }
     },
@@ -2880,8 +2964,13 @@
           "0": {
             "type": "integer",
             "multipleOf": 1,
-            "anyOf": [ true ]
-          }
+            "anyOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ]
+          },
+          "1": true
         }
       }
     },
@@ -2899,8 +2988,13 @@
           "0": {
             "type": "integer",
             "multipleOf": 1,
-            "allOf": [ true ]
-          }
+            "allOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ]
+          },
+          "1": true
         }
       }
     },
@@ -2918,8 +3012,13 @@
           "0": {
             "type": "integer",
             "multipleOf": 1,
-            "oneOf": [ true ]
-          }
+            "oneOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ]
+          },
+          "1": true
         }
       }
     },
@@ -2937,8 +3036,11 @@
           "0": {
             "type": "integer",
             "multipleOf": 1,
-            "not": true
-          }
+            "not": {
+              "$ref": "#/definitions/1"
+            }
+          },
+          "1": true
         }
       }
     },
@@ -2975,8 +3077,11 @@
           "0": {
             "type": "integer",
             "multipleOf": 1,
-            "contains": true
-          }
+            "contains": {
+              "$ref": "#/definitions/1"
+            }
+          },
+          "1": true
         }
       }
     },
@@ -2994,8 +3099,11 @@
           "0": {
             "type": "integer",
             "multipleOf": 1,
-            "propertyNames": true
-          }
+            "propertyNames": {
+              "$ref": "#/definitions/1"
+            }
+          },
+          "1": true
         }
       }
     },
@@ -3370,8 +3478,11 @@
         "definitions": {
           "0": {
             "type": "number",
-            "items": true
-          }
+            "items": {
+              "$ref": "#/definitions/1"
+            }
+          },
+          "1": true
         }
       }
     },
@@ -3406,8 +3517,13 @@
         "definitions": {
           "0": {
             "type": "number",
-            "anyOf": [ true ]
-          }
+            "anyOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ]
+          },
+          "1": true
         }
       }
     },
@@ -3424,8 +3540,13 @@
         "definitions": {
           "0": {
             "type": "number",
-            "allOf": [ true ]
-          }
+            "allOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ]
+          },
+          "1": true
         }
       }
     },
@@ -3442,8 +3563,13 @@
         "definitions": {
           "0": {
             "type": "number",
-            "oneOf": [ true ]
-          }
+            "oneOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ]
+          },
+          "1": true
         }
       }
     },
@@ -3460,8 +3586,11 @@
         "definitions": {
           "0": {
             "type": "number",
-            "not": true
-          }
+            "not": {
+              "$ref": "#/definitions/1"
+            }
+          },
+          "1": true
         }
       }
     },
@@ -3496,8 +3625,11 @@
         "definitions": {
           "0": {
             "type": "number",
-            "contains": true
-          }
+            "contains": {
+              "$ref": "#/definitions/1"
+            }
+          },
+          "1": true
         }
       }
     },
@@ -3514,8 +3646,11 @@
         "definitions": {
           "0": {
             "type": "number",
-            "propertyNames": true
-          }
+            "propertyNames": {
+              "$ref": "#/definitions/1"
+            }
+          },
+          "1": true
         }
       }
     },
@@ -3681,10 +3816,16 @@
           "0": {
             "type": "object",
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0
-          }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -3703,9 +3844,15 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true
-          }
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -3723,10 +3870,16 @@
           "0": {
             "type": "object",
             "properties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0
-          }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -3745,9 +3898,12 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "propertyNames": true,
+            "propertyNames": {
+              "$ref": "#/definitions/1"
+            },
             "minProperties": 0
-          }
+          },
+          "1": true
         }
       }
     },
@@ -3766,9 +3922,12 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
             "minProperties": 0
-          }
+          },
+          "1": true
         }
       }
     },
@@ -3787,11 +3946,17 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0,
             "minLength": 0
-          }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -3810,11 +3975,20 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0,
-            "items": true
-          }
+            "items": {
+              "$ref": "#/definitions/3"
+            }
+          },
+          "1": true,
+          "2": true,
+          "3": true
         }
       }
     },
@@ -3833,11 +4007,17 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0,
             "minimum": 0
-          }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -3856,13 +4036,19 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0,
             "enum": [
               {}
             ]
-          }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -3881,11 +4067,22 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0,
-            "anyOf": [ true ]
-          }
+            "anyOf": [
+              {
+                "$ref": "#/definitions/3"
+              }
+            ]
+          },
+          "1": true,
+          "2": true,
+          "3": true
         }
       }
     },
@@ -3904,11 +4101,22 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0,
-            "allOf": [ true ]
-          }
+            "allOf": [
+              {
+                "$ref": "#/definitions/3"
+              }
+            ]
+          },
+          "1": true,
+          "2": true,
+          "3": true
         }
       }
     },
@@ -3927,11 +4135,22 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0,
-            "oneOf": [ true ]
-          }
+            "oneOf": [
+              {
+                "$ref": "#/definitions/3"
+              }
+            ]
+          },
+          "1": true,
+          "2": true,
+          "3": true
         }
       }
     },
@@ -3950,11 +4169,20 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0,
-            "not": true
-          }
+            "not": {
+              "$ref": "#/definitions/3"
+            }
+          },
+          "1": true,
+          "2": true,
+          "3": true
         }
       }
     },
@@ -3973,11 +4201,17 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0,
             "$ref": "#/definitions/foo"
-          }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -3996,11 +4230,20 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0,
-            "contains": true
-          }
+            "contains": {
+              "$ref": "#/definitions/3"
+            }
+          },
+          "1": true,
+          "2": true,
+          "3": true
         }
       }
     },
@@ -4019,13 +4262,19 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0,
             "dependencies": {
               "foo": [ "bar" ]
             }
-          }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -4044,11 +4293,17 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0,
             "required": []
-          }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -4067,11 +4322,17 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0,
             "definitions": {}
-          }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -4094,10 +4355,16 @@
               }
             },
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0
-          }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -4120,10 +4387,16 @@
                 "type": "boolean"
               }
             },
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0
-          }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -4145,9 +4418,12 @@
             "additionalProperties": {
               "type": "boolean"
             },
-            "propertyNames": true,
+            "propertyNames": {
+              "$ref": "#/definitions/1"
+            },
             "minProperties": 0
-          }
+          },
+          "1": true
         }
       }
     },
@@ -4166,12 +4442,15 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
             "propertyNames": {
               "type": "boolean"
             },
             "minProperties": 0
-          }
+          },
+          "1": true
         }
       }
     },
@@ -4190,15 +4469,21 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0,
             "definitions": {
               "x": {
                 "type": "boolean"
               }
             }
-          }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -4217,11 +4502,17 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0,
             "id": "https://example.com"
-          }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -4240,11 +4531,17 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0,
             "examples": []
-          }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -4263,11 +4560,17 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0,
             "examples": "foo"
-          }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -4286,11 +4589,17 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0,
             "examples": [ 1, 1 ]
-          }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -4309,10 +4618,16 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": -1
-          }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -4331,10 +4646,16 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 1.5
-          }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -4353,11 +4674,17 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0,
             "maxProperties": -1
-          }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -4376,11 +4703,17 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0,
             "required": [ 42 ]
-          }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -4399,11 +4732,17 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0,
             "required": [ "a", "a" ]
-          }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -4420,9 +4759,12 @@
         "definitions": {
           "0": {
             "type": "array",
-            "items": true,
+            "items": {
+              "$ref": "#/definitions/1"
+            },
             "uniqueItems": false
-          }
+          },
+          "1": true
         }
       }
     },
@@ -4458,9 +4800,12 @@
         "definitions": {
           "0": {
             "type": "array",
-            "items": true,
+            "items": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0
-          }
+          },
+          "1": true
         }
       }
     },
@@ -4483,8 +4828,11 @@
             },
             "minItems": 0,
             "uniqueItems": false,
-            "additionalItems": true
-          }
+            "additionalItems": {
+              "$ref": "#/definitions/1"
+            }
+          },
+          "1": true
         }
       }
     },
@@ -4501,11 +4849,14 @@
         "definitions": {
           "0": {
             "type": "array",
-            "items": true,
+            "items": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "uniqueItems": false,
             "minLength": 0
-          }
+          },
+          "1": true
         }
       }
     },
@@ -4522,11 +4873,14 @@
         "definitions": {
           "0": {
             "type": "array",
-            "items": true,
+            "items": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "uniqueItems": false,
             "properties": {}
-          }
+          },
+          "1": true
         }
       }
     },
@@ -4543,11 +4897,14 @@
         "definitions": {
           "0": {
             "type": "array",
-            "items": true,
+            "items": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "uniqueItems": false,
             "minimum": 0
-          }
+          },
+          "1": true
         }
       }
     },
@@ -4564,13 +4921,16 @@
         "definitions": {
           "0": {
             "type": "array",
-            "items": true,
+            "items": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "uniqueItems": false,
             "enum": [
               []
             ]
-          }
+          },
+          "1": true
         }
       }
     },
@@ -4587,11 +4947,19 @@
         "definitions": {
           "0": {
             "type": "array",
-            "items": true,
+            "items": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "uniqueItems": false,
-            "anyOf": [ true ]
-          }
+            "anyOf": [
+              {
+                "$ref": "#/definitions/2"
+              }
+            ]
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -4608,11 +4976,19 @@
         "definitions": {
           "0": {
             "type": "array",
-            "items": true,
+            "items": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "uniqueItems": false,
-            "allOf": [ true ]
-          }
+            "allOf": [
+              {
+                "$ref": "#/definitions/2"
+              }
+            ]
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -4629,11 +5005,19 @@
         "definitions": {
           "0": {
             "type": "array",
-            "items": true,
+            "items": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "uniqueItems": false,
-            "oneOf": [ true ]
-          }
+            "oneOf": [
+              {
+                "$ref": "#/definitions/2"
+              }
+            ]
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -4650,11 +5034,17 @@
         "definitions": {
           "0": {
             "type": "array",
-            "items": true,
+            "items": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "uniqueItems": false,
-            "not": true
-          }
+            "not": {
+              "$ref": "#/definitions/2"
+            }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -4671,11 +5061,14 @@
         "definitions": {
           "0": {
             "type": "array",
-            "items": true,
+            "items": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "uniqueItems": false,
             "$ref": "#/definitions/foo"
-          }
+          },
+          "1": true
         }
       }
     },
@@ -4692,11 +5085,14 @@
         "definitions": {
           "0": {
             "type": "array",
-            "items": true,
+            "items": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "uniqueItems": false,
             "definitions": {}
-          }
+          },
+          "1": true
         }
       }
     },
@@ -4735,13 +5131,16 @@
         "definitions": {
           "0": {
             "type": "array",
-            "items": true,
+            "items": {
+              "$ref": "#/definitions/1"
+            },
             "contains": {
               "type": "boolean"
             },
             "minItems": 0,
             "uniqueItems": false
-          }
+          },
+          "1": true
         }
       }
     },
@@ -4758,7 +5157,9 @@
         "definitions": {
           "0": {
             "type": "array",
-            "items": true,
+            "items": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "uniqueItems": false,
             "definitions": {
@@ -4766,7 +5167,8 @@
                 "type": "boolean"
               }
             }
-          }
+          },
+          "1": true
         }
       }
     },
@@ -4783,11 +5185,14 @@
         "definitions": {
           "0": {
             "type": "array",
-            "items": true,
+            "items": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "uniqueItems": false,
             "id": "https://example.com"
-          }
+          },
+          "1": true
         }
       }
     },
@@ -4804,11 +5209,14 @@
         "definitions": {
           "0": {
             "type": "array",
-            "items": true,
+            "items": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "uniqueItems": false,
             "examples": []
-          }
+          },
+          "1": true
         }
       }
     },
@@ -4825,11 +5233,14 @@
         "definitions": {
           "0": {
             "type": "array",
-            "items": true,
+            "items": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "uniqueItems": false,
             "examples": "foo"
-          }
+          },
+          "1": true
         }
       }
     },
@@ -4846,10 +5257,13 @@
         "definitions": {
           "0": {
             "type": "array",
-            "items": true,
+            "items": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": -1,
             "uniqueItems": false
-          }
+          },
+          "1": true
         }
       }
     },
@@ -4866,10 +5280,13 @@
         "definitions": {
           "0": {
             "type": "array",
-            "items": true,
+            "items": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 1.5,
             "uniqueItems": false
-          }
+          },
+          "1": true
         }
       }
     },
@@ -4886,11 +5303,14 @@
         "definitions": {
           "0": {
             "type": "array",
-            "items": true,
+            "items": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "maxItems": -1,
             "uniqueItems": false
-          }
+          },
+          "1": true
         }
       }
     },
@@ -4907,10 +5327,13 @@
         "definitions": {
           "0": {
             "type": "array",
-            "items": true,
+            "items": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "uniqueItems": "true"
-          }
+          },
+          "1": true
         }
       }
     },
@@ -4927,11 +5350,17 @@
         "definitions": {
           "0": {
             "type": "array",
-            "items": true,
+            "items": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "uniqueItems": false,
-            "propertyNames": true
-          }
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -4974,10 +5403,13 @@
           "0": {
             "type": "array",
             "items": [],
-            "additionalItems": true,
+            "additionalItems": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "uniqueItems": false
-          }
+          },
+          "1": true
         }
       }
     },
@@ -5000,9 +5432,12 @@
                 "minLength": 0
               }
             ],
-            "additionalItems": true,
+            "additionalItems": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0
-          }
+          },
+          "1": true
         }
       }
     },
@@ -5025,9 +5460,12 @@
                 "minLength": 0
               }
             ],
-            "additionalItems": true,
+            "additionalItems": {
+              "$ref": "#/definitions/1"
+            },
             "uniqueItems": false
-          }
+          },
+          "1": true
         }
       }
     },
@@ -5050,11 +5488,14 @@
                 "minLength": 0
               }
             ],
-            "additionalItems": true,
+            "additionalItems": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "uniqueItems": false,
             "minimum": 0
-          }
+          },
+          "1": true
         }
       }
     },
@@ -5077,11 +5518,14 @@
                 "minLength": 0
               }
             ],
-            "additionalItems": true,
+            "additionalItems": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "uniqueItems": false,
             "minLength": 0
-          }
+          },
+          "1": true
         }
       }
     },
@@ -5104,11 +5548,14 @@
                 "minLength": 0
               }
             ],
-            "additionalItems": true,
+            "additionalItems": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "uniqueItems": false,
             "properties": {}
-          }
+          },
+          "1": true
         }
       }
     },
@@ -5131,11 +5578,14 @@
                 "minLength": 0
               }
             ],
-            "additionalItems": true,
+            "additionalItems": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "uniqueItems": false,
             "definitions": {}
-          }
+          },
+          "1": true
         }
       }
     },
@@ -5157,10 +5607,13 @@
                 "type": "boolean"
               }
             ],
-            "additionalItems": true,
+            "additionalItems": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "uniqueItems": false
-          }
+          },
+          "1": true
         }
       }
     },
@@ -5211,13 +5664,16 @@
                 "minLength": 0
               }
             ],
-            "additionalItems": true,
+            "additionalItems": {
+              "$ref": "#/definitions/1"
+            },
             "contains": {
               "type": "boolean"
             },
             "minItems": 0,
             "uniqueItems": false
-          }
+          },
+          "1": true
         }
       }
     },
@@ -5240,11 +5696,14 @@
                 "minLength": 0
               }
             ],
-            "additionalItems": true,
+            "additionalItems": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "uniqueItems": false,
             "id": "https://example.com"
-          }
+          },
+          "1": true
         }
       }
     },
@@ -5267,11 +5726,14 @@
                 "minLength": 0
               }
             ],
-            "additionalItems": true,
+            "additionalItems": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "uniqueItems": false,
             "examples": []
-          }
+          },
+          "1": true
         }
       }
     },
@@ -5294,7 +5756,9 @@
                 "minLength": 0
               }
             ],
-            "additionalItems": true,
+            "additionalItems": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "uniqueItems": false,
             "definitions": {
@@ -5302,7 +5766,8 @@
                 "type": "boolean"
               }
             }
-          }
+          },
+          "1": true
         }
       }
     },
@@ -5325,13 +5790,16 @@
                 "minLength": 0
               }
             ],
-            "additionalItems": true,
+            "additionalItems": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "uniqueItems": false,
             "enum": [
               []
             ]
-          }
+          },
+          "1": true
         }
       }
     },
@@ -5354,11 +5822,19 @@
                 "minLength": 0
               }
             ],
-            "additionalItems": true,
+            "additionalItems": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": 0,
             "uniqueItems": false,
-            "anyOf": [ true ]
-          }
+            "anyOf": [
+              {
+                "$ref": "#/definitions/2"
+              }
+            ]
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -5511,8 +5987,11 @@
                 "minLength": 0
               }
             ],
-            "items": true
-          }
+            "items": {
+              "$ref": "#/definitions/1"
+            }
+          },
+          "1": true
         }
       }
     },
@@ -5528,9 +6007,19 @@
         ],
         "definitions": {
           "0": {
-            "anyOf": [ true ],
-            "allOf": [ true ]
-          }
+            "anyOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "allOf": [
+              {
+                "$ref": "#/definitions/2"
+              }
+            ]
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -5546,9 +6035,19 @@
         ],
         "definitions": {
           "0": {
-            "anyOf": [ true ],
-            "oneOf": [ true ]
-          }
+            "anyOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "oneOf": [
+              {
+                "$ref": "#/definitions/2"
+              }
+            ]
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -5564,9 +6063,17 @@
         ],
         "definitions": {
           "0": {
-            "anyOf": [ true ],
-            "not": true
-          }
+            "anyOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "not": {
+              "$ref": "#/definitions/2"
+            }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -5582,9 +6089,14 @@
         ],
         "definitions": {
           "0": {
-            "anyOf": [ true ],
+            "anyOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
             "enum": [ 1 ]
-          }
+          },
+          "1": true
         }
       }
     },
@@ -5600,9 +6112,17 @@
         ],
         "definitions": {
           "0": {
-            "anyOf": [ true ],
-            "contains": true
-          }
+            "anyOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "contains": {
+              "$ref": "#/definitions/2"
+            }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -5618,9 +6138,17 @@
         ],
         "definitions": {
           "0": {
-            "anyOf": [ true ],
-            "propertyNames": true
-          }
+            "anyOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -5636,9 +6164,14 @@
         ],
         "definitions": {
           "0": {
-            "anyOf": [ true ],
+            "anyOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
             "definitions": {}
-          }
+          },
+          "1": true
         }
       }
     },
@@ -5678,13 +6211,18 @@
         ],
         "definitions": {
           "0": {
-            "anyOf": [ true ],
+            "anyOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
             "definitions": {
               "x": {
                 "type": "boolean"
               }
             }
-          }
+          },
+          "1": true
         }
       }
     },
@@ -5700,9 +6238,14 @@
         ],
         "definitions": {
           "0": {
-            "anyOf": [ true ],
+            "anyOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
             "id": "https://example.com"
-          }
+          },
+          "1": true
         }
       }
     },
@@ -5718,9 +6261,14 @@
         ],
         "definitions": {
           "0": {
-            "anyOf": [ true ],
+            "anyOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
             "examples": []
-          }
+          },
+          "1": true
         }
       }
     },
@@ -5736,9 +6284,14 @@
         ],
         "definitions": {
           "0": {
-            "anyOf": [ true ],
+            "anyOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
             "examples": "foo"
-          }
+          },
+          "1": true
         }
       }
     },
@@ -5754,9 +6307,14 @@
         ],
         "definitions": {
           "0": {
-            "anyOf": [ true ],
+            "anyOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
             "examples": [ 1, 1 ]
-          }
+          },
+          "1": true
         }
       }
     },
@@ -5789,8 +6347,13 @@
         ],
         "definitions": {
           "0": {
-            "anyOf": [ true ]
-          }
+            "anyOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ]
+          },
+          "1": true
         }
       }
     },
@@ -5806,8 +6369,16 @@
         ],
         "definitions": {
           "0": {
-            "anyOf": [ true, true ]
-          }
+            "anyOf": [
+              {
+                "$ref": "#/definitions/1"
+              },
+              {
+                "$ref": "#/definitions/1"
+              }
+            ]
+          },
+          "1": true
         }
       }
     },
@@ -5884,9 +6455,14 @@
         ],
         "definitions": {
           "0": {
-            "allOf": [ true ],
+            "allOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
             "$ref": "#/definitions/a"
-          }
+          },
+          "1": true
         }
       }
     },
@@ -5924,9 +6500,14 @@
         ],
         "definitions": {
           "0": {
-            "allOf": [ true ],
+            "allOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
             "minLength": 0
-          }
+          },
+          "1": true
         }
       }
     },
@@ -5942,9 +6523,17 @@
         ],
         "definitions": {
           "0": {
-            "allOf": [ true ],
-            "items": true
-          }
+            "allOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "items": {
+              "$ref": "#/definitions/2"
+            }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -5960,9 +6549,19 @@
         ],
         "definitions": {
           "0": {
-            "allOf": [ true ],
-            "anyOf": [ true ]
-          }
+            "allOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "anyOf": [
+              {
+                "$ref": "#/definitions/2"
+              }
+            ]
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -5978,9 +6577,19 @@
         ],
         "definitions": {
           "0": {
-            "allOf": [ true ],
-            "oneOf": [ true ]
-          }
+            "allOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "oneOf": [
+              {
+                "$ref": "#/definitions/2"
+              }
+            ]
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -5996,9 +6605,17 @@
         ],
         "definitions": {
           "0": {
-            "allOf": [ true ],
-            "not": true
-          }
+            "allOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "not": {
+              "$ref": "#/definitions/2"
+            }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -6014,9 +6631,14 @@
         ],
         "definitions": {
           "0": {
-            "allOf": [ true ],
+            "allOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
             "enum": [ 1 ]
-          }
+          },
+          "1": true
         }
       }
     },
@@ -6032,9 +6654,17 @@
         ],
         "definitions": {
           "0": {
-            "allOf": [ true ],
-            "contains": true
-          }
+            "allOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "contains": {
+              "$ref": "#/definitions/2"
+            }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -6050,9 +6680,17 @@
         ],
         "definitions": {
           "0": {
-            "allOf": [ true ],
-            "propertyNames": true
-          }
+            "allOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -6109,9 +6747,14 @@
         ],
         "definitions": {
           "0": {
-            "allOf": [ true ],
+            "allOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
             "id": "https://example.com"
-          }
+          },
+          "1": true
         }
       }
     },
@@ -6127,9 +6770,14 @@
         ],
         "definitions": {
           "0": {
-            "allOf": [ true ],
+            "allOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
             "examples": []
-          }
+          },
+          "1": true
         }
       }
     },
@@ -6145,9 +6793,14 @@
         ],
         "definitions": {
           "0": {
-            "allOf": [ true ],
+            "allOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
             "examples": "foo"
-          }
+          },
+          "1": true
         }
       }
     },
@@ -6163,9 +6816,14 @@
         ],
         "definitions": {
           "0": {
-            "allOf": [ true ],
+            "allOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
             "examples": [ 1, 1 ]
-          }
+          },
+          "1": true
         }
       }
     },
@@ -6198,8 +6856,13 @@
         ],
         "definitions": {
           "0": {
-            "allOf": [ true ]
-          }
+            "allOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ]
+          },
+          "1": true
         }
       }
     },
@@ -6215,8 +6878,16 @@
         ],
         "definitions": {
           "0": {
-            "allOf": [ true, true ]
-          }
+            "allOf": [
+              {
+                "$ref": "#/definitions/1"
+              },
+              {
+                "$ref": "#/definitions/1"
+              }
+            ]
+          },
+          "1": true
         }
       }
     },
@@ -6272,9 +6943,14 @@
         ],
         "definitions": {
           "0": {
-            "oneOf": [ true ],
+            "oneOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
             "properties": {}
-          }
+          },
+          "1": true
         }
       }
     },
@@ -6290,9 +6966,14 @@
         ],
         "definitions": {
           "0": {
-            "oneOf": [ true ],
+            "oneOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
             "$ref": "#/definitions/a"
-          }
+          },
+          "1": true
         }
       }
     },
@@ -6330,9 +7011,14 @@
         ],
         "definitions": {
           "0": {
-            "oneOf": [ true ],
+            "oneOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
             "minLength": 0
-          }
+          },
+          "1": true
         }
       }
     },
@@ -6348,9 +7034,17 @@
         ],
         "definitions": {
           "0": {
-            "oneOf": [ true ],
-            "items": true
-          }
+            "oneOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "items": {
+              "$ref": "#/definitions/2"
+            }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -6366,9 +7060,19 @@
         ],
         "definitions": {
           "0": {
-            "oneOf": [ true ],
-            "anyOf": [ true ]
-          }
+            "oneOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "anyOf": [
+              {
+                "$ref": "#/definitions/2"
+              }
+            ]
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -6384,9 +7088,19 @@
         ],
         "definitions": {
           "0": {
-            "oneOf": [ true ],
-            "allOf": [ true ]
-          }
+            "oneOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "allOf": [
+              {
+                "$ref": "#/definitions/2"
+              }
+            ]
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -6402,9 +7116,17 @@
         ],
         "definitions": {
           "0": {
-            "oneOf": [ true ],
-            "not": true
-          }
+            "oneOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "not": {
+              "$ref": "#/definitions/2"
+            }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -6420,9 +7142,14 @@
         ],
         "definitions": {
           "0": {
-            "oneOf": [ true ],
+            "oneOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
             "enum": [ 1 ]
-          }
+          },
+          "1": true
         }
       }
     },
@@ -6438,9 +7165,17 @@
         ],
         "definitions": {
           "0": {
-            "oneOf": [ true ],
-            "contains": true
-          }
+            "oneOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "contains": {
+              "$ref": "#/definitions/2"
+            }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -6456,9 +7191,17 @@
         ],
         "definitions": {
           "0": {
-            "oneOf": [ true ],
-            "propertyNames": true
-          }
+            "oneOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -6474,9 +7217,14 @@
         ],
         "definitions": {
           "0": {
-            "oneOf": [ true ],
+            "oneOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
             "definitions": {}
-          }
+          },
+          "1": true
         }
       }
     },
@@ -6516,13 +7264,18 @@
         ],
         "definitions": {
           "0": {
-            "oneOf": [ true ],
+            "oneOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
             "definitions": {
               "x": {
                 "type": "boolean"
               }
             }
-          }
+          },
+          "1": true
         }
       }
     },
@@ -6538,9 +7291,14 @@
         ],
         "definitions": {
           "0": {
-            "oneOf": [ true ],
+            "oneOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
             "id": "https://example.com"
-          }
+          },
+          "1": true
         }
       }
     },
@@ -6556,9 +7314,14 @@
         ],
         "definitions": {
           "0": {
-            "oneOf": [ true ],
+            "oneOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
             "examples": []
-          }
+          },
+          "1": true
         }
       }
     },
@@ -6574,9 +7337,14 @@
         ],
         "definitions": {
           "0": {
-            "oneOf": [ true ],
+            "oneOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
             "examples": "foo"
-          }
+          },
+          "1": true
         }
       }
     },
@@ -6592,9 +7360,14 @@
         ],
         "definitions": {
           "0": {
-            "oneOf": [ true ],
+            "oneOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
             "examples": [ 1, 1 ]
-          }
+          },
+          "1": true
         }
       }
     },
@@ -6627,8 +7400,13 @@
         ],
         "definitions": {
           "0": {
-            "oneOf": [ true ]
-          }
+            "oneOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ]
+          },
+          "1": true
         }
       }
     },
@@ -6644,9 +7422,12 @@
         ],
         "definitions": {
           "0": {
-            "not": true,
+            "not": {
+              "$ref": "#/definitions/1"
+            },
             "type": "string"
-          }
+          },
+          "1": true
         }
       }
     },
@@ -6662,9 +7443,12 @@
         ],
         "definitions": {
           "0": {
-            "not": true,
+            "not": {
+              "$ref": "#/definitions/1"
+            },
             "properties": {}
-          }
+          },
+          "1": true
         }
       }
     },
@@ -6680,9 +7464,12 @@
         ],
         "definitions": {
           "0": {
-            "not": true,
+            "not": {
+              "$ref": "#/definitions/1"
+            },
             "$ref": "#/definitions/a"
-          }
+          },
+          "1": true
         }
       }
     },
@@ -6698,9 +7485,12 @@
         ],
         "definitions": {
           "0": {
-            "not": true,
+            "not": {
+              "$ref": "#/definitions/1"
+            },
             "minimum": 0
-          }
+          },
+          "1": true
         }
       }
     },
@@ -6716,9 +7506,12 @@
         ],
         "definitions": {
           "0": {
-            "not": true,
+            "not": {
+              "$ref": "#/definitions/1"
+            },
             "minLength": 0
-          }
+          },
+          "1": true
         }
       }
     },
@@ -6734,9 +7527,15 @@
         ],
         "definitions": {
           "0": {
-            "not": true,
-            "items": true
-          }
+            "not": {
+              "$ref": "#/definitions/1"
+            },
+            "items": {
+              "$ref": "#/definitions/2"
+            }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -6752,9 +7551,17 @@
         ],
         "definitions": {
           "0": {
-            "not": true,
-            "anyOf": [ true ]
-          }
+            "not": {
+              "$ref": "#/definitions/1"
+            },
+            "anyOf": [
+              {
+                "$ref": "#/definitions/2"
+              }
+            ]
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -6770,9 +7577,17 @@
         ],
         "definitions": {
           "0": {
-            "not": true,
-            "allOf": [ true ]
-          }
+            "not": {
+              "$ref": "#/definitions/1"
+            },
+            "allOf": [
+              {
+                "$ref": "#/definitions/2"
+              }
+            ]
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -6788,9 +7603,17 @@
         ],
         "definitions": {
           "0": {
-            "not": true,
-            "oneOf": [ true ]
-          }
+            "not": {
+              "$ref": "#/definitions/1"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/definitions/2"
+              }
+            ]
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -6806,9 +7629,12 @@
         ],
         "definitions": {
           "0": {
-            "not": true,
+            "not": {
+              "$ref": "#/definitions/1"
+            },
             "enum": [ 1 ]
-          }
+          },
+          "1": true
         }
       }
     },
@@ -6824,9 +7650,15 @@
         ],
         "definitions": {
           "0": {
-            "not": true,
-            "contains": true
-          }
+            "not": {
+              "$ref": "#/definitions/1"
+            },
+            "contains": {
+              "$ref": "#/definitions/2"
+            }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -6842,9 +7674,15 @@
         ],
         "definitions": {
           "0": {
-            "not": true,
-            "propertyNames": true
-          }
+            "not": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -6860,9 +7698,12 @@
         ],
         "definitions": {
           "0": {
-            "not": true,
+            "not": {
+              "$ref": "#/definitions/1"
+            },
             "definitions": {}
-          }
+          },
+          "1": true
         }
       }
     },
@@ -6897,13 +7738,16 @@
         ],
         "definitions": {
           "0": {
-            "not": true,
+            "not": {
+              "$ref": "#/definitions/1"
+            },
             "definitions": {
               "x": {
                 "type": "boolean"
               }
             }
-          }
+          },
+          "1": true
         }
       }
     },
@@ -6919,9 +7763,12 @@
         ],
         "definitions": {
           "0": {
-            "not": true,
+            "not": {
+              "$ref": "#/definitions/1"
+            },
             "id": "https://example.com"
-          }
+          },
+          "1": true
         }
       }
     },
@@ -6937,9 +7784,12 @@
         ],
         "definitions": {
           "0": {
-            "not": true,
+            "not": {
+              "$ref": "#/definitions/1"
+            },
             "examples": []
-          }
+          },
+          "1": true
         }
       }
     },
@@ -6955,9 +7805,12 @@
         ],
         "definitions": {
           "0": {
-            "not": true,
+            "not": {
+              "$ref": "#/definitions/1"
+            },
             "examples": "foo"
-          }
+          },
+          "1": true
         }
       }
     },
@@ -6973,9 +7826,12 @@
         ],
         "definitions": {
           "0": {
-            "not": true,
+            "not": {
+              "$ref": "#/definitions/1"
+            },
             "examples": [ 1, 1 ]
-          }
+          },
+          "1": true
         }
       }
     },
@@ -7248,12 +8104,18 @@
                   }
                 },
                 "patternProperties": {},
-                "additionalProperties": true,
-                "propertyNames": true,
+                "additionalProperties": {
+                  "$ref": "#/definitions/1"
+                },
+                "propertyNames": {
+                  "$ref": "#/definitions/2"
+                },
                 "minProperties": 0
               }
             ]
-          }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -7276,10 +8138,13 @@
                 "minLength": 0
               }
             ],
-            "additionalItems": true,
+            "additionalItems": {
+              "$ref": "#/definitions/1"
+            },
             "minItems": -1,
             "uniqueItems": false
-          }
+          },
+          "1": true
         }
       }
     },
@@ -7648,11 +8513,17 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0,
             "$schema": 42
-          }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -7671,11 +8542,17 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0,
             "$id": 42
-          }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -7694,11 +8571,17 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0,
             "title": 42
-          }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
@@ -7717,11 +8600,17 @@
             "type": "object",
             "properties": {},
             "patternProperties": {},
-            "additionalProperties": true,
-            "propertyNames": true,
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/2"
+            },
             "minProperties": 0,
             "description": 42
-          }
+          },
+          "1": true,
+          "2": true
         }
       }
     },
