@@ -367,6 +367,30 @@ TEST(unsupported_keyword_error_draft4_empty_enum) {
   }
 }
 
+TEST(unsupported_keyword_error_draft6_negated_self_reference) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "allOf": [ { "$ref": "#/definitions/0" } ],
+    "definitions": {
+      "0": { "not": { "$ref": "#/definitions/0" } }
+    }
+  })JSON")};
+
+  try {
+    sourcemeta::blaze::compile(schema, sourcemeta::core::schema_walker,
+                               sourcemeta::core::schema_resolver,
+                               sourcemeta::blaze::default_compiler);
+    FAIL();
+  } catch (const sourcemeta::blaze::CodegenUnsupportedKeywordError &error) {
+    EXPECT_STREQ(error.what(), "Unsupported keyword in subschema");
+    EXPECT_EQ(error.keyword(), "not");
+    // An entry that negates a reference to itself is a circle no boolean
+    // stands for, so deciding what the negation means has to give up walking
+    // of its own accord rather than follow the edge forever
+    EXPECT_AS_STRING(error.pointer(), "/definitions/0");
+  }
+}
+
 TEST(draft7_empty_enum) {
   const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
     "$schema": "http://json-schema.org/draft-07/schema#",
