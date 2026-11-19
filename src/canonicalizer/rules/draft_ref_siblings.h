@@ -8,7 +8,7 @@ public:
             const sourcemeta::core::JSON &,
             const sourcemeta::core::SchemaVocabularies &vocabularies,
             const sourcemeta::core::SchemaFrame &,
-            const sourcemeta::core::SchemaFrame::Location &,
+            const sourcemeta::core::SchemaFrame::Location &location,
             const sourcemeta::core::SchemaWalker &walker,
             const sourcemeta::core::SchemaResolver &) const -> bool override {
     ONLY_CONTINUE_IF(vocabularies.contains_any(
@@ -21,6 +21,19 @@ public:
          SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_1,
          SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_0}));
     ONLY_CONTINUE_IF(schema.is_object() && schema.defines("$ref"));
+
+    // What a reference overrides at the top of a document includes the
+    // dialect the document names and the container the reference itself goes
+    // through, so reading such a document means picking which of the two to
+    // honour. Taking the name on trust is a guess about a document that says
+    // nothing anyone may read, and dropping it leaves the reference pointing
+    // at a container that is no longer there. Bundling in the dependency
+    // refuses the same spelling rather than choose
+    if (location.pointer.empty() && schema.size() > 1) {
+      throw SchemaError("Cannot canonicalise a JSON Schema Draft 7 or older "
+                        "with a top-level `$ref` (which overrides sibling "
+                        "keywords) without introducing undefined behavior");
+    }
 
     std::vector<sourcemeta::core::Pointer> locations;
     for (const auto &entry : schema.as_object()) {

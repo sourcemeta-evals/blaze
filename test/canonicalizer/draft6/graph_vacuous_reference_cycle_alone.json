@@ -1,8 +1,5 @@
 {
-  "schema": {
-    "$schema": "http://json-schema.org/draft-06/schema#",
-    "$ref": "#"
-  },
+  "schema": { "$ref": "#" },
   "expected": true,
   "examples": [],
   "counterExamples": []

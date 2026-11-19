@@ -65,9 +65,19 @@ auto compiled_dialect(const sourcemeta::core::JSON::String &uri)
 }
 
 // A document that is nothing but a boolean has nowhere to say which dialect it
-// is written in, so the directory it sits in says it instead. Only a dialect
-// that makes a boolean a schema in its own right can hold such a document
-auto boolean_dialect(const std::string &dialect) -> std::string_view {
+// is written in, and neither has one that is nothing but a reference, as a
+// reference of these dialects overrides whatever sits beside it, the dialect
+// the document names included
+auto names_no_dialect(const sourcemeta::core::JSON &schema) -> bool {
+  return schema.is_boolean() ||
+         (schema.is_object() && schema.size() == 1 && schema.defines("$ref"));
+}
+
+// What the directory a fixture sits in says its dialect is, for a document
+// with nowhere to say it. Only a dialect that makes a boolean a schema in its
+// own right can hold a document of either kind: one of them is a boolean, and
+// the other asserts nothing, which is the schema every instance satisfies
+auto implied_dialect(const std::string &dialect) -> std::string_view {
   if (dialect == "draft6") {
     return "http://json-schema.org/draft-06/schema#";
   }
@@ -160,30 +170,19 @@ auto check_shape(const sourcemeta::core::JSON &test, const std::string &dialect)
   EXPECT_TRUE(test.at("counterExamples").is_array());
 
   // From Draft 6 on a boolean is a schema in its own right, so a document can
-  // be one, and such a document has no room to say which dialect it is written
-  // in. Its directory says that instead, and a dialect whose booleans are not
-  // schemas has no fixture of the kind
-  if (test.at("schema").is_boolean()) {
+  // be one, and a document can also be nothing but a reference. Neither has
+  // room to say which dialect it is written in, so its directory says that
+  // instead, and a dialect whose booleans are not schemas has no fixture of
+  // either kind. A document of either kind says nothing an instance can fail,
+  // which leaves the result with nowhere to name a dialect either
+  if (names_no_dialect(test.at("schema"))) {
     EXPECT_TRUE(test.at("expected").is_boolean());
     EXPECT_FALSE(refused);
-    EXPECT_FALSE(boolean_dialect(dialect).empty());
+    EXPECT_FALSE(implied_dialect(dialect).empty());
     return;
   }
 
   EXPECT_TRUE(test.at("schema").is_object());
-
-  // A document that asserts nothing has no graph to be, as a graph is made of
-  // what a document says. A dialect whose booleans are schemas therefore
-  // canonicalises such a document into the boolean that says as much, which
-  // leaves the result with nowhere to name its dialect either
-  if (test.at("expected").is_boolean()) {
-    EXPECT_FALSE(refused);
-    EXPECT_FALSE(boolean_dialect(dialect).empty());
-    EXPECT_TRUE(test.at("schema").defines("$schema"));
-    EXPECT_TRUE(test.at("schema").at("$schema").is_string());
-    return;
-  }
-
   EXPECT_TRUE(test.at("expected").is_object());
 
   // Canonicalisation rewrites a document within the dialect it is written in,
@@ -199,10 +198,10 @@ auto run_canonicalizer_test(const sourcemeta::core::JSON &test,
                             const std::string &dialect) -> void {
   check_shape(test, dialect);
 
-  // A boolean document names no dialect of its own, so the one its directory
-  // names is what every operation below is told
-  const auto default_dialect{test.at("schema").is_boolean()
-                                 ? boolean_dialect(dialect)
+  // A document with nowhere to name a dialect of its own leaves the one its
+  // directory names as what every operation below is told
+  const auto default_dialect{names_no_dialect(test.at("schema"))
+                                 ? implied_dialect(dialect)
                                  : std::string_view{}};
   const auto refused{test.defines("invalidSchema")};
   const auto document{canonicalize_schema(test.at("schema"), default_dialect)};
@@ -238,7 +237,7 @@ auto run_canonicalizer_test(const sourcemeta::core::JSON &test,
   // them schemas at all. A fixture that handed in anything else would have the
   // canonicaliser answering for something nothing describes
   const auto &dialect_metaschema{
-      compiled_dialect(test.at("schema").is_boolean()
+      compiled_dialect(names_no_dialect(test.at("schema"))
                            ? sourcemeta::core::JSON::String{default_dialect}
                            : test.at("schema").at("$schema").to_string())};
   if (refused) {
