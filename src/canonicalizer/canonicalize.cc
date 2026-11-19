@@ -994,6 +994,28 @@ auto lift_subschemas(sourcemeta::core::JSON &schema,
       return index;
     }};
 
+    // A chain of edges that comes back to where it started never reaches a
+    // body that says anything, so a reference into it asserts nothing: the
+    // schema every instance satisfies, as the dialect spells it. The entry the
+    // chain settles on becomes that schema, which both gives every reference
+    // into the circle somewhere to point and leaves the circle behind
+    std::vector<std::size_t> circular;
+    for (const auto &entry : collapsed) {
+      const auto target{destination(entry.first)};
+      if (collapsed.contains(target) &&
+          !std::ranges::contains(circular, target)) {
+        circular.push_back(target);
+      }
+    }
+
+    if (!circular.empty()) {
+      for (const auto index : circular) {
+        definitions.at(std::to_string(index)).into(profile->tautology);
+      }
+
+      continue;
+    }
+
     // What each surviving entry is called once the collapsed ones are gone
     std::map<std::size_t, std::size_t> renamed;
     for (const auto &entry : definitions.as_object()) {
