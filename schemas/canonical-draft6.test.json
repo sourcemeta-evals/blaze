@@ -1343,6 +1343,307 @@
       "data": [ 1, 2, 3 ]
     },
     {
+      "description": "A bare schema is no longer canonical",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "type": "string",
+        "minLength": 0
+      }
+    },
+    {
+      "description": "A document without a wrapper is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "definitions": {
+          "0": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    {
+      "description": "A document without definitions is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ]
+      }
+    },
+    {
+      "description": "A document whose $schema is not a string is rejected",
+      "valid": false,
+      "data": {
+        "$schema": 6,
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "string",
+            "minLength": 0
+          }
+        }
+      }
+    },
+    {
+      "description": "A title on the document itself is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "string",
+            "minLength": 0
+          }
+        },
+        "title": "A string"
+      }
+    },
+    {
+      "description": "A wrapper that is not an array is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": {
+          "$ref": "#/definitions/0"
+        },
+        "definitions": {
+          "0": {
+            "type": "string",
+            "minLength": 0
+          }
+        }
+      }
+    },
+    {
+      "description": "A wrapper with no branches is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [],
+        "definitions": {
+          "0": {
+            "type": "string",
+            "minLength": 0
+          }
+        }
+      }
+    },
+    {
+      "description": "A wrapper with two branches is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          },
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "string",
+            "minLength": 0
+          }
+        }
+      }
+    },
+    {
+      "description": "A wrapper branch with a sibling is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0",
+            "title": "A string"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "string",
+            "minLength": 0
+          }
+        }
+      }
+    },
+    {
+      "description": "A wrapper that does not point at the first entry is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/1"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "string",
+            "minLength": 0
+          },
+          "1": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    {
+      "description": "Definitions that is not an object is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": [
+          {
+            "type": "string",
+            "minLength": 0
+          }
+        ]
+      }
+    },
+    {
+      "description": "A document with empty definitions is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {}
+      }
+    },
+    {
+      "description": "A named entry is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "string",
+            "minLength": 0
+          },
+          "foo": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    {
+      "description": "An edge without a reference is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "array",
+            "items": {},
+            "minItems": 0,
+            "uniqueItems": false
+          }
+        }
+      }
+    },
+    {
+      "description": "An edge whose reference is not a string is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "array",
+            "items": {
+              "$ref": 1
+            },
+            "minItems": 0,
+            "uniqueItems": false
+          }
+        }
+      }
+    },
+    {
+      "description": "An edge that leaves the document is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "array",
+            "items": {
+              "$ref": "https://example.com/other.json"
+            },
+            "minItems": 0,
+            "uniqueItems": false
+          }
+        }
+      }
+    },
+    {
+      "description": "An edge with a sibling is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/1",
+              "title": "Anything"
+            },
+            "minItems": 0,
+            "uniqueItems": false
+          },
+          "1": true
+        }
+      }
+    },
+    {
       "description": "$ref as non-string is rejected",
       "valid": false,
       "data": {
