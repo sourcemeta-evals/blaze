@@ -1655,7 +1655,8 @@
         ],
         "definitions": {
           "0": {
-            "$ref": 42
+            "$ref": 42,
+            "title": "Anything"
           }
         }
       }
@@ -1672,7 +1673,8 @@
         ],
         "definitions": {
           "0": {
-            "$ref": true
+            "$ref": true,
+            "title": "Anything"
           }
         }
       }
@@ -1689,7 +1691,8 @@
         ],
         "definitions": {
           "0": {
-            "$ref": null
+            "$ref": null,
+            "title": "Anything"
           }
         }
       }
@@ -1706,7 +1709,8 @@
         ],
         "definitions": {
           "0": {
-            "$ref": [ "#/definitions/foo" ]
+            "$ref": [ "#/definitions/foo" ],
+            "title": "Anything"
           }
         }
       }
@@ -1723,7 +1727,8 @@
         ],
         "definitions": {
           "0": {
-            "$ref": {}
+            "$ref": {},
+            "title": "Anything"
           }
         }
       }
@@ -9376,6 +9381,337 @@
             "not": {
               "$ref": "#/definitions/1"
             }
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Canonical form holding an entry that is a reference out of the document",
+      "valid": true,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "$ref": "https://example.com/other.json"
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Canonical form holding an entry with `multipleOf`, `title`, `type`",
+      "valid": true,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "integer",
+            "multipleOf": 1,
+            "title": "Anything"
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Canonical form holding an entry with `title`, `type`",
+      "valid": true,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "number",
+            "title": "Anything"
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Object with only $ref is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "$ref": "#/definitions/1"
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Object with only title and description is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "title": "Anything",
+            "description": "Anything"
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Object without type is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "properties": {},
+            "patternProperties": {},
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/1"
+            },
+            "minProperties": 0
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Object with an unknown type is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "map",
+            "properties": {},
+            "patternProperties": {},
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/1"
+            },
+            "minProperties": 0
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Object with properties as array is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "object",
+            "properties": [],
+            "patternProperties": {},
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/1"
+            },
+            "minProperties": 0
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Object with patternProperties as array is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "object",
+            "properties": {},
+            "patternProperties": [],
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/1"
+            },
+            "minProperties": 0
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Object with required as string is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "object",
+            "properties": {},
+            "patternProperties": {},
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/1"
+            },
+            "minProperties": 0,
+            "required": "foo"
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Object with float maxProperties is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "object",
+            "properties": {},
+            "patternProperties": {},
+            "additionalProperties": {
+              "$ref": "#/definitions/1"
+            },
+            "propertyNames": {
+              "$ref": "#/definitions/1"
+            },
+            "minProperties": 0,
+            "maxProperties": 0.5
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "String without type is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "minLength": 0
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Integer without type is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "multipleOf": 1
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Integer with an unknown type is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "int",
+            "multipleOf": 1
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Number with multipleOf as string is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "number",
+            "multipleOf": "1"
           },
           "1": true
         }
