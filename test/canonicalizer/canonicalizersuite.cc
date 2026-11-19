@@ -171,6 +171,19 @@ auto check_shape(const sourcemeta::core::JSON &test, const std::string &dialect)
   }
 
   EXPECT_TRUE(test.at("schema").is_object());
+
+  // A document that asserts nothing has no graph to be, as a graph is made of
+  // what a document says. A dialect whose booleans are schemas therefore
+  // canonicalises such a document into the boolean that says as much, which
+  // leaves the result with nowhere to name its dialect either
+  if (test.at("expected").is_boolean()) {
+    EXPECT_FALSE(refused);
+    EXPECT_FALSE(boolean_dialect(dialect).empty());
+    EXPECT_TRUE(test.at("schema").defines("$schema"));
+    EXPECT_TRUE(test.at("schema").at("$schema").is_string());
+    return;
+  }
+
   EXPECT_TRUE(test.at("expected").is_object());
 
   // Canonicalisation rewrites a document within the dialect it is written in,

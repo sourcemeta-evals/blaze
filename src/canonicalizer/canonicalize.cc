@@ -670,6 +670,9 @@ auto lift_subschemas(sourcemeta::core::JSON &schema,
 
   const Profile *profile{nullptr};
   std::vector<core::Pointer> nodes;
+  // The edges that carry a container of their own, which has to go once what
+  // it held has been lifted
+  std::vector<core::Pointer> container_edges;
   // Every reference the document declares, before edges are followed through
   std::vector<std::pair<core::Pointer, core::Pointer>> links;
   std::vector<std::pair<core::Pointer, std::size_t>> reference_targets;
@@ -705,7 +708,7 @@ auto lift_subschemas(sourcemeta::core::JSON &schema,
     }
 
     frame.for_each_subschema(
-        [&nodes, &schema,
+        [&nodes, &container_edges, &schema,
          profile](const core::SchemaFrame::Location &location) -> void {
           const auto &body{core::get(schema, location.pointer)};
           if (!profile->boolean_nodes && body.is_boolean()) {
@@ -715,7 +718,16 @@ auto lift_subschemas(sourcemeta::core::JSON &schema,
           // The test runs on what the body would be once the container
           // keywords are stripped, so that a root already in graph form is
           // recognised as the wrapper it is
-          if (is_edge(without_containers(body, *profile), *profile)) {
+          const auto bare{without_containers(body, *profile)};
+          if (is_edge(bare, *profile)) {
+            // What the container held is a node of its own by now, so an edge
+            // that still carries one would leave a node inside a node. A
+            // marker is not a container: it says something about the parent
+            // that holds the edge, and belongs where it is
+            if (body.is_object() && body.defines("definitions")) {
+              container_edges.push_back(core::to_pointer(location.pointer));
+            }
+
             return;
           }
 
@@ -725,9 +737,9 @@ auto lift_subschemas(sourcemeta::core::JSON &schema,
           }
         });
 
-    if (nodes.empty()) {
-      return;
-    }
+    // Having no nodes at all is not nothing to do: it means every subschema
+    // of the document is an edge, so every reference leads to another edge and
+    // round again, which the pass answers for below rather than here
 
     // The frame is free to enumerate subschemas in any order, so fix one here
     // and let nothing downstream depend on which order that was
@@ -831,13 +843,10 @@ auto lift_subschemas(sourcemeta::core::JSON &schema,
         return result;
       }};
 
-  const auto link{
-      [profile](const std::size_t index, const sourcemeta::core::JSON &target,
+  const auto edge_to{
+      [profile](sourcemeta::core::JSON reference,
+                const sourcemeta::core::JSON &target,
                 const core::Pointer &position) -> sourcemeta::core::JSON {
-        auto reference{sourcemeta::core::JSON::make_object()};
-        reference.assign("$ref", sourcemeta::core::JSON{"#/definitions/" +
-                                                        std::to_string(index)});
-
         // A list of names on the object leaves nothing behind
         if (!profile->property_marker) {
           return reference;
@@ -864,6 +873,15 @@ auto lift_subschemas(sourcemeta::core::JSON &schema,
         branches.push_back(std::move(reference));
         wrapper.assign(profile->wrapper, std::move(branches));
         return wrapper;
+      }};
+
+  const auto link{
+      [&edge_to](const std::size_t index, const sourcemeta::core::JSON &target,
+                 const core::Pointer &position) -> sourcemeta::core::JSON {
+        auto reference{sourcemeta::core::JSON::make_object()};
+        reference.assign("$ref", sourcemeta::core::JSON{"#/definitions/" +
+                                                        std::to_string(index)});
+        return edge_to(std::move(reference), target, position);
       }};
 
   const auto entry_node{resolve(core::Pointer{})};
@@ -901,6 +919,27 @@ auto lift_subschemas(sourcemeta::core::JSON &schema,
       core::set(body, entry.first.resolve_from(pointer),
                 sourcemeta::core::JSON{"#/definitions/" +
                                        std::to_string(entry.second)});
+    }
+
+    // An edge that carried a container of its own has had what it held lifted
+    // by now, so what is left of it is the reference, spelled the way every
+    // other edge of the graph is spelled
+    for (const auto &edge : container_edges) {
+      if (!edge.starts_with(pointer) || enclosing(edge.initial()) != index) {
+        continue;
+      }
+
+      const auto position{edge.resolve_from(pointer)};
+      const auto &target{core::get(body, position)};
+      const auto stripped{without_containers(target, *profile)};
+      const auto *reference{edge_reference(stripped, *profile)};
+      if (reference == nullptr) {
+        continue;
+      }
+
+      auto bare{sourcemeta::core::JSON::make_object()};
+      bare.assign("$ref", *reference);
+      core::set(body, position, edge_to(std::move(bare), target, position));
     }
 
     if (body.is_object()) {
