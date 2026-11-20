@@ -92,13 +92,41 @@ auto names_no_dialect(const sourcemeta::core::JSON &schema) -> bool {
          (schema.is_object() && schema.size() == 1 && schema.defines("$ref"));
 }
 
+// Whether the document says for itself which dialect it is written in
+auto names_dialect(const sourcemeta::core::JSON &schema) -> bool {
+  return schema.is_object() && schema.defines("$schema");
+}
+
+// A reference to the document it sits in asserts whatever that document
+// asserts, so a document that is nothing but one never reaches a verdict and
+// no instance can be put to it. The empty reference names the document as a
+// whole the way the lone fragment does
+auto references_itself(const sourcemeta::core::JSON &schema) -> bool {
+  if (!schema.is_object() || !names_no_dialect(schema)) {
+    return false;
+  }
+
+  const auto &target{schema.at("$ref")};
+  return target.is_string() &&
+         (target.to_string() == "#" || target.to_string().empty());
+}
+
 // What the directory a fixture sits in says its dialect is, for a document
-// with nowhere to say it. Only a dialect that makes a boolean a schema in its
-// own right can hold a document of either kind: one of them is a boolean, and
-// the other asserts nothing, which is the schema every instance satisfies
+// with nowhere to say it. Whether a document of that kind is a schema of the
+// dialect at all is for the meta-schema of the dialect to say: a boolean is
+// one only from Draft 6 on, while a document that is nothing but a reference
+// is one in every dialect of the suite
 auto implied_dialect(const std::string &dialect) -> std::string_view {
   if (dialect == "draft6") {
     return "http://json-schema.org/draft-06/schema#";
+  }
+
+  if (dialect == "draft4") {
+    return "http://json-schema.org/draft-04/schema#";
+  }
+
+  if (dialect == "draft3") {
+    return "http://json-schema.org/draft-03/schema#";
   }
 
   return "";
@@ -191,11 +219,11 @@ auto check_shape(const sourcemeta::core::JSON &test, const std::string &dialect)
   // From Draft 6 on a boolean is a schema in its own right, so a document can
   // be one, and a document can also be nothing but a reference. Neither has
   // room to say which dialect it is written in, so its directory says that
-  // instead, and a dialect whose booleans are not schemas has no fixture of
-  // either kind. A document of either kind says nothing an instance can fail,
-  // which leaves the result with nowhere to name a dialect either
+  // instead, and a directory the runner knows no dialect for can hold no
+  // fixture of either kind. Rewriting such a document gives it nothing to
+  // name a dialect with either, however much else the result says
   if (names_no_dialect(test.at("schema"))) {
-    EXPECT_TRUE(test.at("expected").is_boolean());
+    EXPECT_FALSE(names_dialect(test.at("expected")));
     EXPECT_FALSE(refused);
     EXPECT_FALSE(implied_dialect(dialect).empty());
     return;
@@ -240,9 +268,10 @@ auto run_canonicalizer_test(const sourcemeta::core::JSON &test,
   // dialect, and neither ever reaches a verdict
   if (!test.at("examples").empty() || !test.at("counterExamples").empty()) {
     auto disagreements{sourcemeta::core::JSON::make_array()};
-    // What the dialect refuses is not a schema to put an instance to, so a
-    // fixture of that kind says what its result means and nothing more
-    if (!refused) {
+    // What the dialect refuses is not a schema to put an instance to, and
+    // neither is a document that asserts whatever it itself asserts, so a
+    // fixture of either kind says what its result means and nothing more
+    if (!refused && !references_itself(test.at("schema"))) {
       check_instances(test, "schema", test.at("schema"), default_dialect,
                       disagreements);
     }

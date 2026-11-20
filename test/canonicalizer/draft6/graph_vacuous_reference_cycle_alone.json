@@ -1,6 +1,11 @@
 {
-  "schema": { "$ref": "#" },
+  "schema": {
+    "$ref": "#"
+  },
   "expected": true,
-  "examples": [],
+  "examples": [
+    1,
+    "foo"
+  ],
   "counterExamples": []
 }
