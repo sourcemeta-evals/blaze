@@ -1,6 +1,7 @@
 #include <sourcemeta/blaze/canonicalizer.h>
 #include <sourcemeta/blaze/codegen.h>
 #include <sourcemeta/core/jsonschema.h>
+#include <sourcemeta/core/uri.h>
 
 #include <algorithm>     // std::ranges::sort
 #include <cassert>       // assert
@@ -149,37 +150,66 @@ struct References {
   Nodes named;
 };
 
+/// Record where a reference arrives: a subschema a reference names at all,
+/// and, where the edge the reference sits in does more than validate what it
+/// reaches, a subschema the document describes
+auto arrive(const Edges &edges, const sourcemeta::core::WeakPointer &source,
+            const sourcemeta::core::WeakPointer &target, References &result)
+    -> void {
+  result.named.insert(target);
+
+  // A reference sits inside the subschema that stands for the edge, as the
+  // keyword that spells it
+  auto pointer{sourcemeta::core::to_pointer(source)};
+  pointer.pop_back();
+  const auto edge{sourcemeta::core::to_weak_pointer(pointer)};
+  const auto match{edges.find(edge)};
+  if (match != edges.cend() && match->second.validates) {
+    return;
+  }
+
+  result.describing.push_back(Arrival{
+      .edge = match == edges.cend() ? sourcemeta::core::EMPTY_WEAK_POINTER
+                                    : match->first,
+      .target = target});
+}
+
 auto references(const sourcemeta::core::SchemaFrame &frame, const Edges &edges)
     -> References {
   References result;
   frame.for_each_reference_into(
       sourcemeta::core::EMPTY_WEAK_POINTER,
       [&frame, &edges, &result](
-          const sourcemeta::core::SchemaReferenceType,
+          const sourcemeta::core::SchemaReferenceType type,
           const sourcemeta::core::WeakPointer &source,
           const sourcemeta::core::SchemaFrame::Reference &reference) -> void {
         const auto destination{frame.traverse(reference.destination)};
-        if (!destination.has_value()) {
+        if (destination.has_value()) {
+          arrive(edges, source, destination.value().get().pointer, result);
+        }
+
+        // A reference that settles while an instance is being evaluated
+        // reaches whichever anchor of its name the evaluation path leads to,
+        // and what generates for such a reference stands for all of them at
+        // once, so the reference arrives at every one
+        if (type != sourcemeta::core::SchemaReferenceType::Dynamic ||
+            !reference.fragment.has_value()) {
           return;
         }
 
-        const auto &target{destination.value().get().pointer};
-        result.named.insert(target);
-
-        // A reference sits inside the subschema that stands for the edge, as
-        // the keyword that spells it
-        auto pointer{sourcemeta::core::to_pointer(source)};
-        pointer.pop_back();
-        const auto edge{sourcemeta::core::to_weak_pointer(pointer)};
-        const auto match{edges.find(edge)};
-        if (match != edges.cend() && match->second.validates) {
-          return;
-        }
-
-        result.describing.push_back(Arrival{
-            .edge = match == edges.cend() ? sourcemeta::core::EMPTY_WEAK_POINTER
-                                          : match->first,
-            .target = target});
+        frame.for_each_anchor(
+            sourcemeta::core::SchemaReferenceType::Dynamic,
+            [&edges, &source, &reference, &result](
+                const std::string_view uri,
+                const sourcemeta::core::SchemaFrame::Location &anchor) -> void {
+              const sourcemeta::core::URI identifier{
+                  sourcemeta::core::JSON::String{uri}};
+              const auto fragment{identifier.fragment()};
+              if (fragment.has_value() &&
+                  fragment.value() == reference.fragment.value()) {
+                arrive(edges, source, anchor.pointer, result);
+              }
+            });
       });
 
   return result;
