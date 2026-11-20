@@ -15,18 +15,26 @@ inline auto is_in_place_applicator(const SchemaKeywordType type) -> bool {
 
 // Up to Draft 7, a reference takes the place of every keyword that sits beside
 // it, down to the dialect the document names where the two sit together at the
-// top of a document
+// top of a document. A hyper-schema of one of those drafts says the same of a
+// reference as the draft it extends, and says it in a vocabulary of its own,
+// so each one answers here for itself
 inline auto reference_overrides_siblings(const SchemaVocabularies &vocabularies)
     -> bool {
   return vocabularies.contains_any(
       {SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_7,
+       SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_7_HYPER,
        SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_6,
+       SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_6_HYPER,
        SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_4,
+       SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_4_HYPER,
        SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_3,
        SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_3_HYPER,
        SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_2,
+       SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_2_HYPER,
        SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_1,
-       SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_0});
+       SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_1_HYPER,
+       SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_0,
+       SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_0_HYPER});
 }
 
 // TODO: Move upstream, so that the compiler can share this predicate rather

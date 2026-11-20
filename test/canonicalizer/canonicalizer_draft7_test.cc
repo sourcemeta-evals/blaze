@@ -6396,3 +6396,27 @@ TEST(top_level_ref_alone_with_a_dialect_from_the_caller) {
       document, expected, "http://json-schema.org/draft-07/schema#",
       compiled_metaschema());
 }
+
+TEST(top_level_ref_with_siblings_in_the_hyper_schema) {
+  auto document = sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-07/hyper-schema#",
+    "$ref": "#/definitions/foo",
+    "title": "Standing beside the reference",
+    "definitions": {
+      "foo": { "type": "string" }
+    }
+  })JSON");
+
+  try {
+    sourcemeta::blaze::canonicalize(document, sourcemeta::core::schema_walker,
+                                    canonicalizer_test_resolver);
+    FAIL();
+  } catch (const sourcemeta::core::SchemaError &error) {
+    EXPECT_STREQ(error.what(),
+                 "Cannot canonicalise a JSON Schema Draft 7 or older with a "
+                 "top-level `$ref` (which overrides sibling keywords) without "
+                 "introducing undefined behavior");
+  } catch (...) {
+    FAIL();
+  }
+}
