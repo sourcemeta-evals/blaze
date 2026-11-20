@@ -18,10 +18,7 @@ public:
     for (const auto &entry : schema.as_object()) {
       const auto &metadata{walker(entry.first, vocabularies)};
       if (metadata.type == sourcemeta::core::SchemaKeywordType::Reference ||
-          metadata.type == sourcemeta::core::SchemaKeywordType::Comment ||
-          // If we disallow this, we end up deleting it and the linter will fail
-          // with an error about not knowing the dialect
-          entry.first == "$schema") {
+          metadata.type == sourcemeta::core::SchemaKeywordType::Comment) {
         continue;
       }
       locations.push_back(sourcemeta::core::Pointer{entry.first});
