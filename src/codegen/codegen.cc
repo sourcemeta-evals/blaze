@@ -42,7 +42,8 @@ auto is_validation_subschema(
   const auto &walker_result{walker(keyword_token.to_property(), vocabularies)};
   using Type = sourcemeta::core::SchemaKeywordType;
   if (walker_result.type == Type::ApplicatorValueTraverseAnyPropertyKey ||
-      walker_result.type == Type::ApplicatorValueTraverseAnyItem) {
+      walker_result.type == Type::ApplicatorValueTraverseAnyItem ||
+      walker_result.type == Type::ApplicatorValueInPlaceNegate) {
     return true;
   }
 
@@ -72,7 +73,10 @@ auto enclosing_subschema(const Subschemas &subschemas,
 }
 
 /// Whether the keyword leading from one subschema to another says only what an
-/// instance must satisfy, never what it looks like
+/// instance must satisfy, never what it looks like. Negating a subschema is
+/// one of these: the only negation that generates anything at all is the one a
+/// node nothing satisfies is written as, and what that node generates names
+/// nothing of the subschema it negates
 auto edge_only_validates(const sourcemeta::core::SchemaFrame &frame,
                          const sourcemeta::core::SchemaWalker &walker,
                          const sourcemeta::core::SchemaResolver &resolver,
@@ -89,6 +93,7 @@ auto edge_only_validates(const sourcemeta::core::SchemaFrame &frame,
   switch (walker(token.to_property(), vocabularies).type) {
     case Type::ApplicatorValueTraverseAnyItem:
     case Type::ApplicatorValueTraverseAnyPropertyKey:
+    case Type::ApplicatorValueInPlaceNegate:
       return true;
     default:
       return false;

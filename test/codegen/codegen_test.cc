@@ -531,18 +531,15 @@ TEST(draft6_graph_form_negation_of_everything_is_impossible) {
 
   // A dialect whose booleans are entries of the graph says that nothing
   // satisfies a schema by negating the one everything satisfies, and that is
-  // the same impossible type the boolean used to generate
+  // the same impossible type the boolean used to generate. What the negation
+  // names is reached only to arrive at that type, so it takes none of its own
   const auto result{sourcemeta::blaze::compile(
       schema, sourcemeta::core::schema_walker,
       sourcemeta::core::schema_resolver, sourcemeta::blaze::default_compiler)};
 
   using namespace sourcemeta::blaze;
 
-  EXPECT_EQ(result.size(), 5);
-  EXPECT_IR_ANY(result, ir_index_of(result, "/definitions/1"),
-                "/definitions/1");
-  EXPECT_IR_REFERENCE(result, ir_index_of(result, "/definitions/0/not"),
-                      "/definitions/0/not", "/definitions/1");
+  EXPECT_EQ(result.size(), 3);
   EXPECT_IR_IMPOSSIBLE(result, ir_index_of(result, "/definitions/0"),
                        "/definitions/0");
   EXPECT_IR_REFERENCE(result, ir_index_of(result, "/allOf/0"), "/allOf/0",
@@ -765,7 +762,7 @@ TEST(draft6_graph_form_dialect_from_the_caller_is_impossible) {
 
   // A document that names no dialect takes the one the caller names, and
   // arriving at the schema nothing satisfies is the dialect's business either
-  // way, so the entry that says so comes out as it does for a document that
+  // way, so the entries that say so come out as they do for a document that
   // names the dialect itself
   const auto result{sourcemeta::blaze::compile(
       schema, sourcemeta::core::schema_walker,
@@ -774,11 +771,7 @@ TEST(draft6_graph_form_dialect_from_the_caller_is_impossible) {
 
   using namespace sourcemeta::blaze;
 
-  EXPECT_EQ(result.size(), 5);
-  EXPECT_IR_ANY(result, ir_index_of(result, "/definitions/1"),
-                "/definitions/1");
-  EXPECT_IR_REFERENCE(result, ir_index_of(result, "/definitions/0/not"),
-                      "/definitions/0/not", "/definitions/1");
+  EXPECT_EQ(result.size(), 3);
   EXPECT_IR_IMPOSSIBLE(result, ir_index_of(result, "/definitions/0"),
                        "/definitions/0");
   EXPECT_IR_REFERENCE(result, ir_index_of(result, "/allOf/0"), "/allOf/0",
