@@ -101,11 +101,33 @@ auto edge_only_validates(const sourcemeta::core::SchemaFrame &frame,
   }
 }
 
-/// What an edge of the document is: the node it leaves, and whether what
-/// spells it says only what an instance must satisfy
+/// Whether the keyword leading from one subschema to another reserves a place
+/// for it rather than putting it to an instance. A document keeps whatever only
+/// a reference reaches in a place of that kind, and an instance never meets
+/// what sits there
+auto edge_reserves_place(const sourcemeta::core::SchemaFrame &frame,
+                         const sourcemeta::core::SchemaWalker &walker,
+                         const sourcemeta::core::SchemaResolver &resolver,
+                         const sourcemeta::core::SchemaFrame::Location &parent,
+                         const sourcemeta::core::SchemaFrame::Location &child)
+    -> bool {
+  const auto &token{child.pointer.at(parent.pointer.size())};
+  if (!token.is_property()) {
+    return false;
+  }
+
+  const auto &vocabularies{frame.vocabularies(parent, resolver)};
+  return walker(token.to_property(), vocabularies).type ==
+         sourcemeta::core::SchemaKeywordType::LocationMembers;
+}
+
+/// What an edge of the document is: the node it leaves, whether what spells it
+/// says only what an instance must satisfy, and whether what spells it reserves
+/// a place rather than putting what it reaches to an instance
 struct Edge {
   sourcemeta::core::WeakPointer node;
   bool validates;
+  bool reserved;
 };
 
 /// Every edge of the document, by where the edge sits
@@ -125,6 +147,8 @@ auto edges(const sourcemeta::core::SchemaFrame &frame,
       result.emplace(subschema.pointer,
                      Edge{.node = node->pointer,
                           .validates = edge_only_validates(
+                              frame, walker, resolver, *node, subschema),
+                          .reserved = edge_reserves_place(
                               frame, walker, resolver, *node, subschema)});
     }
   }
@@ -237,18 +261,24 @@ auto owner(const Nodes &nodes, const sourcemeta::core::WeakPointer &pointer)
 
 /// The subschemas that say what an instance looks like. While a dialect keeps
 /// its subschemas nested, the keywords above one are enough to tell what it is
-/// for. Once a dialect lifts every subschema into one container, nothing sits
+/// for, and a reference that names such a subschema changes nothing about
+/// that. Once a dialect lifts every subschema into one container, nothing sits
 /// under anything, and what says it is the edges walked to get there: the
 /// document says what an instance looks like, and so does whatever a chain of
 /// references reaches from it without an edge that only validates along the
 /// way. What sits inside such a subschema says what it says, as nothing that
 /// generates can name it otherwise
-auto describing(const Subschemas &subschemas, const References &references)
-    -> Nodes {
+auto describing(const Subschemas &subschemas, const Edges &edges,
+                const References &references) -> Nodes {
   Nodes nodes;
   nodes.insert(sourcemeta::core::EMPTY_WEAK_POINTER);
   for (const auto &target : references.named) {
-    nodes.insert(target);
+    // What stands on its own is what the document keeps where only a
+    // reference reaches it
+    const auto match{edges.find(target)};
+    if (match != edges.cend() && match->second.reserved) {
+      nodes.insert(target);
+    }
   }
 
   std::unordered_map<sourcemeta::core::WeakPointer,
@@ -257,7 +287,8 @@ auto describing(const Subschemas &subschemas, const References &references)
                      sourcemeta::core::WeakPointer::Comparator>
       outgoing;
   for (const auto &arrival : references.describing) {
-    outgoing[owner(nodes, arrival.edge)].push_back(arrival.target);
+    outgoing[owner(nodes, arrival.edge)].push_back(
+        owner(nodes, arrival.target));
   }
 
   Nodes reached;
@@ -365,9 +396,9 @@ auto compile(const sourcemeta::core::JSON &input,
   frame.for_each_subschema(
       [&subschemas](const sourcemeta::core::SchemaFrame::Location &location)
           -> void { subschemas.emplace_back(location); });
-  const auto reached{describing(
-      subschemas,
-      references(frame, edges(frame, walker, resolver, subschemas)))};
+  const auto document_edges{edges(frame, walker, resolver, subschemas)};
+  const auto reached{describing(subschemas, document_edges,
+                                references(frame, document_edges))};
   CodegenIRResult result;
   frame.for_each_subschema(
       [&](const sourcemeta::core::SchemaFrame::Location &location) -> void {
