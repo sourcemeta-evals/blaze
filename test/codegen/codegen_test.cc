@@ -3,8 +3,7 @@
 #include <sourcemeta/blaze/codegen.h>
 #include <sourcemeta/core/jsonschema.h>
 
-#include <algorithm> // std::ranges::count_if
-#include <sstream>   // std::ostringstream
+#include <sstream> // std::ostringstream
 
 #include "codegen_test_utils.h"
 
@@ -515,8 +514,12 @@ TEST(draft6_graph_form_generates) {
 
   using namespace sourcemeta::blaze;
 
+  EXPECT_EQ(result.size(), 3);
   EXPECT_IR_SCALAR(result, ir_index_of(result, "/definitions/0"), String,
                    "/definitions/0");
+  EXPECT_IR_REFERENCE(result, ir_index_of(result, "/allOf/0"), "/allOf/0",
+                      "/definitions/0");
+  EXPECT_IR_REFERENCE(result, ir_index_of(result, ""), "", "/allOf/0");
 }
 
 TEST(draft6_graph_form_negation_of_everything_is_impossible) {
@@ -535,14 +538,16 @@ TEST(draft6_graph_form_negation_of_everything_is_impossible) {
 
   using namespace sourcemeta::blaze;
 
-  // Which entry the type lives in is the form's business rather than this
-  // test's, and a document nothing satisfies has one such type to give
-  EXPECT_EQ(std::ranges::count_if(
-                result,
-                [](const CodegenIREntity &entity) -> bool {
-                  return std::holds_alternative<CodegenIRImpossible>(entity);
-                }),
-            1);
+  EXPECT_EQ(result.size(), 5);
+  EXPECT_IR_ANY(result, ir_index_of(result, "/definitions/1"),
+                "/definitions/1");
+  EXPECT_IR_REFERENCE(result, ir_index_of(result, "/definitions/0/not"),
+                      "/definitions/0/not", "/definitions/1");
+  EXPECT_IR_IMPOSSIBLE(result, ir_index_of(result, "/definitions/0"),
+                       "/definitions/0");
+  EXPECT_IR_REFERENCE(result, ir_index_of(result, "/allOf/0"), "/allOf/0",
+                      "/definitions/0");
+  EXPECT_IR_REFERENCE(result, ir_index_of(result, ""), "", "/allOf/0");
 }
 
 TEST(draft6_graph_form_closed_object_stays_closed) {
@@ -586,8 +591,16 @@ TEST(draft6_graph_form_array_with_impossible_contains_generates) {
 
   using namespace sourcemeta::blaze;
 
+  EXPECT_EQ(result.size(), 5);
+  EXPECT_IR_ANY(result, ir_index_of(result, "/definitions/2"),
+                "/definitions/2");
+  EXPECT_IR_REFERENCE(result, ir_index_of(result, "/definitions/0/items"),
+                      "/definitions/0/items", "/definitions/2");
   EXPECT_IR_ARRAY(result, ir_index_of(result, "/definitions/0"),
                   "/definitions/0", "/definitions/0/items");
+  EXPECT_IR_REFERENCE(result, ir_index_of(result, "/allOf/0"), "/allOf/0",
+                      "/definitions/0");
+  EXPECT_IR_REFERENCE(result, ir_index_of(result, ""), "", "/allOf/0");
 }
 
 TEST(draft6_graph_form_negation_under_contains_generates) {
@@ -607,8 +620,16 @@ TEST(draft6_graph_form_negation_under_contains_generates) {
 
   using namespace sourcemeta::blaze;
 
+  EXPECT_EQ(result.size(), 5);
+  EXPECT_IR_ANY(result, ir_index_of(result, "/definitions/3"),
+                "/definitions/3");
+  EXPECT_IR_REFERENCE(result, ir_index_of(result, "/definitions/0/items"),
+                      "/definitions/0/items", "/definitions/3");
   EXPECT_IR_ARRAY(result, ir_index_of(result, "/definitions/0"),
                   "/definitions/0", "/definitions/0/items");
+  EXPECT_IR_REFERENCE(result, ir_index_of(result, "/allOf/0"), "/allOf/0",
+                      "/definitions/0");
+  EXPECT_IR_REFERENCE(result, ir_index_of(result, ""), "", "/allOf/0");
 }
 
 TEST(nested_form_negation_under_contains_generates) {
@@ -626,6 +647,8 @@ TEST(nested_form_negation_under_contains_generates) {
 
   using namespace sourcemeta::blaze;
 
+  EXPECT_EQ(result.size(), 2);
+  EXPECT_IR_ANY(result, ir_index_of(result, "/items"), "/items");
   EXPECT_IR_ARRAY(result, ir_index_of(result, ""), "", "/items");
 }
 
@@ -649,8 +672,16 @@ TEST(draft6_graph_form_negation_below_contains_generates) {
 
   using namespace sourcemeta::blaze;
 
+  EXPECT_EQ(result.size(), 5);
+  EXPECT_IR_ANY(result, ir_index_of(result, "/definitions/2"),
+                "/definitions/2");
+  EXPECT_IR_REFERENCE(result, ir_index_of(result, "/definitions/0/items"),
+                      "/definitions/0/items", "/definitions/2");
   EXPECT_IR_ARRAY(result, ir_index_of(result, "/definitions/0"),
                   "/definitions/0", "/definitions/0/items");
+  EXPECT_IR_REFERENCE(result, ir_index_of(result, "/allOf/0"), "/allOf/0",
+                      "/definitions/0");
+  EXPECT_IR_REFERENCE(result, ir_index_of(result, ""), "", "/allOf/0");
 }
 
 TEST(nested_form_negation_below_contains_generates) {
@@ -671,6 +702,8 @@ TEST(nested_form_negation_below_contains_generates) {
 
   using namespace sourcemeta::blaze;
 
+  EXPECT_EQ(result.size(), 2);
+  EXPECT_IR_ANY(result, ir_index_of(result, "/items"), "/items");
   EXPECT_IR_ARRAY(result, ir_index_of(result, ""), "", "/items");
 }
 
@@ -691,10 +724,16 @@ TEST(draft6_graph_form_entry_both_contained_and_held_generates) {
 
   using namespace sourcemeta::blaze;
 
-  EXPECT_IR_ARRAY(result, ir_index_of(result, "/definitions/0"),
-                  "/definitions/0", "/definitions/0/items");
+  EXPECT_EQ(result.size(), 5);
   EXPECT_IR_SCALAR(result, ir_index_of(result, "/definitions/1"), String,
                    "/definitions/1");
+  EXPECT_IR_REFERENCE(result, ir_index_of(result, "/definitions/0/items"),
+                      "/definitions/0/items", "/definitions/1");
+  EXPECT_IR_ARRAY(result, ir_index_of(result, "/definitions/0"),
+                  "/definitions/0", "/definitions/0/items");
+  EXPECT_IR_REFERENCE(result, ir_index_of(result, "/allOf/0"), "/allOf/0",
+                      "/definitions/0");
+  EXPECT_IR_REFERENCE(result, ir_index_of(result, ""), "", "/allOf/0");
 }
 
 TEST(unsupported_keyword_error_draft6_negation_under_items) {
@@ -716,4 +755,33 @@ TEST(unsupported_keyword_error_draft6_negation_under_items) {
     // and a negation that stands for no type is still as far as this gets
     EXPECT_AS_STRING(error.pointer(), "/definitions/1");
   }
+}
+
+TEST(draft6_graph_form_dialect_from_the_caller_is_impossible) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "type": "string",
+    "enum": [ 1 ]
+  })JSON")};
+
+  // A document that names no dialect takes the one the caller names, and
+  // arriving at the schema nothing satisfies is the dialect's business either
+  // way, so the entry that says so comes out as it does for a document that
+  // names the dialect itself
+  const auto result{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver, sourcemeta::blaze::default_compiler,
+      "http://json-schema.org/draft-06/schema#")};
+
+  using namespace sourcemeta::blaze;
+
+  EXPECT_EQ(result.size(), 5);
+  EXPECT_IR_ANY(result, ir_index_of(result, "/definitions/1"),
+                "/definitions/1");
+  EXPECT_IR_REFERENCE(result, ir_index_of(result, "/definitions/0/not"),
+                      "/definitions/0/not", "/definitions/1");
+  EXPECT_IR_IMPOSSIBLE(result, ir_index_of(result, "/definitions/0"),
+                       "/definitions/0");
+  EXPECT_IR_REFERENCE(result, ir_index_of(result, "/allOf/0"), "/allOf/0",
+                      "/definitions/0");
+  EXPECT_IR_REFERENCE(result, ir_index_of(result, ""), "", "/allOf/0");
 }
