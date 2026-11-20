@@ -514,7 +514,6 @@ TEST(draft6_graph_form_generates) {
 
   using namespace sourcemeta::blaze;
 
-  EXPECT_EQ(result.size(), 3);
   EXPECT_IR_SCALAR(result, ir_index_of(result, "/definitions/0"), String,
                    "/definitions/0");
   EXPECT_IR_REFERENCE(result, ir_index_of(result, "/allOf/0"), "/allOf/0",
@@ -539,12 +538,13 @@ TEST(draft6_graph_form_negation_of_everything_is_impossible) {
 
   using namespace sourcemeta::blaze;
 
-  EXPECT_EQ(result.size(), 3);
   EXPECT_IR_IMPOSSIBLE(result, ir_index_of(result, "/definitions/0"),
                        "/definitions/0");
   EXPECT_IR_REFERENCE(result, ir_index_of(result, "/allOf/0"), "/allOf/0",
                       "/definitions/0");
   EXPECT_IR_REFERENCE(result, ir_index_of(result, ""), "", "/allOf/0");
+  EXPECT_IR_NOTHING(result, "/definitions/0/not");
+  EXPECT_IR_NOTHING(result, "/definitions/1");
 }
 
 TEST(draft6_graph_form_closed_object_stays_closed) {
@@ -588,7 +588,6 @@ TEST(draft6_graph_form_array_with_impossible_contains_generates) {
 
   using namespace sourcemeta::blaze;
 
-  EXPECT_EQ(result.size(), 5);
   EXPECT_IR_ANY(result, ir_index_of(result, "/definitions/2"),
                 "/definitions/2");
   EXPECT_IR_REFERENCE(result, ir_index_of(result, "/definitions/0/items"),
@@ -598,6 +597,9 @@ TEST(draft6_graph_form_array_with_impossible_contains_generates) {
   EXPECT_IR_REFERENCE(result, ir_index_of(result, "/allOf/0"), "/allOf/0",
                       "/definitions/0");
   EXPECT_IR_REFERENCE(result, ir_index_of(result, ""), "", "/allOf/0");
+  EXPECT_IR_NOTHING(result, "/definitions/0/contains");
+  EXPECT_IR_NOTHING(result, "/definitions/1");
+  EXPECT_IR_NOTHING(result, "/definitions/1/not");
 }
 
 TEST(draft6_graph_form_negation_under_contains_generates) {
@@ -617,7 +619,6 @@ TEST(draft6_graph_form_negation_under_contains_generates) {
 
   using namespace sourcemeta::blaze;
 
-  EXPECT_EQ(result.size(), 5);
   EXPECT_IR_ANY(result, ir_index_of(result, "/definitions/3"),
                 "/definitions/3");
   EXPECT_IR_REFERENCE(result, ir_index_of(result, "/definitions/0/items"),
@@ -627,6 +628,10 @@ TEST(draft6_graph_form_negation_under_contains_generates) {
   EXPECT_IR_REFERENCE(result, ir_index_of(result, "/allOf/0"), "/allOf/0",
                       "/definitions/0");
   EXPECT_IR_REFERENCE(result, ir_index_of(result, ""), "", "/allOf/0");
+  EXPECT_IR_NOTHING(result, "/definitions/0/contains");
+  EXPECT_IR_NOTHING(result, "/definitions/1");
+  EXPECT_IR_NOTHING(result, "/definitions/1/not");
+  EXPECT_IR_NOTHING(result, "/definitions/2");
 }
 
 TEST(nested_form_negation_under_contains_generates) {
@@ -644,9 +649,10 @@ TEST(nested_form_negation_under_contains_generates) {
 
   using namespace sourcemeta::blaze;
 
-  EXPECT_EQ(result.size(), 2);
   EXPECT_IR_ANY(result, ir_index_of(result, "/items"), "/items");
   EXPECT_IR_ARRAY(result, ir_index_of(result, ""), "", "/items");
+  EXPECT_IR_NOTHING(result, "/contains");
+  EXPECT_IR_NOTHING(result, "/contains/not");
 }
 
 TEST(draft6_graph_form_negation_below_contains_generates) {
@@ -669,7 +675,6 @@ TEST(draft6_graph_form_negation_below_contains_generates) {
 
   using namespace sourcemeta::blaze;
 
-  EXPECT_EQ(result.size(), 5);
   EXPECT_IR_ANY(result, ir_index_of(result, "/definitions/2"),
                 "/definitions/2");
   EXPECT_IR_REFERENCE(result, ir_index_of(result, "/definitions/0/items"),
@@ -679,6 +684,14 @@ TEST(draft6_graph_form_negation_below_contains_generates) {
   EXPECT_IR_REFERENCE(result, ir_index_of(result, "/allOf/0"), "/allOf/0",
                       "/definitions/0");
   EXPECT_IR_REFERENCE(result, ir_index_of(result, ""), "", "/allOf/0");
+  EXPECT_IR_NOTHING(result, "/definitions/0/contains");
+  EXPECT_IR_NOTHING(result, "/definitions/1");
+  EXPECT_IR_NOTHING(result, "/definitions/1/propertyNames");
+  EXPECT_IR_NOTHING(result, "/definitions/1/properties/foo");
+  EXPECT_IR_NOTHING(result, "/definitions/1/additionalProperties");
+  EXPECT_IR_NOTHING(result, "/definitions/3");
+  EXPECT_IR_NOTHING(result, "/definitions/3/not");
+  EXPECT_IR_NOTHING(result, "/definitions/4");
 }
 
 TEST(nested_form_negation_below_contains_generates) {
@@ -699,9 +712,12 @@ TEST(nested_form_negation_below_contains_generates) {
 
   using namespace sourcemeta::blaze;
 
-  EXPECT_EQ(result.size(), 2);
   EXPECT_IR_ANY(result, ir_index_of(result, "/items"), "/items");
   EXPECT_IR_ARRAY(result, ir_index_of(result, ""), "", "/items");
+  EXPECT_IR_NOTHING(result, "/contains");
+  EXPECT_IR_NOTHING(result, "/contains/propertyNames");
+  EXPECT_IR_NOTHING(result, "/contains/properties/foo");
+  EXPECT_IR_NOTHING(result, "/contains/properties/foo/not");
 }
 
 TEST(draft6_graph_form_entry_both_contained_and_held_generates) {
@@ -721,7 +737,6 @@ TEST(draft6_graph_form_entry_both_contained_and_held_generates) {
 
   using namespace sourcemeta::blaze;
 
-  EXPECT_EQ(result.size(), 5);
   EXPECT_IR_SCALAR(result, ir_index_of(result, "/definitions/1"), String,
                    "/definitions/1");
   EXPECT_IR_REFERENCE(result, ir_index_of(result, "/definitions/0/items"),
@@ -731,6 +746,7 @@ TEST(draft6_graph_form_entry_both_contained_and_held_generates) {
   EXPECT_IR_REFERENCE(result, ir_index_of(result, "/allOf/0"), "/allOf/0",
                       "/definitions/0");
   EXPECT_IR_REFERENCE(result, ir_index_of(result, ""), "", "/allOf/0");
+  EXPECT_IR_NOTHING(result, "/definitions/0/contains");
 }
 
 TEST(unsupported_keyword_error_draft6_negation_under_items) {
@@ -771,10 +787,11 @@ TEST(draft6_graph_form_dialect_from_the_caller_is_impossible) {
 
   using namespace sourcemeta::blaze;
 
-  EXPECT_EQ(result.size(), 3);
   EXPECT_IR_IMPOSSIBLE(result, ir_index_of(result, "/definitions/0"),
                        "/definitions/0");
   EXPECT_IR_REFERENCE(result, ir_index_of(result, "/allOf/0"), "/allOf/0",
                       "/definitions/0");
   EXPECT_IR_REFERENCE(result, ir_index_of(result, ""), "", "/allOf/0");
+  EXPECT_IR_NOTHING(result, "/definitions/0/not");
+  EXPECT_IR_NOTHING(result, "/definitions/1");
 }

@@ -32,6 +32,10 @@ inline auto ir_index_of(const sourcemeta::blaze::CodegenIRResult &result,
 #define EXPECT_SYMBOL(actual, ...)                                             \
   EXPECT_EQ(actual, (std::vector<std::string>{__VA_ARGS__}))
 
+// Nothing in the result stands for the given place
+#define EXPECT_IR_NOTHING(result, expected_pointer)                            \
+  EXPECT_EQ(ir_index_of(result, expected_pointer), result.size())
+
 #define EXPECT_IR_SCALAR(result, index, scalar_type, expected_pointer)         \
   EXPECT_TRUE(std::holds_alternative<sourcemeta::blaze::CodegenIRScalar>(      \
       result.at(index)));                                                      \
