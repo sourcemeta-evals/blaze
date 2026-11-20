@@ -291,17 +291,18 @@ auto has_nested_id(const core::SchemaBaseDialect base_dialect,
   }
 }
 
-/// Remove every `id`, including anchors and the identifier of the root. Every
+/// Remove every identifier the dialect spells, `id` up to Draft 4 and `$id`
+/// from Draft 6 on, including anchors and the identifier of the root. Every
 /// reference is first resolved while the frame still knows the identifiers,
 /// and rewritten into a form that does not depend on any of them: a JSON
 /// Pointer into this document when the destination is local, or the absolute
 /// URI when it is not. Only then are the identifiers erased, so no reference
 /// can lose the base it was resolved against.
 ///
-/// This only applies to documents that use `id` throughout. A document of
-/// another dialect may embed such a resource and reference it by its
-/// identifier from outside, with a reference this pass must not rewrite, so
-/// such documents are left untouched
+/// This only applies to documents that spell it the same way throughout. A
+/// document of another dialect may embed such a resource and reference it by
+/// its identifier from outside, with a reference this pass must not rewrite,
+/// so such documents are left untouched
 auto eliminate_identifiers(sourcemeta::core::JSON &schema,
                            const sourcemeta::core::SchemaWalker &walker,
                            const sourcemeta::core::SchemaResolver &resolver,
@@ -441,9 +442,10 @@ struct Profile {
   /// Whether requiredness is a marker beside the subschema it applies to, as
   /// in Draft 3, rather than a list of names on the object, as from Draft 4 on
   bool property_marker;
-  /// Whether a boolean standing in for a subschema can be an entry. From
-  /// Draft 4 on the values of `definitions` have to be schemas, and a boolean
-  /// is not one, so there it stays where it is
+  /// Whether a boolean standing in for a subschema can be an entry. In Draft 4
+  /// the values of `definitions` have to be schemas and a boolean is not one
+  /// there, so a boolean stays where it is. From Draft 6 on a boolean is a
+  /// schema in its own right
   bool boolean_nodes;
   /// The schema that every instance satisfies, as this dialect spells it. A
   /// dialect whose booleans are schemas says it with one, and the rest say it
@@ -652,13 +654,14 @@ auto reference_slots(const sourcemeta::core::JSON &body, const Profile &profile)
   collect(body, core::Pointer{}, collect);
   return result;
 }
-/// Rewrite a Draft 3 document into its graph form: every subschema becomes an
-/// entry of a single `definitions` at the root, nesting is replaced by
-/// references between those entries, and the root becomes a wrapper that
-/// references the entry standing for the document.
+/// Rewrite a document into its graph form: every subschema becomes an entry
+/// of a single `definitions` at the root, nesting is replaced by references
+/// between those entries, and the root becomes a wrapper that references the
+/// entry standing for the document.
 ///
-/// Like identifier elimination, this only applies to documents that are Draft 3
-/// throughout, and it runs once the rules have finished reshaping the schema
+/// Like identifier elimination, this only applies to documents written in one
+/// dialect the form covers throughout, and it runs once the rules have
+/// finished reshaping the schema
 auto lift_subschemas(sourcemeta::core::JSON &schema,
                      const sourcemeta::core::SchemaWalker &walker,
                      const sourcemeta::core::SchemaResolver &resolver,
