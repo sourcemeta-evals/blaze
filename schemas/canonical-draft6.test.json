@@ -10199,6 +10199,132 @@
           "2": true
         }
       }
+    },
+    {
+      "description": "Canonical form holding an entry with one `anyOf` branch and `title`",
+      "valid": true,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "title": "Anything"
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "anyOf with no branches and `title` is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "anyOf": [],
+            "title": "Anything"
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Canonical form holding an entry with one `allOf` branch and `title`",
+      "valid": true,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "allOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "title": "Anything"
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "allOf with no branches and `title` is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "allOf": [],
+            "title": "Anything"
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Canonical form holding an entry with one `oneOf` branch and `title`",
+      "valid": true,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "oneOf": [
+              {
+                "$ref": "#/definitions/1"
+              }
+            ],
+            "title": "Anything"
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "oneOf with no branches and `title` is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "oneOf": [],
+            "title": "Anything"
+          },
+          "1": true
+        }
+      }
     }
   ]
 }
