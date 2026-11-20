@@ -64,6 +64,25 @@ auto compiled_dialect(const sourcemeta::core::JSON::String &uri)
       .first->second;
 }
 
+// The same dialect can be named in more than one way, and canonicalisation
+// settles on one of them: the official spelling of a draft is the one over
+// plain HTTP, with the empty fragment that names the document as a whole. A
+// fixture may therefore hand in a document naming its dialect one way and
+// expect one naming it the other, and both still say the same dialect
+auto dialect_identity(const sourcemeta::core::JSON::String &uri)
+    -> sourcemeta::core::JSON::String {
+  auto result{uri};
+  if (result.starts_with("https://")) {
+    result.replace(0, 8, "http://");
+  }
+
+  if (result.ends_with('#')) {
+    result.pop_back();
+  }
+
+  return result;
+}
+
 // A document that is nothing but a boolean has nowhere to say which dialect it
 // is written in, and neither has one that is nothing but a reference, as a
 // reference of these dialects overrides whatever sits beside it, the dialect
@@ -186,12 +205,15 @@ auto check_shape(const sourcemeta::core::JSON &test, const std::string &dialect)
   EXPECT_TRUE(test.at("expected").is_object());
 
   // Canonicalisation rewrites a document within the dialect it is written in,
-  // so both documents say which dialect that is and both say the same one. A
-  // result on another dialect would be a document about something else
+  // so both documents say which dialect that is and both say the same one,
+  // whichever way each of them spells it. A result on another dialect would be
+  // a document about something else
   EXPECT_TRUE(test.at("schema").defines("$schema"));
   EXPECT_TRUE(test.at("schema").at("$schema").is_string());
   EXPECT_TRUE(test.at("expected").defines("$schema"));
-  EXPECT_EQ(test.at("expected").at("$schema"), test.at("schema").at("$schema"));
+  EXPECT_TRUE(test.at("expected").at("$schema").is_string());
+  EXPECT_EQ(dialect_identity(test.at("expected").at("$schema").to_string()),
+            dialect_identity(test.at("schema").at("$schema").to_string()));
 }
 
 auto run_canonicalizer_test(const sourcemeta::core::JSON &test,
