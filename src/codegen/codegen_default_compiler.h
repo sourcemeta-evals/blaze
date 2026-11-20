@@ -507,9 +507,6 @@ auto handle_anyof(const sourcemeta::core::JSON &schema,
         schema, location.pointer, "anyOf", "Expected a non-empty array value");
   }
 
-  // Canonicalisation merges a single branch into its parent
-  assert(any_of.size() >= 2);
-
   std::vector<CodegenIRType> branches;
   for (std::size_t index = 0; index < any_of.size(); ++index) {
     auto branch_pointer{sourcemeta::core::to_pointer(location.pointer)};
@@ -523,6 +520,17 @@ auto handle_anyof(const sourcemeta::core::JSON &schema,
     branches.push_back(
         {.pointer = std::move(branch_pointer),
          .symbol = symbol(frame, branch_location.value().get())});
+  }
+
+  // Where every entry of a graph that says the same thing becomes one entry, a
+  // keyword that offered a choice can come out offering one branch, and the
+  // entry holding it stays where it has something of its own to say beside it.
+  // A choice of one is what that branch leads to
+  if (branches.size() == 1) {
+    return CodegenIRReference{
+        {.pointer = sourcemeta::core::to_pointer(location.pointer),
+         .symbol = symbol(frame, location)},
+        std::move(branches.front())};
   }
 
   return CodegenIRUnion{
