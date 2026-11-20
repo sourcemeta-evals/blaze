@@ -10325,6 +10325,75 @@
           "1": true
         }
       }
+    },
+    {
+      "description": "Canonical form holding an entry with `additionalItems`, `contains`, `items`, `minItems`, `type`, `uniqueItems`",
+      "valid": true,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "array",
+            "items": [
+              {
+                "$ref": "#/definitions/2"
+              }
+            ],
+            "additionalItems": {
+              "$ref": "#/definitions/1"
+            },
+            "contains": {
+              "$ref": "#/definitions/1"
+            },
+            "minItems": 0,
+            "uniqueItems": false
+          },
+          "1": true,
+          "2": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    {
+      "description": "Array tuple with an inline `contains` is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "type": "array",
+            "items": [
+              {
+                "$ref": "#/definitions/2"
+              }
+            ],
+            "additionalItems": {
+              "$ref": "#/definitions/1"
+            },
+            "contains": {
+              "type": "string",
+              "minLength": 0
+            },
+            "minItems": 0,
+            "uniqueItems": false
+          },
+          "1": true,
+          "2": {
+            "type": "number"
+          }
+        }
+      }
     }
   ]
 }
