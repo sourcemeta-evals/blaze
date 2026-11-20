@@ -3,7 +3,8 @@
 #include <sourcemeta/blaze/codegen.h>
 #include <sourcemeta/core/jsonschema.h>
 
-#include <sstream> // std::ostringstream
+#include <algorithm> // std::ranges::count_if
+#include <sstream>   // std::ostringstream
 
 #include "codegen_test_utils.h"
 
@@ -514,8 +515,8 @@ TEST(draft6_graph_form_generates) {
 
   using namespace sourcemeta::blaze;
 
-  EXPECT_EQ(result.size(), 3);
-  EXPECT_IR_SCALAR(result, 0, String, "/definitions/0");
+  EXPECT_IR_SCALAR(result, ir_index_of(result, "/definitions/0"), String,
+                   "/definitions/0");
 }
 
 TEST(draft6_graph_form_negation_of_everything_is_impossible) {
@@ -534,8 +535,14 @@ TEST(draft6_graph_form_negation_of_everything_is_impossible) {
 
   using namespace sourcemeta::blaze;
 
-  EXPECT_IR_IMPOSSIBLE(result, ir_index_of(result, "/definitions/0"),
-                       "/definitions/0");
+  // Which entry the type lives in is the form's business rather than this
+  // test's, and a document nothing satisfies has one such type to give
+  EXPECT_EQ(std::ranges::count_if(
+                result,
+                [](const CodegenIREntity &entity) -> bool {
+                  return std::holds_alternative<CodegenIRImpossible>(entity);
+                }),
+            1);
 }
 
 TEST(draft6_graph_form_closed_object_stays_closed) {

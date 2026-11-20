@@ -130,15 +130,17 @@ using Nodes = std::unordered_set<sourcemeta::core::WeakPointer,
                                  sourcemeta::core::WeakPointer::Hasher,
                                  sourcemeta::core::WeakPointer::Comparator>;
 
-/// Where the references of a document lead: the nodes a reference names at
-/// all, and for each node, the nodes its edges lead to without only
-/// validating them
+/// A reference of the document that says what an instance looks like, as the
+/// edge it sits in and the subschema it arrives at
+struct Arrival {
+  sourcemeta::core::WeakPointer edge;
+  sourcemeta::core::WeakPointer target;
+};
+
+/// Where the references of a document lead: the subschemas a reference names
+/// at all, and the arrivals that do more than validate what they reach
 struct References {
-  std::unordered_map<sourcemeta::core::WeakPointer,
-                     std::vector<sourcemeta::core::WeakPointer>,
-                     sourcemeta::core::WeakPointer::Hasher,
-                     sourcemeta::core::WeakPointer::Comparator>
-      describing;
+  std::vector<Arrival> describing;
   Nodes named;
 };
 
@@ -161,21 +163,39 @@ auto references(const sourcemeta::core::SchemaFrame &frame, const Edges &edges)
 
         // A reference sits inside the subschema that stands for the edge, as
         // the keyword that spells it
-        auto edge{sourcemeta::core::to_pointer(source)};
-        edge.pop_back();
-        const auto match{edges.find(sourcemeta::core::to_weak_pointer(edge))};
+        auto pointer{sourcemeta::core::to_pointer(source)};
+        pointer.pop_back();
+        const auto edge{sourcemeta::core::to_weak_pointer(pointer)};
+        const auto match{edges.find(edge)};
         if (match != edges.cend() && match->second.validates) {
           return;
         }
 
-        // A reference that sits in no edge at all sits in the document, which
-        // is what it leaves
-        result
-            .describing[match == edges.cend()
-                            ? sourcemeta::core::EMPTY_WEAK_POINTER
-                            : match->second.node]
-            .push_back(target);
+        result.describing.push_back(Arrival{
+            .edge = match == edges.cend() ? sourcemeta::core::EMPTY_WEAK_POINTER
+                                          : match->first,
+            .target = target});
       });
+
+  return result;
+}
+
+/// The node a subschema belongs to: itself where a reference names it, and
+/// otherwise the innermost node holding it. The document is a node of its
+/// own, so every subschema belongs to one
+auto owner(const Nodes &nodes, const sourcemeta::core::WeakPointer &pointer)
+    -> sourcemeta::core::WeakPointer {
+  if (nodes.contains(pointer)) {
+    return pointer;
+  }
+
+  auto result{sourcemeta::core::EMPTY_WEAK_POINTER};
+  for (const auto &node : nodes) {
+    if (pointer.size() > node.size() && pointer.starts_with(node) &&
+        node.size() > result.size()) {
+      result = node;
+    }
+  }
 
   return result;
 }
@@ -184,38 +204,55 @@ auto references(const sourcemeta::core::SchemaFrame &frame, const Edges &edges)
 /// its subschemas nested, the keywords above one are enough to tell what it is
 /// for. Once a dialect lifts every subschema into one container, nothing sits
 /// under anything, and what says it is the edges walked to get there: the
-/// document says what an instance looks like, as does every node no reference
-/// names, as was the case before any lifting, and so does whatever those
-/// reach without an edge that only validates on the way
+/// document says what an instance looks like, and so does whatever a chain of
+/// references reaches from it without an edge that only validates along the
+/// way. What sits inside such a subschema says what it says, as nothing that
+/// generates can name it otherwise
 auto describing(const Subschemas &subschemas, const References &references)
     -> Nodes {
-  Nodes result;
+  Nodes nodes;
+  nodes.insert(sourcemeta::core::EMPTY_WEAK_POINTER);
+  for (const auto &target : references.named) {
+    nodes.insert(target);
+  }
+
+  std::unordered_map<sourcemeta::core::WeakPointer,
+                     std::vector<sourcemeta::core::WeakPointer>,
+                     sourcemeta::core::WeakPointer::Hasher,
+                     sourcemeta::core::WeakPointer::Comparator>
+      outgoing;
+  for (const auto &arrival : references.describing) {
+    outgoing[owner(nodes, arrival.edge)].push_back(arrival.target);
+  }
+
+  Nodes reached;
   std::vector<sourcemeta::core::WeakPointer> pending;
   const auto mark{
-      [&result, &pending](const sourcemeta::core::WeakPointer &node) -> void {
-        if (result.insert(node).second) {
+      [&reached, &pending](const sourcemeta::core::WeakPointer &node) -> void {
+        if (reached.insert(node).second) {
           pending.push_back(node);
         }
       }};
 
   mark(sourcemeta::core::EMPTY_WEAK_POINTER);
-  for (const auto &candidate : subschemas) {
-    const auto &subschema{candidate.get()};
-    if (!references.named.contains(subschema.pointer)) {
-      mark(subschema.pointer);
-    }
-  }
-
   while (!pending.empty()) {
     const auto node{pending.back()};
     pending.pop_back();
-    const auto match{references.describing.find(node)};
-    if (match == references.describing.cend()) {
+    const auto match{outgoing.find(node)};
+    if (match == outgoing.cend()) {
       continue;
     }
 
     for (const auto &target : match->second) {
       mark(target);
+    }
+  }
+
+  Nodes result;
+  for (const auto &candidate : subschemas) {
+    const auto &subschema{candidate.get()};
+    if (reached.contains(owner(nodes, subschema.pointer))) {
+      result.insert(subschema.pointer);
     }
   }
 
