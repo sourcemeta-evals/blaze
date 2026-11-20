@@ -1535,6 +1535,24 @@
       }
     },
     {
+      "description": "A document without the entry its wrapper names is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "1": {
+            "type": "string",
+            "minLength": 0
+          }
+        }
+      }
+    },
+    {
       "description": "A named entry is rejected",
       "valid": false,
       "data": {
