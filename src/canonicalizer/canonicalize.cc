@@ -1407,6 +1407,33 @@ auto canonicalize(sourcemeta::core::JSON &schema,
                   const sourcemeta::core::SchemaResolver &resolver,
                   const std::string_view default_dialect,
                   const std::string_view default_id) -> void {
+  // What a reference overrides at the top of a document includes the dialect
+  // the document names and the container the reference itself goes through, so
+  // reading such a document means picking which of the two to honour. Taking
+  // the name on trust is a guess about a document that says nothing anyone may
+  // read, and dropping it leaves the reference pointing at a container that is
+  // no longer there. Bundling in the dependency refuses the same spelling
+  // rather than choose. The document is turned down as it came in, before a
+  // rule that drops a keyword can take the last sibling away and leave
+  // something that passes for a document naming nothing but a reference
+  if (schema.is_object() && schema.size() > 1 && schema.defines("$ref")) {
+    const core::SchemaFrame frame{core::SchemaFrame::Mode::Locations,
+                                  schema,
+                                  walker,
+                                  resolver,
+                                  default_dialect,
+                                  default_id,
+                                  core::SchemaFrame::IdentifierMode::Fallback};
+    const auto root{frame.root_location()};
+    if (root.has_value() && reference_overrides_siblings(frame.vocabularies(
+                                root.value().get(), resolver))) {
+      throw core::SchemaError(
+          "Cannot canonicalise a JSON Schema Draft 7 or older with a "
+          "top-level `$ref` (which overrides sibling keywords) without "
+          "introducing undefined behavior");
+    }
+  }
+
   std::vector<Rule> rules;
   rules.reserve(128);
   rules.push_back(make_rule<ExclusiveMinimumBooleanIntegerFold>());
