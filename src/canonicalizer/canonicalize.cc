@@ -146,18 +146,24 @@ auto apply(const std::vector<Rule> &rules, sourcemeta::core::JSON &schema,
 
             applied = true;
 
-            if (reframe_after_transform) {
-              frame.emplace(
-                  core::SchemaFrame::Mode::References, schema, walker, resolver,
-                  default_dialect, default_id,
-                  sourcemeta::core::SchemaFrame::IdentifierMode::Fallback);
-            } else if (current.is_boolean()) {
+            // A schema the rule leaves as a boolean has nowhere left to
+            // say which dialect it is written in, so the frame goes away and
+            // the traversal starts over, whether or not the rule asks for the
+            // frame to be built again
+            if (current.is_boolean()) {
               std::tuple<core::Pointer, std::string_view, core::JSON> mark{
                   entry_pointer, rule->name(), current};
               assert(!processed_rules.contains(mark));
               processed_rules.emplace(std::move(mark));
               frame.reset();
               return true;
+            }
+
+            if (reframe_after_transform) {
+              frame.emplace(
+                  core::SchemaFrame::Mode::References, schema, walker, resolver,
+                  default_dialect, default_id,
+                  sourcemeta::core::SchemaFrame::IdentifierMode::Fallback);
             }
 
             const auto new_location{
