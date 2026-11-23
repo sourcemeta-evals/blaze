@@ -13,6 +13,30 @@ inline auto is_in_place_applicator(const SchemaKeywordType type) -> bool {
          type == SchemaKeywordType::ApplicatorValueInPlaceNegate;
 }
 
+// Up to Draft 7, a reference takes the place of every keyword that sits beside
+// it, down to the dialect the document names where the two sit together at the
+// top of a document. A hyper-schema of one of those drafts says the same of a
+// reference as the draft it extends, and says it in a vocabulary of its own,
+// so each one answers here for itself
+inline auto reference_overrides_siblings(const SchemaVocabularies &vocabularies)
+    -> bool {
+  return vocabularies.contains_any(
+      {SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_7,
+       SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_7_HYPER,
+       SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_6,
+       SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_6_HYPER,
+       SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_4,
+       SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_4_HYPER,
+       SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_3,
+       SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_3_HYPER,
+       SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_2,
+       SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_2_HYPER,
+       SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_1,
+       SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_1_HYPER,
+       SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_0,
+       SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_0_HYPER});
+}
+
 // TODO: Move upstream, so that the compiler can share this predicate rather
 // than repeating the same check
 // Draft 3 and Draft 4 read "integer" as a number written without a fractional
@@ -162,6 +186,14 @@ inline auto is_known_type_form(const sourcemeta::core::JSON &type,
   });
 }
 
+// Whether a subschema says that no instance can satisfy it, however the
+// dialect in force spells that. A dialect whose booleans are schemas can say
+// it with one, and every dialect says it the way the canonical form does once
+// a rule has settled it
+inline auto says_nothing_satisfies(const sourcemeta::core::JSON &schema,
+                                   const SchemaVocabularies &vocabularies)
+    -> bool;
+
 // The schema that no instance can ever satisfy. Draft 3 and Draft 4 have no
 // boolean schemas, so each of them has to spell it out with the negation
 // keyword it offers, applied to the schema that every instance satisfies
@@ -172,6 +204,17 @@ inline auto unsatisfiable_schema(const SchemaVocabularies &vocabularies)
            SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_4_HYPER})) {
     auto result{sourcemeta::core::JSON::make_object()};
     result.assign("not", sourcemeta::core::JSON::make_object());
+    return result;
+  }
+
+  // Draft 6 does have boolean schemas, but the graph form needs a document
+  // it can wrap, and a bare boolean carries neither `$schema` nor a node to
+  // point at. Negating the schema that every instance satisfies says the
+  // same thing in a shape the form can hold
+  if (vocabularies.contains_any(
+          {SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_6})) {
+    auto result{sourcemeta::core::JSON::make_object()};
+    result.assign("not", sourcemeta::core::JSON{true});
     return result;
   }
 
@@ -203,6 +246,16 @@ inline auto unsatisfiable_schema(const SchemaVocabularies &vocabularies)
   }
 
   return sourcemeta::core::JSON{false};
+}
+
+inline auto says_nothing_satisfies(const sourcemeta::core::JSON &schema,
+                                   const SchemaVocabularies &vocabularies)
+    -> bool {
+  if (schema.is_boolean()) {
+    return !schema.to_boolean();
+  }
+
+  return schema == unsatisfiable_schema(vocabularies);
 }
 
 // Collapsing a schema to the unsatisfiable one throws away every keyword it
