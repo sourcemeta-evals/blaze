@@ -108,7 +108,7 @@
             "maxProperties": 1,
             "properties": {
               "$ref": {
-                "pattern": "^#"
+                "pattern": "^(#|$)"
               }
             }
           },

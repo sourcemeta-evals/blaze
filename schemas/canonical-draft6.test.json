@@ -1376,6 +1376,20 @@
       }
     },
     {
+      "description": "A document that is only a reference to itself is rejected",
+      "valid": false,
+      "data": {
+        "$ref": "#"
+      }
+    },
+    {
+      "description": "A document that is only a reference to itself without a fragment is rejected",
+      "valid": false,
+      "data": {
+        "$ref": ""
+      }
+    },
+    {
       "description": "A document whose $schema is not a string is rejected",
       "valid": false,
       "data": {
@@ -9930,6 +9944,42 @@
         "definitions": {
           "0": {
             "$ref": "#/definitions/1"
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Object with only a $ref to the document is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "$ref": "#"
+          },
+          "1": true
+        }
+      }
+    },
+    {
+      "description": "Object with only a $ref to the document without a fragment is rejected",
+      "valid": false,
+      "data": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "allOf": [
+          {
+            "$ref": "#/definitions/0"
+          }
+        ],
+        "definitions": {
+          "0": {
+            "$ref": ""
           },
           "1": true
         }
