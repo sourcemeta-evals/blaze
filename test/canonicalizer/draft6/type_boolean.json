@@ -1,0 +1,24 @@
+{
+  "schema": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "type": "boolean"
+  },
+  "expected": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "enum": [
+      false,
+      true
+    ]
+  },
+  "examples": [
+    true,
+    false
+  ],
+  "counterExamples": [
+    null,
+    0,
+    "x",
+    [],
+    {}
+  ]
+}

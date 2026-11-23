@@ -1,0 +1,92 @@
+{
+  "schema": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "propertyNames": {
+      "pattern": "^a"
+    }
+  },
+  "expected": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "anyOf": [
+      {
+        "enum": [
+          null
+        ]
+      },
+      {
+        "enum": [
+          false,
+          true
+        ]
+      },
+      {
+        "type": "object",
+        "propertyNames": {
+          "anyOf": [
+            {
+              "enum": [
+                null
+              ]
+            },
+            {
+              "enum": [
+                false,
+                true
+              ]
+            },
+            {
+              "type": "object",
+              "patternProperties": {},
+              "propertyNames": true,
+              "minProperties": 0,
+              "properties": {},
+              "additionalProperties": true
+            },
+            {
+              "type": "array",
+              "uniqueItems": false,
+              "items": true,
+              "minItems": 0
+            },
+            {
+              "type": "string",
+              "pattern": "^a",
+              "minLength": 0
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "patternProperties": {},
+        "minProperties": 0,
+        "properties": {},
+        "additionalProperties": true
+      },
+      {
+        "type": "array",
+        "uniqueItems": false,
+        "items": true,
+        "minItems": 0
+      },
+      {
+        "type": "string",
+        "minLength": 0
+      },
+      {
+        "type": "number"
+      }
+    ]
+  },
+  "examples": [
+    {},
+    {
+      "ab": 1
+    }
+  ],
+  "counterExamples": [
+    {
+      "b": 1
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "schema": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "contains": {
+      "type": "integer"
+    }
+  },
+  "expected": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "anyOf": [
+      {
+        "enum": [
+          null
+        ]
+      },
+      {
+        "enum": [
+          false,
+          true
+        ]
+      },
+      {
+        "type": "object",
+        "patternProperties": {},
+        "propertyNames": true,
+        "minProperties": 0,
+        "properties": {},
+        "additionalProperties": true
+      },
+      {
+        "type": "array",
+        "contains": {
+          "type": "integer",
+          "multipleOf": 1
+        },
+        "uniqueItems": false,
+        "items": true,
+        "minItems": 0
+      },
+      {
+        "type": "string",
+        "minLength": 0
+      },
+      {
+        "type": "number"
+      }
+    ]
+  },
+  "examples": [
+    [
+      1
+    ],
+    [
+      "x",
+      2
+    ]
+  ],
+  "counterExamples": [
+    [],
+    [
+      "x"
+    ]
+  ]
+}

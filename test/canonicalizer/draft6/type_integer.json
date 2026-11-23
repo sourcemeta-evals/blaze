@@ -1,0 +1,24 @@
+{
+  "schema": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "type": "integer"
+  },
+  "expected": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "type": "integer",
+    "multipleOf": 1
+  },
+  "examples": [
+    0,
+    1,
+    -1
+  ],
+  "counterExamples": [
+    null,
+    true,
+    "x",
+    1.5,
+    [],
+    {}
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "schema": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "type": "array",
+    "items": {
+      "type": "number"
+    }
+  },
+  "expected": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "type": "array",
+    "items": {
+      "type": "number"
+    },
+    "uniqueItems": false,
+    "minItems": 0
+  },
+  "examples": [
+    [],
+    [
+      1
+    ],
+    [
+      1,
+      2.5
+    ]
+  ],
+  "counterExamples": [
+    null,
+    true,
+    0,
+    "x",
+    {},
+    [
+      "x"
+    ]
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "schema": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "anyOf": [
+      {
+        "type": "string"
+      },
+      {
+        "type": "integer"
+      }
+    ]
+  },
+  "expected": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "anyOf": [
+      {
+        "type": "string",
+        "minLength": 0
+      },
+      {
+        "type": "integer",
+        "multipleOf": 1
+      }
+    ]
+  },
+  "examples": [
+    "x",
+    1
+  ],
+  "counterExamples": [
+    null,
+    true,
+    1.5,
+    [],
+    {}
+  ]
+}

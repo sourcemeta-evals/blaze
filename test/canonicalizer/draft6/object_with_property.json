@@ -1,0 +1,41 @@
+{
+  "schema": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "type": "object",
+    "properties": {
+      "a": {
+        "type": "string"
+      }
+    }
+  },
+  "expected": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "type": "object",
+    "properties": {
+      "a": {
+        "type": "string",
+        "minLength": 0
+      }
+    },
+    "patternProperties": {},
+    "propertyNames": true,
+    "minProperties": 0,
+    "additionalProperties": true
+  },
+  "examples": [
+    {},
+    {
+      "a": "x"
+    }
+  ],
+  "counterExamples": [
+    null,
+    true,
+    0,
+    "x",
+    [],
+    {
+      "a": 1
+    }
+  ]
+}

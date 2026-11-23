@@ -1,0 +1,26 @@
+{
+  "schema": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "not": {
+      "type": "string"
+    }
+  },
+  "expected": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "not": {
+      "type": "string",
+      "minLength": 0
+    }
+  },
+  "examples": [
+    null,
+    true,
+    1,
+    [],
+    {}
+  ],
+  "counterExamples": [
+    "",
+    "x"
+  ]
+}
