@@ -6348,6 +6348,8 @@ TEST(top_level_ref_with_siblings) {
     }
   })JSON");
 
+  const auto original = document;
+
   try {
     sourcemeta::blaze::canonicalize(document, sourcemeta::core::schema_walker,
                                     canonicalizer_test_resolver);
@@ -6357,6 +6359,7 @@ TEST(top_level_ref_with_siblings) {
                  "Cannot canonicalise a JSON Schema Draft 7 or older with a "
                  "top-level `$ref` (which overrides sibling keywords) without "
                  "introducing undefined behavior");
+    EXPECT_EQ(document, original);
   } catch (...) {
     FAIL();
   }
@@ -6368,6 +6371,8 @@ TEST(top_level_ref_with_a_comment_sibling_and_a_dialect_from_the_caller) {
     "$comment": "Hello World"
   })JSON");
 
+  const auto original = document;
+
   try {
     sourcemeta::blaze::canonicalize(document, sourcemeta::core::schema_walker,
                                     canonicalizer_test_resolver,
@@ -6378,6 +6383,7 @@ TEST(top_level_ref_with_a_comment_sibling_and_a_dialect_from_the_caller) {
                  "Cannot canonicalise a JSON Schema Draft 7 or older with a "
                  "top-level `$ref` (which overrides sibling keywords) without "
                  "introducing undefined behavior");
+    EXPECT_EQ(document, original);
   } catch (...) {
     FAIL();
   }
@@ -6407,6 +6413,8 @@ TEST(top_level_ref_with_siblings_in_the_hyper_schema) {
     }
   })JSON");
 
+  const auto original = document;
+
   try {
     sourcemeta::blaze::canonicalize(document, sourcemeta::core::schema_walker,
                                     canonicalizer_test_resolver);
@@ -6416,6 +6424,7 @@ TEST(top_level_ref_with_siblings_in_the_hyper_schema) {
                  "Cannot canonicalise a JSON Schema Draft 7 or older with a "
                  "top-level `$ref` (which overrides sibling keywords) without "
                  "introducing undefined behavior");
+    EXPECT_EQ(document, original);
   } catch (...) {
     FAIL();
   }
