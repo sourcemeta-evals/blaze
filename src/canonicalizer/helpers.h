@@ -254,7 +254,24 @@ inline auto says_nothing_satisfies(const sourcemeta::core::JSON &schema,
     return !schema.to_boolean();
   }
 
-  return schema == unsatisfiable_schema(vocabularies);
+  const auto unsatisfiable{unsatisfiable_schema(vocabularies)};
+  if (!schema.is_object() || !unsatisfiable.is_object()) {
+    return schema == unsatisfiable;
+  }
+
+  // A schema a rule has already collapsed keeps the dialect it declared, and
+  // naming a dialect says nothing of which instances a schema accepts. Any
+  // other keyword beside the negation does, so it is not this schema
+  const std::size_t dialect{schema.defines("$schema") ? 1U : 0U};
+  if (schema.size() != unsatisfiable.size() + dialect) {
+    return false;
+  }
+
+  return std::ranges::all_of(
+      unsatisfiable.as_object(), [&schema](const auto &entry) -> bool {
+        const auto *value{schema.try_at(entry.first)};
+        return value != nullptr && *value == entry.second;
+      });
 }
 
 // Collapsing a schema to the unsatisfiable one throws away every keyword it

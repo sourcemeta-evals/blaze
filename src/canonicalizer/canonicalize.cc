@@ -404,6 +404,13 @@ auto pointer_before(const sourcemeta::core::Pointer &left,
   return left.size() < right.size();
 }
 
+/// Order two pointers the other way around, so that the deeper of two nested
+/// pointers comes first
+auto pointer_after(const sourcemeta::core::Pointer &left,
+                   const sourcemeta::core::Pointer &right) -> bool {
+  return pointer_before(right, left);
+}
+
 /// Whether the given reference points at an entry this pass produced. A
 /// reference that leaves the document keeps its absolute URI instead
 auto entry_number(const sourcemeta::core::JSON &reference)
@@ -752,6 +759,11 @@ auto lift_subschemas(sourcemeta::core::JSON &schema,
     // The frame is free to enumerate subschemas in any order, so fix one here
     // and let nothing downstream depend on which order that was
     std::ranges::sort(nodes, pointer_before);
+
+    // An edge that carries a container can sit inside another that does too,
+    // and the one that holds the other is rewritten last: replacing it leaves
+    // nothing of what it held to reach for
+    std::ranges::sort(container_edges, pointer_after);
 
     frame.for_each_reference(
         [&links, &frame](
