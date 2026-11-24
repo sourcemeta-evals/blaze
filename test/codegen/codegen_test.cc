@@ -880,3 +880,24 @@ TEST(draft6_graph_form_closed_object_with_a_name_from_the_caller) {
   EXPECT_TRUE(std::holds_alternative<bool>(object.additional));
   EXPECT_FALSE(std::get<bool>(object.additional));
 }
+
+TEST(nested_form_root_contained_by_itself_generates) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "array",
+    "contains": { "$ref": "#" }
+  })JSON")};
+
+  // A `contains` is reached to say whether an instance is valid rather than to
+  // say what it looks like, so what sits under one takes no part in the types
+  // a document generates, not even when it leads back to the document itself
+  const auto result{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver, sourcemeta::blaze::default_compiler)};
+
+  using namespace sourcemeta::blaze;
+
+  EXPECT_IR_ANY(result, ir_index_of(result, "/items"), "/items");
+  EXPECT_IR_ARRAY(result, ir_index_of(result, ""), "", "/items");
+  EXPECT_IR_NOTHING(result, "/contains");
+}
