@@ -7,12 +7,16 @@
 #include <sourcemeta/core/json.h>
 #include <sourcemeta/core/jsonschema.h>
 
-#include <cstddef>    // std::size_t
-#include <filesystem> // std::filesystem
-#include <iostream>   // std::cerr
-#include <map>        // std::map
-#include <sstream>    // std::ostringstream
-#include <string>     // std::string
+#include <algorithm>   // std::ranges::contains
+#include <cstddef>     // std::size_t
+#include <filesystem>  // std::filesystem
+#include <iostream>    // std::cerr
+#include <map>         // std::map
+#include <sstream>     // std::ostringstream
+#include <string>      // std::string
+#include <string_view> // std::string_view
+#include <utility>     // std::pair
+#include <vector>      // std::vector
 
 #include "canonicalizer_test_utils.h"
 
@@ -97,18 +101,121 @@ auto names_dialect(const sourcemeta::core::JSON &schema) -> bool {
   return schema.is_object() && schema.defines("$schema");
 }
 
+// Which keywords put what they hold to the instance in hand every time,
+// without the instance moving on to a part of itself
+auto applies_in_place_always(const sourcemeta::core::SchemaKeywordType type)
+    -> bool {
+  using Type = sourcemeta::core::SchemaKeywordType;
+  return type == Type::ApplicatorElementsInPlace ||
+         type == Type::ApplicatorValueOrElementsInPlace ||
+         type == Type::ApplicatorValueInPlaceNegate;
+}
+
+// The innermost subschema that holds the given one, if any
+auto enclosing_subschema(
+    const std::vector<sourcemeta::core::WeakPointer> &subschemas,
+    const sourcemeta::core::WeakPointer &pointer)
+    -> const sourcemeta::core::WeakPointer * {
+  const sourcemeta::core::WeakPointer *result{nullptr};
+  for (const auto &candidate : subschemas) {
+    if (pointer.size() > candidate.size() && pointer.starts_with(candidate) &&
+        (result == nullptr || candidate.size() > result->size())) {
+      result = &candidate;
+    }
+  }
+
+  return result;
+}
+
 // A reference to the document it sits in asserts whatever that document
-// asserts, so a document that is nothing but one never reaches a verdict and
-// no instance can be put to it. The empty reference names the document as a
-// whole the way the lone fragment does
-auto references_itself(const sourcemeta::core::JSON &schema) -> bool {
-  if (!schema.is_object() || !names_no_dialect(schema)) {
+// asserts, so a document that arrives back at itself without the instance
+// moving never reaches a verdict, and no instance can be put to it however
+// many a fixture lists. The way back is a reference, which is followed every
+// time, or a keyword that puts what it holds to the instance in hand. A
+// reference reached by moving into a part of the instance is a recursive
+// document rather than one of these, and every instance put to it reaches a
+// verdict in the end
+auto never_reaches_a_verdict(const sourcemeta::core::JSON &schema,
+                             const std::string_view default_dialect) -> bool {
+  if (!schema.is_object()) {
     return false;
   }
 
-  const auto &target{schema.at("$ref")};
-  return target.is_string() &&
-         (target.to_string() == "#" || target.to_string().empty());
+  const sourcemeta::core::SchemaFrame frame{
+      sourcemeta::core::SchemaFrame::Mode::References, schema,
+      sourcemeta::core::schema_walker, canonicalizer_test_resolver,
+      default_dialect};
+
+  std::vector<sourcemeta::core::WeakPointer> subschemas;
+  frame.for_each_subschema(
+      [&subschemas](const sourcemeta::core::SchemaFrame::Location &location)
+          -> void { subschemas.push_back(location.pointer); });
+
+  std::vector<
+      std::pair<sourcemeta::core::WeakPointer, sourcemeta::core::WeakPointer>>
+      steps;
+  for (const auto &subschema : subschemas) {
+    const auto *parent{enclosing_subschema(subschemas, subschema)};
+    if (parent == nullptr) {
+      continue;
+    }
+
+    const auto &token{subschema.at(parent->size())};
+    const auto location{frame.traverse(*parent)};
+    if (!token.is_property() || !location.has_value()) {
+      continue;
+    }
+
+    const auto &vocabularies{frame.vocabularies(location.value().get(),
+                                                canonicalizer_test_resolver)};
+    if (applies_in_place_always(
+            sourcemeta::core::schema_walker(token.to_property(), vocabularies)
+                .type)) {
+      steps.emplace_back(*parent, subschema);
+    }
+  }
+
+  frame.for_each_reference(
+      [&steps, &frame](
+          const sourcemeta::core::SchemaReferenceType type,
+          const sourcemeta::core::WeakPointer &origin,
+          const sourcemeta::core::SchemaFrame::Reference &reference) -> void {
+        if (type != sourcemeta::core::SchemaReferenceType::Static ||
+            origin.empty() || !origin.back().is_property() ||
+            origin.back().to_property() != "$ref") {
+          return;
+        }
+
+        const auto destination{frame.traverse(reference.destination)};
+        if (destination.has_value()) {
+          steps.emplace_back(origin.initial(),
+                             destination.value().get().pointer);
+        }
+      });
+
+  std::vector<sourcemeta::core::WeakPointer> reached;
+  std::vector<sourcemeta::core::WeakPointer> pending{
+      sourcemeta::core::EMPTY_WEAK_POINTER};
+  while (!pending.empty()) {
+    const auto current{pending.back()};
+    pending.pop_back();
+    for (const auto &step : steps) {
+      if (step.first != current) {
+        continue;
+      }
+
+      if (step.second.empty()) {
+        return true;
+      }
+
+      if (!std::ranges::contains(reached, step.second)) {
+        reached.push_back(step.second);
+        pending.push_back(step.second);
+      }
+    }
+  }
+
+  return false;
 }
 
 // What the directory a fixture sits in says its dialect is, for a document
@@ -271,12 +378,16 @@ auto run_canonicalizer_test(const sourcemeta::core::JSON &test,
     // What the dialect refuses is not a schema to put an instance to, and
     // neither is a document that asserts whatever it itself asserts, so a
     // fixture of either kind says what its result means and nothing more
-    if (!refused && !references_itself(test.at("schema"))) {
+    if (!refused &&
+        !never_reaches_a_verdict(test.at("schema"), default_dialect)) {
       check_instances(test, "schema", test.at("schema"), default_dialect,
                       disagreements);
     }
 
-    check_instances(test, "expected", document, default_dialect, disagreements);
+    if (!never_reaches_a_verdict(document, default_dialect)) {
+      check_instances(test, "expected", document, default_dialect,
+                      disagreements);
+    }
     EXPECT_EQ(disagreements, sourcemeta::core::JSON::make_array());
   }
 
