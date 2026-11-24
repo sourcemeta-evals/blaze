@@ -121,11 +121,10 @@ auto edge_reserves_place(const sourcemeta::core::SchemaFrame &frame,
          sourcemeta::core::SchemaKeywordType::LocationMembers;
 }
 
-/// What an edge of the document is: the node it leaves, whether what spells it
-/// says only what an instance must satisfy, and whether what spells it reserves
-/// a place rather than putting what it reaches to an instance
+/// What an edge of the document is: whether what spells it says only what an
+/// instance must satisfy, and whether what spells it reserves a place rather
+/// than putting what it reaches to an instance
 struct Edge {
-  sourcemeta::core::WeakPointer node;
   bool validates;
   bool reserved;
 };
@@ -145,8 +144,7 @@ auto edges(const sourcemeta::core::SchemaFrame &frame,
     const auto *node{enclosing_subschema(subschemas, subschema.pointer)};
     if (node != nullptr) {
       result.emplace(subschema.pointer,
-                     Edge{.node = node->pointer,
-                          .validates = edge_only_validates(
+                     Edge{.validates = edge_only_validates(
                               frame, walker, resolver, *node, subschema),
                           .reserved = edge_reserves_place(
                               frame, walker, resolver, *node, subschema)});
