@@ -795,3 +795,88 @@ TEST(draft6_graph_form_dialect_from_the_caller_is_impossible) {
   EXPECT_IR_NOTHING(result, "/definitions/0/not");
   EXPECT_IR_NOTHING(result, "/definitions/1");
 }
+
+TEST(draft6_graph_form_items_nothing_satisfies_generates) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "type": "array",
+    "items": false
+  })JSON")};
+
+  // What an array holds is the entry its `items` edge names, and an entry
+  // that no instance satisfies stands for the type nothing answers to
+  const auto result{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver, sourcemeta::blaze::default_compiler)};
+
+  using namespace sourcemeta::blaze;
+
+  EXPECT_IR_IMPOSSIBLE(result, ir_index_of(result, "/definitions/1"),
+                       "/definitions/1");
+  EXPECT_IR_REFERENCE(result, ir_index_of(result, "/definitions/0/items"),
+                      "/definitions/0/items", "/definitions/1");
+  EXPECT_IR_ARRAY(result, ir_index_of(result, "/definitions/0"),
+                  "/definitions/0", "/definitions/0/items");
+  EXPECT_IR_REFERENCE(result, ir_index_of(result, "/allOf/0"), "/allOf/0",
+                      "/definitions/0");
+  EXPECT_IR_REFERENCE(result, ir_index_of(result, ""), "", "/allOf/0");
+  EXPECT_IR_NOTHING(result, "/definitions/1/not");
+  EXPECT_IR_NOTHING(result, "/definitions/2");
+}
+
+TEST(draft6_graph_form_items_nothing_satisfies_with_a_name_from_the_caller) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "type": "array",
+    "items": false
+  })JSON")};
+
+  // A name the caller hands the document alongside it is the name every
+  // reference inside it resolves against, and an edge of the graph leads to
+  // the same entry whether the document arrives with such a name or without
+  const auto result{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver, sourcemeta::blaze::default_compiler,
+      "", "https://example.com/schema")};
+
+  using namespace sourcemeta::blaze;
+
+  EXPECT_IR_IMPOSSIBLE(result, ir_index_of(result, "/definitions/1"),
+                       "/definitions/1");
+  EXPECT_IR_REFERENCE(result, ir_index_of(result, "/definitions/0/items"),
+                      "/definitions/0/items", "/definitions/1");
+  EXPECT_IR_ARRAY(result, ir_index_of(result, "/definitions/0"),
+                  "/definitions/0", "/definitions/0/items");
+  EXPECT_IR_REFERENCE(result, ir_index_of(result, "/allOf/0"), "/allOf/0",
+                      "/definitions/0");
+  EXPECT_IR_REFERENCE(result, ir_index_of(result, ""), "", "/allOf/0");
+  EXPECT_IR_NOTHING(result, "/definitions/1/not");
+  EXPECT_IR_NOTHING(result, "/definitions/2");
+}
+
+TEST(draft6_graph_form_closed_object_with_a_name_from_the_caller) {
+  const sourcemeta::core::JSON schema{sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "type": "object",
+    "properties": { "a": { "type": "string" } },
+    "additionalProperties": false
+  })JSON")};
+
+  // What closes an object is an entry an edge names too, so the name the
+  // caller hands the document makes no difference to it either
+  const auto result{sourcemeta::blaze::compile(
+      schema, sourcemeta::core::schema_walker,
+      sourcemeta::core::schema_resolver, sourcemeta::blaze::default_compiler,
+      "", "https://example.com/schema")};
+
+  using namespace sourcemeta::blaze;
+
+  const auto entry{ir_index_of(result, "/definitions/0")};
+  EXPECT_TRUE(std::holds_alternative<CodegenIRObject>(result.at(entry)));
+
+  const auto &object{std::get<CodegenIRObject>(result.at(entry))};
+  EXPECT_AS_STRING(object.pointer, "/definitions/0");
+  EXPECT_EQ(object.members.size(), 1);
+  EXPECT_TRUE(std::holds_alternative<bool>(object.additional));
+  EXPECT_FALSE(std::get<bool>(object.additional));
+}
