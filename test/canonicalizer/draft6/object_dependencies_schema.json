@@ -1,0 +1,120 @@
+{
+  "schema": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "type": "object",
+    "dependencies": {
+      "a": {
+        "required": [
+          "b"
+        ]
+      }
+    }
+  },
+  "expected": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "allOf": [
+      {
+        "$ref": "#/definitions/0"
+      }
+    ],
+    "definitions": {
+      "0": {
+        "allOf": [
+          {
+            "$ref": "#/definitions/1"
+          },
+          {
+            "$ref": "#/definitions/7"
+          }
+        ]
+      },
+      "1": {
+        "anyOf": [
+          {
+            "$ref": "#/definitions/2"
+          },
+          {
+            "$ref": "#/definitions/5"
+          }
+        ]
+      },
+      "2": {
+        "not": {
+          "$ref": "#/definitions/3"
+        }
+      },
+      "3": {
+        "type": "object",
+        "required": [
+          "a"
+        ],
+        "patternProperties": {},
+        "propertyNames": {
+          "$ref": "#/definitions/4"
+        },
+        "minProperties": 1,
+        "properties": {
+          "a": {
+            "$ref": "#/definitions/4"
+          }
+        },
+        "additionalProperties": {
+          "$ref": "#/definitions/4"
+        }
+      },
+      "4": true,
+      "5": {
+        "allOf": [
+          {
+            "$ref": "#/definitions/3"
+          },
+          {
+            "$ref": "#/definitions/6"
+          }
+        ]
+      },
+      "6": {
+        "required": [
+          "b"
+        ],
+        "type": "object",
+        "patternProperties": {},
+        "propertyNames": {
+          "$ref": "#/definitions/4"
+        },
+        "minProperties": 1,
+        "properties": {
+          "b": {
+            "$ref": "#/definitions/4"
+          }
+        },
+        "additionalProperties": {
+          "$ref": "#/definitions/4"
+        }
+      },
+      "7": {
+        "type": "object",
+        "patternProperties": {},
+        "propertyNames": {
+          "$ref": "#/definitions/4"
+        },
+        "minProperties": 0,
+        "properties": {},
+        "additionalProperties": {
+          "$ref": "#/definitions/4"
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "a": 1,
+      "b": 2
+    }
+  ],
+  "counterExamples": [
+    {
+      "a": 1
+    }
+  ]
+}

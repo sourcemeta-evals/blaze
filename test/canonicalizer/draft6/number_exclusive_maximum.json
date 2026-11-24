@@ -1,0 +1,28 @@
+{
+  "schema": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "type": "number",
+    "exclusiveMaximum": 10
+  },
+  "expected": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "allOf": [
+      {
+        "$ref": "#/definitions/0"
+      }
+    ],
+    "definitions": {
+      "0": {
+        "type": "number",
+        "exclusiveMaximum": 10
+      }
+    }
+  },
+  "examples": [
+    9
+  ],
+  "counterExamples": [
+    10,
+    11
+  ]
+}

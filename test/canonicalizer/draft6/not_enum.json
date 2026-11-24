@@ -1,0 +1,37 @@
+{
+  "schema": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "not": {
+      "enum": [
+        "a"
+      ]
+    }
+  },
+  "expected": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "allOf": [
+      {
+        "$ref": "#/definitions/0"
+      }
+    ],
+    "definitions": {
+      "0": {
+        "not": {
+          "$ref": "#/definitions/1"
+        }
+      },
+      "1": {
+        "enum": [
+          "a"
+        ]
+      }
+    }
+  },
+  "examples": [
+    "b",
+    1
+  ],
+  "counterExamples": [
+    "a"
+  ]
+}

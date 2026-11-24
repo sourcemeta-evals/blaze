@@ -1,0 +1,48 @@
+{
+  "schema": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "oneOf": [
+      {
+        "type": "string"
+      },
+      {
+        "type": "integer"
+      }
+    ]
+  },
+  "expected": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "allOf": [
+      {
+        "$ref": "#/definitions/0"
+      }
+    ],
+    "definitions": {
+      "0": {
+        "anyOf": [
+          {
+            "$ref": "#/definitions/1"
+          },
+          {
+            "$ref": "#/definitions/2"
+          }
+        ]
+      },
+      "1": {
+        "type": "string",
+        "minLength": 0
+      },
+      "2": {
+        "type": "integer",
+        "multipleOf": 1
+      }
+    }
+  },
+  "examples": [
+    "a",
+    1
+  ],
+  "counterExamples": [
+    null
+  ]
+}

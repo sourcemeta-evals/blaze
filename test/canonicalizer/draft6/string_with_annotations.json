@@ -1,0 +1,30 @@
+{
+  "schema": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "type": "string",
+    "title": "T",
+    "minLength": 1
+  },
+  "expected": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "allOf": [
+      {
+        "$ref": "#/definitions/0"
+      }
+    ],
+    "definitions": {
+      "0": {
+        "type": "string",
+        "title": "T",
+        "minLength": 1
+      }
+    }
+  },
+  "examples": [
+    "a"
+  ],
+  "counterExamples": [
+    "",
+    1
+  ]
+}

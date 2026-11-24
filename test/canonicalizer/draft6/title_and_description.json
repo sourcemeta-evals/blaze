@@ -1,0 +1,30 @@
+{
+  "schema": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "title": "A",
+    "description": "B",
+    "type": "string"
+  },
+  "expected": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "allOf": [
+      {
+        "$ref": "#/definitions/0"
+      }
+    ],
+    "definitions": {
+      "0": {
+        "title": "A",
+        "description": "B",
+        "type": "string",
+        "minLength": 0
+      }
+    }
+  },
+  "examples": [
+    "a"
+  ],
+  "counterExamples": [
+    1
+  ]
+}

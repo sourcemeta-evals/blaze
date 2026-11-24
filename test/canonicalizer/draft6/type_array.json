@@ -1,0 +1,35 @@
+{
+  "schema": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "type": "array"
+  },
+  "expected": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "allOf": [
+      {
+        "$ref": "#/definitions/0"
+      }
+    ],
+    "definitions": {
+      "0": {
+        "type": "array",
+        "uniqueItems": false,
+        "items": {
+          "$ref": "#/definitions/1"
+        },
+        "minItems": 0
+      },
+      "1": true
+    }
+  },
+  "examples": [
+    [],
+    [
+      1
+    ]
+  ],
+  "counterExamples": [
+    {},
+    "a"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "schema": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "type": "number",
+    "exclusiveMinimum": 0
+  },
+  "expected": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "allOf": [
+      {
+        "$ref": "#/definitions/0"
+      }
+    ],
+    "definitions": {
+      "0": {
+        "type": "number",
+        "exclusiveMinimum": 0
+      }
+    }
+  },
+  "examples": [
+    1
+  ],
+  "counterExamples": [
+    0,
+    -1
+  ]
+}

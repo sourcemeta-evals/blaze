@@ -1,0 +1,43 @@
+{
+  "schema": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "type": "object",
+    "maxProperties": 1
+  },
+  "expected": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "allOf": [
+      {
+        "$ref": "#/definitions/0"
+      }
+    ],
+    "definitions": {
+      "0": {
+        "type": "object",
+        "maxProperties": 1,
+        "patternProperties": {},
+        "propertyNames": {
+          "$ref": "#/definitions/1"
+        },
+        "minProperties": 0,
+        "properties": {},
+        "additionalProperties": {
+          "$ref": "#/definitions/1"
+        }
+      },
+      "1": true
+    }
+  },
+  "examples": [
+    {},
+    {
+      "a": 1
+    }
+  ],
+  "counterExamples": [
+    {
+      "a": 1,
+      "b": 2
+    }
+  ]
+}

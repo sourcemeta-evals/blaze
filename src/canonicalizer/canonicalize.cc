@@ -279,6 +279,7 @@ auto has_nested_id(const core::SchemaBaseDialect base_dialect,
                    const std::string_view dialect) -> bool {
   return base_dialect == core::SchemaBaseDialect::JSON_SCHEMA_DRAFT_3 ||
          base_dialect == core::SchemaBaseDialect::JSON_SCHEMA_DRAFT_3_HYPER ||
+         base_dialect == core::SchemaBaseDialect::JSON_SCHEMA_DRAFT_6 ||
          (base_dialect == core::SchemaBaseDialect::JSON_SCHEMA_DRAFT_4 &&
           !is_openapi_3_0(dialect));
 }
@@ -341,7 +342,8 @@ auto eliminate_identifiers(sourcemeta::core::JSON &schema,
     frame.for_each_subschema(
         [&](const core::SchemaFrame::Location &location) -> void {
           const auto &subschema{core::get(schema, location.pointer)};
-          if (subschema.is_object() && subschema.defines("id")) {
+          if (subschema.is_object() &&
+              (subschema.defines("id") || subschema.defines("$id"))) {
             identifier_owners.push_back(core::to_pointer(location.pointer));
           }
         });
@@ -356,6 +358,7 @@ auto eliminate_identifiers(sourcemeta::core::JSON &schema,
     auto &subschema{core::get(schema, pointer)};
     assert(subschema.is_object());
     subschema.erase("id");
+    subschema.erase("$id");
   }
 }
 
@@ -460,6 +463,21 @@ auto draft4_profile() -> const Profile & {
   return PROFILE;
 }
 
+/// Draft 6 keeps the Draft 4 conjunction and adds `contains` and
+/// `propertyNames`, and a boolean is a schema there, so an entry may be one
+auto draft6_profile() -> const Profile & {
+  static const Profile PROFILE{
+      .wrapper = "allOf",
+      .mappings = {"properties", "patternProperties", "dependencies"},
+      .singles = {"additionalProperties", "additionalItems", "not", "contains",
+                  "propertyNames"},
+      .branches = {"items", "allOf", "anyOf", "oneOf"},
+      .unique_branches = {"allOf", "anyOf"},
+      .property_marker = false,
+      .boolean_nodes = true};
+  return PROFILE;
+}
+
 /// The profile for a dialect, when the graph form covers it at all. Draft 3
 /// hyper-schema shares the Draft 3 profile: by the time this runs the rules
 /// have dropped the keywords its vocabulary adds, none of which takes part
@@ -473,6 +491,8 @@ auto profile_for(const core::SchemaBaseDialect base_dialect,
       return &draft3_profile();
     case core::SchemaBaseDialect::JSON_SCHEMA_DRAFT_4:
       return is_openapi_3_0(dialect) ? nullptr : &draft4_profile();
+    case core::SchemaBaseDialect::JSON_SCHEMA_DRAFT_6:
+      return &draft6_profile();
     default:
       return nullptr;
   }

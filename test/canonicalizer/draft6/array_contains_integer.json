@@ -1,0 +1,50 @@
+{
+  "schema": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "type": "array",
+    "contains": {
+      "type": "integer"
+    }
+  },
+  "expected": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "allOf": [
+      {
+        "$ref": "#/definitions/0"
+      }
+    ],
+    "definitions": {
+      "0": {
+        "type": "array",
+        "contains": {
+          "$ref": "#/definitions/1"
+        },
+        "uniqueItems": false,
+        "items": {
+          "$ref": "#/definitions/2"
+        },
+        "minItems": 0
+      },
+      "1": {
+        "type": "integer",
+        "multipleOf": 1
+      },
+      "2": true
+    }
+  },
+  "examples": [
+    [
+      1
+    ],
+    [
+      "a",
+      1
+    ]
+  ],
+  "counterExamples": [
+    [],
+    [
+      "a"
+    ]
+  ]
+}

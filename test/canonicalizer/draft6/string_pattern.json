@@ -1,0 +1,28 @@
+{
+  "schema": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "type": "string",
+    "pattern": "^a"
+  },
+  "expected": {
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "allOf": [
+      {
+        "$ref": "#/definitions/0"
+      }
+    ],
+    "definitions": {
+      "0": {
+        "type": "string",
+        "pattern": "^a",
+        "minLength": 0
+      }
+    }
+  },
+  "examples": [
+    "ab"
+  ],
+  "counterExamples": [
+    "b"
+  ]
+}
