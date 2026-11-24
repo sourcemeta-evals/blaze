@@ -1390,6 +1390,34 @@
       }
     },
     {
+      "description": "A document that is only a reference out of itself is rejected",
+      "valid": false,
+      "data": {
+        "$ref": "https://example.com/other.json"
+      }
+    },
+    {
+      "description": "A document that is only a relative reference out of itself is rejected",
+      "valid": false,
+      "data": {
+        "$ref": "other.json"
+      }
+    },
+    {
+      "description": "A document that is only a reference to a place within itself is rejected",
+      "valid": false,
+      "data": {
+        "$ref": "#/definitions/0"
+      }
+    },
+    {
+      "description": "A document that is only a reference to a name within itself is rejected",
+      "valid": false,
+      "data": {
+        "$ref": "#foo"
+      }
+    },
+    {
       "description": "A document whose $schema is not a string is rejected",
       "valid": false,
       "data": {
