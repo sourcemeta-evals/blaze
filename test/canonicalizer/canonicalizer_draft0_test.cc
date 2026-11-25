@@ -119,3 +119,51 @@ TEST(unsatisfiable_empty_enum) {
 
   CANONICALIZE_AND_VALIDATE(document, expected, compiled_metaschema());
 }
+
+TEST(top_level_ref_with_siblings) {
+  auto document = sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-00/schema#",
+    "$ref": "#",
+    "title": "Standing beside the reference"
+  })JSON");
+
+  const auto original = document;
+
+  try {
+    sourcemeta::blaze::canonicalize(document, sourcemeta::core::schema_walker,
+                                    canonicalizer_test_resolver);
+    FAIL();
+  } catch (const sourcemeta::core::SchemaError &error) {
+    EXPECT_STREQ(error.what(),
+                 "Cannot canonicalise a JSON Schema Draft 7 or older with a "
+                 "top-level `$ref` (which overrides sibling keywords) without "
+                 "introducing undefined behavior");
+    EXPECT_EQ(document, original);
+  } catch (...) {
+    FAIL();
+  }
+}
+
+TEST(top_level_ref_with_siblings_in_the_hyper_schema) {
+  auto document = sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-00/hyper-schema#",
+    "$ref": "#",
+    "title": "Standing beside the reference"
+  })JSON");
+
+  const auto original = document;
+
+  try {
+    sourcemeta::blaze::canonicalize(document, sourcemeta::core::schema_walker,
+                                    canonicalizer_test_resolver);
+    FAIL();
+  } catch (const sourcemeta::core::SchemaError &error) {
+    EXPECT_STREQ(error.what(),
+                 "Cannot canonicalise a JSON Schema Draft 7 or older with a "
+                 "top-level `$ref` (which overrides sibling keywords) without "
+                 "introducing undefined behavior");
+    EXPECT_EQ(document, original);
+  } catch (...) {
+    FAIL();
+  }
+}
