@@ -224,6 +224,18 @@ auto never_reaches_a_verdict(const sourcemeta::core::JSON &schema,
 // one only from Draft 6 on, while a document that is nothing but a reference
 // is one in every dialect of the suite
 auto implied_dialect(const std::string &dialect) -> std::string_view {
+  if (dialect == "2020-12") {
+    return "https://json-schema.org/draft/2020-12/schema";
+  }
+
+  if (dialect == "2019-09") {
+    return "https://json-schema.org/draft/2019-09/schema";
+  }
+
+  if (dialect == "draft7") {
+    return "http://json-schema.org/draft-07/schema#";
+  }
+
   if (dialect == "draft6") {
     return "http://json-schema.org/draft-06/schema#";
   }
@@ -234,6 +246,14 @@ auto implied_dialect(const std::string &dialect) -> std::string_view {
 
   if (dialect == "draft3") {
     return "http://json-schema.org/draft-03/schema#";
+  }
+
+  if (dialect == "draft2") {
+    return "http://json-schema.org/draft-02/schema#";
+  }
+
+  if (dialect == "draft1") {
+    return "http://json-schema.org/draft-01/schema#";
   }
 
   return "";
