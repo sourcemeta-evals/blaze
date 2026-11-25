@@ -5807,3 +5807,38 @@ TEST(unsatisfiable_empty_enum) {
 
   CANONICALIZE_AND_VALIDATE(document, expected, compiled_metaschema());
 }
+
+// The draft a document names is the one it is read in, so a reference at the
+// top of this one is the ordinary reference its own dialect makes of it and
+// not the one an older draft overrides its siblings with, whatever name the
+// caller offers alongside for a document that has none
+TEST(top_level_ref_with_siblings_beside_an_older_name) {
+  auto document = sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$ref": "#/$defs/target",
+    "title": "Standing beside the reference",
+    "$defs": {
+      "target": { "type": "string" }
+    }
+  })JSON");
+
+  const auto expected = sourcemeta::core::parse_json(R"JSON({
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$defs": {
+      "target": {
+        "type": "string",
+        "minLength": 0
+      }
+    },
+    "allOf": [
+      {
+        "$ref": "#/$defs/target",
+        "title": "Standing beside the reference"
+      }
+    ]
+  })JSON");
+
+  CANONICALIZE_WITH_DIALECT_AND_VALIDATE(
+      document, expected, "http://json-schema.org/draft-06/schema#",
+      compiled_metaschema());
+}

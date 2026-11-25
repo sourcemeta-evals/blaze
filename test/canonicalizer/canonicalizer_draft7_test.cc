@@ -6511,3 +6511,35 @@ TEST(top_level_ref_with_siblings_in_draft_3) {
     FAIL();
   }
 }
+
+// A name the caller hands a document answers for a document that names no
+// dialect of its own, and this one names its own, so what the reference at
+// the top of it overrides is settled by the draft the document declares
+// rather than by what the caller offered alongside
+TEST(top_level_ref_with_siblings_in_draft_6_beside_a_modern_name) {
+  auto document = sourcemeta::core::parse_json(R"JSON({
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "$ref": "#/definitions/foo",
+    "title": "Standing beside the reference",
+    "definitions": {
+      "foo": { "type": "string" }
+    }
+  })JSON");
+
+  const auto original = document;
+
+  try {
+    sourcemeta::blaze::canonicalize(
+        document, sourcemeta::core::schema_walker, canonicalizer_test_resolver,
+        "https://json-schema.org/draft/2020-12/schema");
+    FAIL();
+  } catch (const sourcemeta::core::SchemaError &error) {
+    EXPECT_STREQ(error.what(),
+                 "Cannot canonicalise a JSON Schema Draft 7 or older with a "
+                 "top-level `$ref` (which overrides sibling keywords) without "
+                 "introducing undefined behavior");
+    EXPECT_EQ(document, original);
+  } catch (...) {
+    FAIL();
+  }
+}
